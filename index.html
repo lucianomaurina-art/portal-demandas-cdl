@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#123c68">
+  <title>Portal de Demandas | CDL Novo Hamburgo</title>
+  <meta name="description" content="Portal para registro de demandas dos núcleos e setores da CDL Novo Hamburgo.">
+  <style>
+    :root{--navy:#123c68;--blue:#1b5c91;--green:#8cc63f;--ink:#17324d;--muted:#66788a;--line:#d9e3ec;--bg:#f4f7fa;--white:#fff;--danger:#b42318}
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    .top{background:linear-gradient(135deg,#0d335a,#1c6095);height:180px}.wrap{width:min(1100px,calc(100% - 32px));margin:auto}
+    header{height:92px;display:flex;align-items:center;justify-content:space-between;color:#fff}
+    .brand{display:flex;align-items:center;gap:14px}.mark{width:54px;height:54px;border-radius:50%;background:#fff;display:grid;place-items:center;color:var(--navy);font-weight:900;font-size:20px;box-shadow:0 6px 20px #061b2d33}.brand strong{display:block;font-size:20px}.brand span{font-size:13px;opacity:.86}
+    .badge{font-size:12px;border:1px solid #ffffff55;background:#ffffff14;padding:8px 12px;border-radius:999px}
+    main{margin-top:-74px;padding-bottom:40px}.card{background:#fff;border-radius:18px;box-shadow:0 18px 50px #17324d1c;overflow:hidden;border:1px solid #e7edf2}
+    .intro{padding:30px 34px 22px;border-bottom:1px solid var(--line)}h1{margin:0 0 8px;font-size:clamp(25px,4vw,36px);letter-spacing:-.03em}.intro p{margin:0;color:var(--muted);line-height:1.55}
+    form{padding:28px 34px 34px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.full{grid-column:1/-1}
+    label{display:block;font-weight:700;font-size:14px;margin-bottom:7px}.req{color:var(--danger)}
+    input,select,textarea{width:100%;border:1px solid #cbd8e3;border-radius:10px;padding:12px 13px;font:inherit;color:var(--ink);background:#fff;outline:none;transition:.18s}
+    input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px #1b5c9118}textarea{min-height:120px;resize:vertical}
+    .hint{font-size:12px;color:var(--muted);margin-top:6px}.actions{display:flex;align-items:center;gap:16px;margin-top:26px}
+    button{border:0;border-radius:11px;background:var(--green);color:#17310a;font-weight:800;font-size:16px;padding:14px 23px;cursor:pointer;transition:.18s;box-shadow:0 7px 20px #8cc63f35}button:hover{filter:brightness(.96);transform:translateY(-1px)}button:disabled{opacity:.58;cursor:not-allowed;transform:none}
+    #message{font-size:14px;line-height:1.4}.notice{margin:0 34px 6px;padding:13px 15px;border-radius:10px;background:#fff8e6;border:1px solid #f2d68b;color:#6a510e;font-size:13px}
+    footer{text-align:center;color:var(--muted);font-size:12px;padding:20px}
+    @media(max-width:700px){.top{height:160px}.badge{display:none}.mark{width:48px;height:48px}.brand strong{font-size:17px}main{margin-top:-55px}.intro,form{padding-left:20px;padding-right:20px}.grid{grid-template-columns:1fr}.full{grid-column:auto}.notice{margin-left:20px;margin-right:20px}.actions{align-items:stretch;flex-direction:column}button{width:100%}}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <div class="wrap">
+      <header>
+        <div class="brand">
+          <div class="mark" aria-hidden="true">CDL</div>
+          <div><strong>CDL Novo Hamburgo</strong><span>Portal de Demandas</span></div>
+        </div>
+        <div class="badge">Acesso por link</div>
+      </header>
+    </div>
+  </div>
+  <main class="wrap">
+    <section class="card">
+      <div class="intro">
+        <h1>Registre uma nova demanda</h1>
+        <p>Preencha as informações abaixo. Após o envio, a solicitação será encaminhada ao plano de ação da CDL Novo Hamburgo.</p>
+      </div>
+      <p class="notice" id="setupNotice">O portal está publicado, mas a integração com a planilha aguarda uma nova URL válida do Google Apps Script.</p>
+      <form id="demandForm">
+        <div class="grid">
+          <div><label for="solicitante">Nome do solicitante <span class="req">*</span></label><input id="solicitante" name="solicitante" autocomplete="name" required placeholder="Seu nome completo"></div>
+          <div><label for="email">E-mail</label><input id="email" name="email" type="email" autocomplete="email" placeholder="nome@empresa.com.br"></div>
+          <div><label for="nucleo">Núcleo solicitante <span class="req">*</span></label><select id="nucleo" name="nucleo" required><option value="">Selecione</option><option>CDL Mulher</option><option>CDL Jovem</option><option>CDL Inova</option><option>CDL Cultura</option><option>CDL Empregos</option><option>Diretoria</option><option>Gestão</option><option>Outro</option></select></div>
+          <div><label for="setor">Setor de destino <span class="req">*</span></label><select id="setor" name="setor" required><option value="">Selecione</option><option>Marketing</option><option>Comercial</option><option>Financeiro</option><option>Administrativo</option><option>Eventos</option><option>TI</option><option>Gestão</option><option>Outro</option></select></div>
+          <div class="full"><label for="demanda">Descrição da demanda <span class="req">*</span></label><textarea id="demanda" name="demanda" required minlength="10" placeholder="Explique de forma objetiva o que precisa ser realizado"></textarea></div>
+          <div class="full"><label for="resultado">Resultado esperado <span class="req">*</span></label><textarea id="resultado" name="resultado" required minlength="5" placeholder="Descreva como deve ser a entrega final"></textarea></div>
+          <div><label for="prazo">Prazo necessário <span class="req">*</span></label><input id="prazo" name="prazo" type="date" required><div class="hint">Informe a data em que a entrega será necessária.</div></div>
+          <div><label for="prioridade">Prioridade <span class="req">*</span></label><select id="prioridade" name="prioridade" required><option value="">Selecione</option><option>Baixa</option><option selected>Normal</option><option>Alta</option><option>Urgente</option></select></div>
+          <div class="full"><label for="observacoes">Observações</label><textarea id="observacoes" name="observacoes" placeholder="Links, referências ou informações complementares"></textarea></div>
+        </div>
+        <div class="actions"><button id="submitBtn" type="submit">Enviar demanda</button><div id="message" role="status" aria-live="polite"></div></div>
+      </form>
+    </section>
+    <footer>CDL Novo Hamburgo · Portal interno de solicitações</footer>
+  </main>
+  <script>
+    const APPS_SCRIPT_URL = "";
+    const form = document.getElementById("demandForm");
+    const button = document.getElementById("submitBtn");
+    const message = document.getElementById("message");
+    document.getElementById("prazo").min = new Date().toISOString().slice(0,10);
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!APPS_SCRIPT_URL) {
+        message.textContent = "Integração ainda não ativada. Solicite ao administrador a configuração do Google Apps Script.";
+        message.style.color = "#b42318";
+        return;
+      }
+      if (!form.reportValidity()) return;
+      button.disabled = true; button.textContent = "Enviando…"; message.textContent = "";
+      const payload = Object.fromEntries(new FormData(form).entries());
+      payload.origem = "Portal GitHub Pages";
+      payload.enviadoEm = new Date().toISOString();
+      try {
+        const response = await fetch(APPS_SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload),redirect:"follow"});
+        const data = await response.json();
+        if (!response.ok || data.success === false) throw new Error(data.message || "Falha no envio");
+        message.textContent = "Demanda enviada com sucesso" + (data.protocolo ? ". Protocolo: " + data.protocolo : ".");
+        message.style.color = "#287400"; form.reset();
+      } catch (error) {
+        message.textContent = "Não foi possível confirmar o registro. Tente novamente ou contate o administrador.";
+        message.style.color = "#b42318";
+      } finally { button.disabled=false; button.textContent="Enviar demanda"; }
+    });
+  </script>
+</body>
+</html>
