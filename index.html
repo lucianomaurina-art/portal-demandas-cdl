@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Portal de Demandas | CDL Novo Hamburgo</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="operational.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -35,9 +36,10 @@
     <section id="login" class="view hidden"><div class="card narrow"><span class="eyebrow">Acesso restrito</span><h1>Área administrativa</h1><p>Entre com seu e-mail e senha para gerenciar as demandas.</p><form id="loginForm"><label>E-mail<input name="email" type="email" required></label><label>Senha<input name="password" type="password" required minlength="6"></label><button class="primary full" type="submit">Entrar</button><div id="loginMessage" class="message"></div></form></div></section>
 
     <section id="plano" class="view hidden admin-view">
-      <div class="section-head"><div><span class="eyebrow">Gestão</span><h1>Plano de ação</h1><p>Acompanhe e atualize todas as solicitações.</p></div><button id="refreshButton" class="ghost">Atualizar</button></div>
-      <div class="filters card"><input id="search" placeholder="Pesquisar protocolo ou demanda"><select id="filterStatus"></select><select id="filterNucleus"></select><select id="filterPriority"></select></div>
-      <div class="table-card"><div class="table-wrap"><table><thead><tr><th>Protocolo</th><th>Prazo</th><th>Demanda</th><th>Núcleo</th><th>Setor</th><th>Prioridade</th><th>Status</th><th>Responsável</th></tr></thead><tbody id="demandRows"></tbody></table></div><div id="emptyTable" class="empty hidden">Nenhuma demanda encontrada.</div></div>
+      <div class="section-head"><div><span class="eyebrow">Gestão</span><h1>Plano de ação</h1><p>Este é o ambiente único para acompanhar e atualizar as solicitações.</p></div><div class="head-actions"><button id="exportButton" class="ghost">Exportar CSV</button><button id="refreshButton" class="ghost">Atualizar</button></div></div>
+      <div class="filters card"><input id="search" placeholder="Pesquisar protocolo, demanda, solicitante ou responsável"><select id="filterStatus"></select><select id="filterNucleus"></select><select id="filterSector"></select><select id="filterPriority"></select></div>
+      <div class="table-summary"><strong id="resultCount">0 demandas</strong><span>As alterações feitas na tabela são salvas automaticamente.</span></div>
+      <div class="table-card"><div class="table-wrap"><table class="action-table"><thead><tr><th>Protocolo</th><th>Solicitação</th><th>Prazo</th><th>Demanda</th><th>Núcleo / Setor</th><th>Prioridade</th><th>Status</th><th>Responsável</th><th>Observações</th><th></th></tr></thead><tbody id="demandRows"></tbody></table></div><div id="emptyTable" class="empty hidden">Nenhuma demanda encontrada.</div></div>
     </section>
 
     <section id="dashboard" class="view hidden admin-view">
@@ -47,6 +49,22 @@
     </section>
   </main>
 
+  <div id="editModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <div class="modal-panel">
+      <div class="modal-head"><div><span class="eyebrow">Detalhamento</span><h2 id="editTitle">Editar demanda</h2></div><button id="closeModal" class="icon-button" aria-label="Fechar">×</button></div>
+      <form id="editForm" class="edit-grid">
+        <input name="id" type="hidden">
+        <label>Solicitante<input name="requester" maxlength="100" required></label><label>E-mail<input name="email" type="email" maxlength="150"></label>
+        <label>Núcleo<select name="nucleus" required></select></label><label>Setor<select name="sector" required></select></label>
+        <label>Prazo<input name="deadline" type="date" required></label><label>Prioridade<select name="priority" required></select></label>
+        <label>Status<select name="status" required></select></label><label>Responsável interno<input name="assignee" maxlength="100" placeholder="Nome do responsável"></label>
+        <label class="span-2">Descrição da demanda<textarea name="description" maxlength="1500" required></textarea></label>
+        <label class="span-2">Resultado esperado<textarea name="expected_result" maxlength="800" required></textarea></label>
+        <label class="span-2">Observações e andamento<textarea name="notes" maxlength="2000" placeholder="Registre decisões, retornos, links e andamento da demanda"></textarea></label>
+        <div class="span-2 modal-actions"><button type="button" id="cancelEdit" class="secondary">Cancelar</button><button type="submit" class="primary">Salvar alterações</button></div>
+      </form>
+    </div>
+  </div>
   <div id="toast" class="toast hidden"></div>
   <script src="config.js"></script>
   <script src="app.js"></script>
