@@ -44,7 +44,6 @@
         <h1>Registre uma nova demanda</h1>
         <p>Preencha as informações abaixo. Após o envio, a solicitação será encaminhada ao plano de ação da CDL Novo Hamburgo.</p>
       </div>
-      <p class="notice" id="setupNotice">O portal está publicado, mas a integração com a planilha aguarda uma nova URL válida do Google Apps Script.</p>
       <form id="demandForm">
         <div class="grid">
           <div><label for="solicitante">Nome do solicitante <span class="req">*</span></label><input id="solicitante" name="solicitante" autocomplete="name" required placeholder="Seu nome completo"></div>
@@ -67,7 +66,7 @@
     const form = document.getElementById("demandForm");
     const button = document.getElementById("submitBtn");
     const message = document.getElementById("message");
-    document.getElementById("prazo").min = new Date().toISOString().slice(0,10);\n    if (APPS_SCRIPT_URL) document.getElementById("setupNotice").hidden = true;
+    document.getElementById("prazo").min = new Date().toISOString().slice(0,10);
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (!APPS_SCRIPT_URL) {
