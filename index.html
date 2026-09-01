@@ -3,20 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Portal de Demandas | CDL Novo Hamburgo</title>
+  <title>Portal de Demandas e Ideias | CDL Novo Hamburgo</title>
   <link rel="stylesheet" href="styles.css?v=logo-20260901-2">
   <link rel="stylesheet" href="operational.css?v=logo-20260901-2">
+  <link rel="stylesheet" href="ideas.css?v=1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#/nova"><span class="brand-logo-wrap" style="display:flex;align-items:center;width:230px;height:62px;padding:9px 13px;background:#fff;border-radius:12px;box-shadow:0 5px 15px rgba(0,0,0,.13)"><img class="brand-logo" src="logo-cdl.svg?v=2" alt="CDL Novo Hamburgo" width="2048" height="652" style="display:block;width:100%;height:100%;object-fit:contain"></span><small>Portal de Demandas</small></a>
-    <nav id="nav"><a href="#/nova">Nova demanda</a><a class="admin-only" href="#/plano">Plano de ação</a><a class="admin-only" href="#/dashboard">Dashboard</a><a id="usersNav" class="admin-only hidden" href="#/usuarios">Usuários</a><button id="authButton" class="ghost">Área administrativa</button></nav>
+    <a class="brand" href="#/inicio"><span class="brand-logo-wrap" style="display:flex;align-items:center;width:230px;height:62px;padding:9px 13px;background:#fff;border-radius:12px;box-shadow:0 5px 15px rgba(0,0,0,.13)"><img class="brand-logo" src="logo-cdl.svg?v=2" alt="CDL Novo Hamburgo" width="2048" height="652" style="display:block;width:100%;height:100%;object-fit:contain"></span><small>Demandas e Ideias</small></a>
+    <nav id="nav"><a href="#/nova">Nova demanda</a><a href="#/nova-ideia">Cadastrar ideia</a><a class="admin-only" href="#/plano">Plano de ação</a><a class="admin-only" href="#/ideias">Banco de ideias</a><a class="admin-only" href="#/dashboard">Dashboard</a><a id="usersNav" class="admin-only hidden" href="#/usuarios">Usuários</a><button id="authButton" class="ghost">Área administrativa</button></nav>
   </header>
 
   <main>
     <section id="setup" class="view hidden"><div class="card narrow"><h1>Ativação pendente</h1><p>O sistema está pronto, mas ainda precisa receber o endereço e a chave pública do banco.</p></div></section>
+
+    <section id="inicio" class="view">
+      <div class="hero portal-hero"><span class="eyebrow">Portal interno CDL Novo Hamburgo</span><h1>O que você deseja registrar?</h1><p>Escolha entre uma solicitação que precisa ser executada ou uma ideia que poderá se transformar em um novo projeto.</p></div>
+      <div class="entry-grid">
+        <a class="entry-card demand-entry" href="#/nova"><span class="entry-icon">✓</span><div><small>Execução</small><h2>Cadastrar uma demanda</h2><p>Registre uma atividade que já precisa de prazo, responsável e acompanhamento.</p><strong>Abrir formulário →</strong></div></a>
+        <a class="entry-card idea-entry" href="#/nova-ideia"><span class="entry-icon">✦</span><div><small>Inovação e melhoria</small><h2>Cadastrar uma ideia</h2><p>Compartilhe uma oportunidade, projeto ou iniciativa para avaliação e priorização.</p><strong>Abrir formulário →</strong></div></a>
+      </div>
+    </section>
 
     <section id="nova" class="view">
       <div class="hero"><span class="eyebrow">Solicitação interna</span><h1>Registre uma nova demanda</h1><p>Informe o que precisa ser realizado. Você receberá um protocolo somente após a confirmação do registro.</p></div>
@@ -31,6 +40,25 @@
         <label>Prioridade *<select name="priority" required></select></label>
         <label class="span-2">Observações<textarea name="notes" maxlength="800" placeholder="Links, referências ou informações complementares"></textarea></label>
         <div class="span-2 submit-row"><button id="sendButton" class="primary" type="submit">Enviar demanda</button><span id="formMessage" class="message"></span></div>
+      </form>
+    </section>
+
+    <section id="nova-ideia" class="view hidden">
+      <div class="hero"><span class="eyebrow">Banco de ideias</span><h1>Compartilhe uma nova ideia</h1><p>Descreva a oportunidade e o benefício esperado. A gestão poderá relacioná-la a outras propostas e avaliar sua prioridade.</p></div>
+      <form id="ideaForm" class="card form-grid">
+        <label>Nome do autor *<input name="author" required maxlength="100" placeholder="Seu nome completo"></label>
+        <label>E-mail<input name="email" type="email" maxlength="150" placeholder="nome@empresa.com.br"></label>
+        <label>Núcleo ou setor de origem *<select name="origin" required></select></label>
+        <label>Tema da ideia *<select name="theme" required></select></label>
+        <label class="span-2">Título da ideia *<input name="title" required maxlength="140" placeholder="Dê um nome curto e claro para a ideia"></label>
+        <label class="span-2">Problema ou oportunidade *<textarea name="problem" required maxlength="1200" placeholder="Que situação, necessidade ou oportunidade motivou esta ideia?"></textarea></label>
+        <label class="span-2">Descrição da ideia *<textarea name="description" required maxlength="1800" placeholder="Explique o que está sendo proposto"></textarea></label>
+        <label>Público beneficiado *<input name="beneficiaries" required maxlength="300" placeholder="Quem será beneficiado?"></label>
+        <label>Benefício esperado *<input name="expected_benefit" required maxlength="500" placeholder="Qual resultado poderá gerar?"></label>
+        <label>Iniciativa parecida<textarea name="similar_initiative" maxlength="700" placeholder="Você conhece algo semelhante dentro ou fora da CDL?"></textarea></label>
+        <label>Possíveis parceiros<textarea name="partners" maxlength="700" placeholder="Núcleos, setores, empresas ou entidades"></textarea></label>
+        <label class="span-2">Referências e observações<textarea name="references" maxlength="1000" placeholder="Links ou informações complementares"></textarea></label>
+        <div class="span-2 submit-row"><button id="sendIdeaButton" class="primary" type="submit">Enviar ideia</button><span id="ideaFormMessage" class="message"></span></div>
       </form>
     </section>
 
@@ -49,6 +77,14 @@
       <div class="section-head"><div><span class="eyebrow">Indicadores</span><h1>Dashboard de demandas</h1><p>Visão atualizada da operação.</p></div></div>
       <div id="kpis" class="kpis"></div>
       <div class="dashboard-grid"><div class="card"><h2>Demandas por status</h2><div id="statusChart" class="bars"></div></div><div class="card"><h2>Demandas por núcleo</h2><div id="nucleusChart" class="bars"></div></div><div class="card span-2"><h2>Próximos prazos</h2><div id="deadlines"></div></div></div>
+    </section>
+    <section id="ideias" class="view hidden admin-view">
+      <div class="section-head"><div><span class="eyebrow">Inovação e projetos</span><h1>Banco de ideias</h1><p>Concentre, relacione, avalie e priorize as propostas da CDL e de seus núcleos.</p></div><div class="head-actions"><button id="exportIdeasButton" class="ghost">Exportar CSV</button><button id="refreshIdeasButton" class="ghost">Atualizar</button></div></div>
+      <div id="ideaStageTabs" class="scope-tabs idea-tabs" role="tablist"></div>
+      <div class="workspace-bar"><div class="filters card idea-filters"><input id="ideaSearch" placeholder="Pesquisar código, título, autor ou conteúdo"><select id="ideaOriginFilter"></select><select id="ideaThemeFilter"></select></div><div class="view-switch idea-view-switch"><button data-idea-mode="table" class="active">Tabela</button><button data-idea-mode="kanban">Kanban</button></div></div>
+      <div class="table-summary"><strong id="ideaResultCount">0 ideias</strong><span id="ideaViewHint">Clique em uma ideia para avaliar e complementar.</span></div>
+      <div id="ideaTableView" class="table-card"><div class="table-wrap"><table class="idea-table"><thead><tr><th>Código</th><th>Ideia</th><th>Origem</th><th>Tema</th><th>Etapa</th><th>Pontuação</th><th></th></tr></thead><tbody id="ideaRows"></tbody></table></div><div id="emptyIdeas" class="empty hidden">Nenhuma ideia encontrada.</div></div>
+      <div id="ideaKanbanView" class="idea-kanban hidden"></div>
     </section>
     <section id="usuarios" class="view hidden admin-view">
       <div class="section-head"><div><span class="eyebrow">Administração</span><h1>Usuários e setores</h1><p>Vincule cada usuário ao setor que aparecerá como sua visão inicial.</p></div><button id="refreshProfiles" class="ghost">Atualizar</button></div>
@@ -81,8 +117,31 @@
       <div class="modal-actions"><button type="button" id="cancelImport" class="secondary">Cancelar</button><button type="button" id="confirmImport" class="primary" disabled>Importar demandas válidas</button></div>
     </div>
   </div>
+  <div id="ideaModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="ideaEditTitle">
+    <div class="modal-panel drawer-panel idea-drawer">
+      <div class="modal-head"><div><span class="eyebrow">Análise da ideia</span><h2 id="ideaEditTitle">Editar ideia</h2></div><button id="closeIdeaModal" class="icon-button" aria-label="Fechar">×</button></div>
+      <form id="ideaEditForm" class="edit-grid">
+        <input name="id" type="hidden">
+        <label>Etapa<select name="stage" required></select></label><label>Responsável pela análise<input name="reviewer" maxlength="100"></label>
+        <label>Autor<input name="author" maxlength="100" required></label><label>E-mail<input name="email" type="email" maxlength="150"></label>
+        <label class="span-2">Título<input name="title" maxlength="140" required></label>
+        <label>Origem<select name="origin" required></select></label><label>Tema<select name="theme" required></select></label>
+        <label class="span-2">Problema ou oportunidade<textarea name="problem" maxlength="1200" required></textarea></label>
+        <label class="span-2">Descrição<textarea name="description" maxlength="1800" required></textarea></label>
+        <label>Público beneficiado<input name="beneficiaries" maxlength="300" required></label><label>Benefício esperado<input name="expected_benefit" maxlength="500" required></label>
+        <label>Iniciativa parecida<textarea name="similar_initiative" maxlength="700"></textarea></label><label>Possíveis parceiros<textarea name="partners" maxlength="700"></textarea></label>
+        <label class="span-2">Referências originais<textarea name="reference_notes" maxlength="1000"></textarea></label>
+        <div class="span-2 score-box"><h3>Avaliação para priorização</h3><p>Use notas de 1 a 5. A pontuação final é calculada automaticamente.</p><div class="score-grid"><label>Alinhamento estratégico<input name="score_alignment" type="number" min="0" max="5"></label><label>Impacto<input name="score_impact" type="number" min="0" max="5"></label><label>Abrangência<input name="score_reach" type="number" min="0" max="5"></label><label>Integração entre áreas<input name="score_synergy" type="number" min="0" max="5"></label><label>Viabilidade<input name="score_feasibility" type="number" min="0" max="5"></label><label>Urgência<input name="score_urgency" type="number" min="0" max="5"></label></div><strong id="ideaScorePreview">Pontuação: 0,0</strong></div>
+        <label class="span-2">Relacionar a outra ideia<select name="related_idea_id"></select></label>
+        <label class="span-2">Nome do projeto, se aprovado<input name="project_name" maxlength="180" placeholder="Preencha quando a ideia for transformada em projeto"></label>
+        <label class="span-2">Parecer e observações da gestão<textarea name="management_notes" maxlength="2000"></textarea></label>
+        <div class="span-2 modal-actions"><button type="button" id="cancelIdeaEdit" class="secondary">Cancelar</button><button type="button" id="convertIdeaButton" class="secondary convert-button">Transformar em projeto</button><button type="submit" class="primary">Salvar análise</button></div>
+      </form>
+    </div>
+  </div>
   <div id="toast" class="toast hidden"></div>
   <script src="config.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=ideas-20260901-1"></script>
+  <script src="ideas.js?v=ideas-20260901-1"></script>
 </body>
 </html>
