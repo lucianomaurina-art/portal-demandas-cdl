@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="operational.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
   <header class="topbar">
@@ -36,7 +37,7 @@
     <section id="login" class="view hidden"><div class="card narrow"><span class="eyebrow">Acesso restrito</span><h1>Área administrativa</h1><p>Entre com seu e-mail e senha para gerenciar as demandas.</p><form id="loginForm"><label>E-mail<input name="email" type="email" required></label><label>Senha<input name="password" type="password" required minlength="6"></label><button class="primary full" type="submit">Entrar</button><div id="loginMessage" class="message"></div></form></div></section>
 
     <section id="plano" class="view hidden admin-view">
-      <div class="section-head"><div><span class="eyebrow">Gestão</span><h1>Plano de ação</h1><p>Este é o ambiente único para acompanhar e atualizar as solicitações.</p></div><div class="head-actions"><button id="exportButton" class="ghost">Exportar CSV</button><button id="refreshButton" class="ghost">Atualizar</button></div></div>
+      <div class="section-head"><div><span class="eyebrow">Gestão</span><h1>Plano de ação</h1><p>Este é o ambiente único para acompanhar e atualizar as solicitações.</p></div><div class="head-actions"><button id="importButton" class="ghost">Importar Excel</button><button id="exportButton" class="ghost">Exportar CSV</button><button id="refreshButton" class="ghost">Atualizar</button></div></div>
       <div class="filters card"><input id="search" placeholder="Pesquisar protocolo, demanda, solicitante ou responsável"><select id="filterStatus"></select><select id="filterNucleus"></select><select id="filterSector"></select><select id="filterPriority"></select></div>
       <div class="table-summary"><strong id="resultCount">0 demandas</strong><span>As alterações feitas na tabela são salvas automaticamente.</span></div>
       <div class="table-card"><div class="table-wrap"><table class="action-table"><thead><tr><th>Protocolo</th><th>Solicitação</th><th>Prazo</th><th>Demanda</th><th>Núcleo / Setor</th><th>Prioridade</th><th>Status</th><th>Responsável</th><th>Observações</th><th></th></tr></thead><tbody id="demandRows"></tbody></table></div><div id="emptyTable" class="empty hidden">Nenhuma demanda encontrada.</div></div>
@@ -63,6 +64,15 @@
         <label class="span-2">Observações e andamento<textarea name="notes" maxlength="2000" placeholder="Registre decisões, retornos, links e andamento da demanda"></textarea></label>
         <div class="span-2 modal-actions"><button type="button" id="cancelEdit" class="secondary">Cancelar</button><button type="submit" class="primary">Salvar alterações</button></div>
       </form>
+    </div>
+  </div>
+  <div id="importModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+    <div class="modal-panel import-panel">
+      <div class="modal-head"><div><span class="eyebrow">Importação em lote</span><h2 id="importTitle">Importar demandas do Excel</h2></div><button id="closeImport" class="icon-button" aria-label="Fechar">×</button></div>
+      <div class="import-guide"><p>Use exclusivamente o modelo padrão. Cada linha válida será cadastrada como uma nova demanda e receberá um novo protocolo.</p><a id="downloadImportModel" class="model-link" href="#">Baixar modelo padrão do Excel</a></div>
+      <label class="file-drop">Selecionar arquivo preenchido<input id="importFile" type="file" accept=".xlsx,.xls"></label>
+      <div id="importResult" class="import-result hidden"></div>
+      <div class="modal-actions"><button type="button" id="cancelImport" class="secondary">Cancelar</button><button type="button" id="confirmImport" class="primary" disabled>Importar demandas válidas</button></div>
     </div>
   </div>
   <div id="toast" class="toast hidden"></div>
