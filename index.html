@@ -63,11 +63,11 @@
     <footer>CDL Novo Hamburgo · Portal interno de solicitações</footer>
   </main>
   <script>
-    const APPS_SCRIPT_URL = "";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbywSrubWe46YIjFRF1OmrMrhVuyRqV9h2oPd3cxNph6W64saKmXTho1ihM57b2mxOpUww/exec";
     const form = document.getElementById("demandForm");
     const button = document.getElementById("submitBtn");
     const message = document.getElementById("message");
-    document.getElementById("prazo").min = new Date().toISOString().slice(0,10);
+    document.getElementById("prazo").min = new Date().toISOString().slice(0,10);\n    if (APPS_SCRIPT_URL) document.getElementById("setupNotice").hidden = true;
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (!APPS_SCRIPT_URL) {
