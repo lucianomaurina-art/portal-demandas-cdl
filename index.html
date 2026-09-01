@@ -12,7 +12,7 @@
 <body>
   <header class="topbar">
     <a class="brand" href="#/nova"><span class="brand-mark">CDL</span><span><strong>CDL Novo Hamburgo</strong><small>Portal de Demandas</small></span></a>
-    <nav id="nav"><a href="#/nova">Nova demanda</a><a class="admin-only" href="#/plano">Plano de ação</a><a class="admin-only" href="#/dashboard">Dashboard</a><button id="authButton" class="ghost">Área administrativa</button></nav>
+    <nav id="nav"><a href="#/nova">Nova demanda</a><a class="admin-only" href="#/plano">Plano de ação</a><a class="admin-only" href="#/dashboard">Dashboard</a><a id="usersNav" class="admin-only hidden" href="#/usuarios">Usuários</a><button id="authButton" class="ghost">Área administrativa</button></nav>
   </header>
 
   <main>
@@ -37,10 +37,12 @@
     <section id="login" class="view hidden"><div class="card narrow"><span class="eyebrow">Acesso restrito</span><h1>Área administrativa</h1><p>Entre com seu e-mail e senha para gerenciar as demandas.</p><form id="loginForm"><label>E-mail<input name="email" type="email" required></label><label>Senha<input name="password" type="password" required minlength="6"></label><button class="primary full" type="submit">Entrar</button><div id="loginMessage" class="message"></div></form></div></section>
 
     <section id="plano" class="view hidden admin-view">
-      <div class="section-head"><div><span class="eyebrow">Gestão</span><h1>Plano de ação</h1><p>Este é o ambiente único para acompanhar e atualizar as solicitações.</p></div><div class="head-actions"><button id="importButton" class="ghost">Importar Excel</button><button id="exportButton" class="ghost">Exportar CSV</button><button id="refreshButton" class="ghost">Atualizar</button></div></div>
-      <div class="filters card"><input id="search" placeholder="Pesquisar protocolo, demanda, solicitante ou responsável"><select id="filterStatus"></select><select id="filterNucleus"></select><select id="filterSector"></select><select id="filterPriority"></select></div>
+      <div class="section-head"><div><span class="eyebrow">Gestão</span><h1>Plano de ação</h1><p id="planGreeting">Este é o ambiente único para acompanhar e atualizar as solicitações.</p></div><div class="head-actions"><button id="importButton" class="ghost">Importar Excel</button><button id="exportButton" class="ghost">Exportar CSV</button><button id="refreshButton" class="ghost">Atualizar</button></div></div>
+      <div id="scopeTabs" class="scope-tabs" role="tablist"><button data-scope="sector">Meu setor <span></span></button><button data-scope="mine">Minhas demandas <span></span></button><button data-scope="all" class="active">Geral <span></span></button><button data-scope="late">Atrasadas <span></span></button><button data-scope="done">Concluídas <span></span></button></div>
+      <div class="workspace-bar"><div class="filters card"><input id="search" placeholder="Pesquisar protocolo, demanda, solicitante ou responsável"><select id="filterStatus"></select><select id="filterNucleus"></select><select id="filterSector"></select><select id="filterPriority"></select></div><div class="view-switch" aria-label="Modo de visualização"><button data-mode="table" class="active">Tabela</button><button data-mode="kanban">Kanban</button></div></div>
       <div class="table-summary"><strong id="resultCount">0 demandas</strong><span>As alterações feitas na tabela são salvas automaticamente.</span></div>
-      <div class="table-card"><div class="table-wrap"><table class="action-table"><thead><tr><th>Protocolo</th><th>Solicitação</th><th>Prazo</th><th>Demanda</th><th>Núcleo / Setor</th><th>Prioridade</th><th>Status</th><th>Responsável</th><th>Observações</th><th></th></tr></thead><tbody id="demandRows"></tbody></table></div><div id="emptyTable" class="empty hidden">Nenhuma demanda encontrada.</div></div>
+      <div id="tableView" class="table-card"><div class="table-wrap"><table class="action-table"><thead><tr><th>Protocolo</th><th>Demanda</th><th>Prazo</th><th>Prioridade</th><th>Status</th><th>Responsável</th><th></th></tr></thead><tbody id="demandRows"></tbody></table></div><div id="emptyTable" class="empty hidden">Nenhuma demanda encontrada.</div></div>
+      <div id="kanbanView" class="kanban-board hidden"></div>
     </section>
 
     <section id="dashboard" class="view hidden admin-view">
@@ -48,10 +50,14 @@
       <div id="kpis" class="kpis"></div>
       <div class="dashboard-grid"><div class="card"><h2>Demandas por status</h2><div id="statusChart" class="bars"></div></div><div class="card"><h2>Demandas por núcleo</h2><div id="nucleusChart" class="bars"></div></div><div class="card span-2"><h2>Próximos prazos</h2><div id="deadlines"></div></div></div>
     </section>
+    <section id="usuarios" class="view hidden admin-view">
+      <div class="section-head"><div><span class="eyebrow">Administração</span><h1>Usuários e setores</h1><p>Vincule cada usuário ao setor que aparecerá como sua visão inicial.</p></div><button id="refreshProfiles" class="ghost">Atualizar</button></div>
+      <div class="table-card"><div class="table-wrap"><table class="profile-table"><thead><tr><th>Usuário</th><th>E-mail</th><th>Setor</th><th>Perfil</th><th>Ativo</th></tr></thead><tbody id="profileRows"></tbody></table></div><div id="emptyProfiles" class="empty hidden">Nenhum usuário encontrado.</div></div>
+    </section>
   </main>
 
   <div id="editModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="editTitle">
-    <div class="modal-panel">
+    <div class="modal-panel drawer-panel">
       <div class="modal-head"><div><span class="eyebrow">Detalhamento</span><h2 id="editTitle">Editar demanda</h2></div><button id="closeModal" class="icon-button" aria-label="Fechar">×</button></div>
       <form id="editForm" class="edit-grid">
         <input name="id" type="hidden">
