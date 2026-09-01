@@ -44,6 +44,8 @@
         <h1>Registre uma nova demanda</h1>
         <p>Preencha as informações abaixo. Após o envio, a solicitação será encaminhada ao plano de ação da CDL Novo Hamburgo.</p>
       </div>
+      <p class="notice" id="maintenanceNotice">Integração em atualização. O envio será liberado após a nova implantação do Google Apps Script.</p>
+      <iframe name="appsScriptRelay" id="appsScriptRelay" hidden></iframe>
       <form id="demandForm">
         <div class="grid">
           <div><label for="solicitante">Nome do solicitante <span class="req">*</span></label><input id="solicitante" name="solicitante" autocomplete="name" required placeholder="Seu nome completo"></div>
@@ -56,7 +58,7 @@
           <div><label for="prioridade">Prioridade <span class="req">*</span></label><select id="prioridade" name="prioridade" required><option value="">Selecione</option><option>Urgente</option><option>Alta</option><option selected>Média</option><option>Baixa</option></select></div>
           <div class="full"><label for="observacoes">Observações</label><textarea id="observacoes" name="observacoes" placeholder="Links, referências ou informações complementares"></textarea></div>
         </div>
-        <div class="actions"><button id="submitBtn" type="submit">Enviar demanda</button><div id="message" role="status" aria-live="polite"></div></div>
+        <div class="actions"><button id="submitBtn" type="submit" disabled>Envio temporariamente indisponível</button><div id="message" role="status" aria-live="polite"></div></div>
       </form>
     </section>
     <footer>CDL Novo Hamburgo · Portal interno de solicitações</footer>
@@ -87,8 +89,20 @@
       payload.origem = "Portal GitHub Pages";
       payload.enviadoEm = new Date().toISOString();
       try {
-        await fetch(APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload),redirect:"follow"});
-        message.textContent = "Demanda encaminhada para registro. Você já pode fechar esta página.";
+        const relay = document.createElement("form");
+        relay.method = "POST";
+        relay.action = APPS_SCRIPT_URL;
+        relay.target = "appsScriptRelay";
+        relay.hidden = true;
+        const field = document.createElement("input");
+        field.type = "hidden";
+        field.name = "payload";
+        field.value = JSON.stringify(payload);
+        relay.appendChild(field);
+        document.body.appendChild(relay);
+        relay.submit();
+        setTimeout(() => relay.remove(), 2000);
+        message.textContent = "Demanda encaminhada ao receptor. Confirme o protocolo na planilha.";
         message.style.color = "#287400"; form.reset();
       } catch (error) {
         message.textContent = "Não foi possível confirmar o registro. Tente novamente ou contate o administrador.";
