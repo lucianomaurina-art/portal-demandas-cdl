@@ -46,3 +46,71 @@ end;
 $$;
 revoke all on function public.submit_demand(text,text,text,text,text,text,date,text,text) from public;
 grant execute on function public.submit_demand(text,text,text,text,text,text,date,text,text) to anon, authenticated;
+
+-- Perfis internos: setor padrão, papel e acesso individual.
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text,
+  name text,
+  sector text,
+  role text not null default 'collaborator' check (role in ('collaborator','manager','admin')),
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.profiles enable row level security;
+
+insert into public.profiles(id,email,name)
+select id,email,coalesce(raw_user_meta_data->>'name',split_part(email,'@',1))
+from auth.users
+on conflict (id) do update set email=excluded.email;
+
+-- O primeiro usuário do projeto torna-se administrador inicial.
+update public.profiles
+set role='admin'
+where id=(select id from auth.users order by created_at asc limit 1)
+  and not exists (select 1 from public.profiles where role='admin');
+
+create or replace function public.is_cdl_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path=public
+as $$
+  select exists(select 1 from public.profiles where id=auth.uid() and role='admin' and active=true);
+$$;
+
+drop policy if exists "profile_read_self_or_admin" on public.profiles;
+create policy "profile_read_self_or_admin" on public.profiles
+for select to authenticated
+using (id=auth.uid() or public.is_cdl_admin());
+
+drop policy if exists "profile_admin_update" on public.profiles;
+create policy "profile_admin_update" on public.profiles
+for update to authenticated
+using (public.is_cdl_admin())
+with check (public.is_cdl_admin());
+
+grant select on public.profiles to authenticated;
+grant update(name,sector,role,active,updated_at) on public.profiles to authenticated;
+
+create or replace function public.create_profile_for_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path=public
+as $$
+begin
+  insert into public.profiles(id,email,name)
+  values(new.id,new.email,coalesce(new.raw_user_meta_data->>'name',split_part(new.email,'@',1)))
+  on conflict(id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists create_profile_after_signup on auth.users;
+create trigger create_profile_after_signup
+after insert on auth.users
+for each row execute function public.create_profile_for_new_user();
