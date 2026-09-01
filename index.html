@@ -44,6 +44,7 @@
         <h1>Registre uma nova demanda</h1>
         <p>Preencha as informações abaixo. Após o envio, a solicitação será encaminhada ao plano de ação da CDL Novo Hamburgo.</p>
       </div>
+      <p class="notice" id="maintenanceNotice">Integração com a planilha em manutenção. Não envie novas demandas até a conclusão da validação.</p>
       <form id="demandForm">
         <div class="grid">
           <div><label for="solicitante">Nome do solicitante <span class="req">*</span></label><input id="solicitante" name="solicitante" autocomplete="name" required placeholder="Seu nome completo"></div>
@@ -56,7 +57,7 @@
           <div><label for="prioridade">Prioridade <span class="req">*</span></label><select id="prioridade" name="prioridade" required><option value="">Selecione</option><option>Baixa</option><option selected>Normal</option><option>Alta</option><option>Urgente</option></select></div>
           <div class="full"><label for="observacoes">Observações</label><textarea id="observacoes" name="observacoes" placeholder="Links, referências ou informações complementares"></textarea></div>
         </div>
-        <div class="actions"><button id="submitBtn" type="submit">Enviar demanda</button><div id="message" role="status" aria-live="polite"></div></div>
+        <div class="actions"><button id="submitBtn" type="submit" disabled>Envio temporariamente indisponível</button><div id="message" role="status" aria-live="polite"></div></div>
       </form>
     </section>
     <footer>CDL Novo Hamburgo · Portal interno de solicitações</footer>
