@@ -80,10 +80,8 @@
       payload.origem = "Portal GitHub Pages";
       payload.enviadoEm = new Date().toISOString();
       try {
-        const response = await fetch(APPS_SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload),redirect:"follow"});
-        const data = await response.json();
-        if (!response.ok || data.success === false) throw new Error(data.message || "Falha no envio");
-        message.textContent = "Demanda enviada com sucesso" + (data.protocolo ? ". Protocolo: " + data.protocolo : ".");
+        await fetch(APPS_SCRIPT_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(payload),redirect:"follow"});
+        message.textContent = "Demanda encaminhada para registro. Você já pode fechar esta página.";
         message.style.color = "#287400"; form.reset();
       } catch (error) {
         message.textContent = "Não foi possível confirmar o registro. Tente novamente ou contate o administrador.";
