@@ -114,3 +114,97 @@ drop trigger if exists create_profile_after_signup on auth.users;
 create trigger create_profile_after_signup
 after insert on auth.users
 for each row execute function public.create_profile_for_new_user();
+
+-- Banco de Ideias
+create sequence if not exists idea_code_seq start 1;
+
+create table if not exists public.ideas (
+  id uuid primary key default gen_random_uuid(),
+  code text unique not null default ('IDEIA-' || lpad(nextval('idea_code_seq')::text,4,'0')),
+  created_at timestamptz not null default now(),
+  author text not null check (char_length(author) between 2 and 100),
+  email text,
+  origin text not null,
+  theme text not null,
+  title text not null check (char_length(title) between 3 and 140),
+  problem text not null,
+  description text not null,
+  beneficiaries text not null,
+  expected_benefit text not null,
+  similar_initiative text,
+  partners text,
+  reference_notes text,
+  stage text not null default 'Nova' check (stage in ('Nova','Em triagem','Em análise','Priorizada','Em desenvolvimento','Transformada em projeto','Relacionada ou duplicada','Arquivada')),
+  reviewer text,
+  score_alignment smallint not null default 0 check (score_alignment between 0 and 5),
+  score_impact smallint not null default 0 check (score_impact between 0 and 5),
+  score_reach smallint not null default 0 check (score_reach between 0 and 5),
+  score_synergy smallint not null default 0 check (score_synergy between 0 and 5),
+  score_feasibility smallint not null default 0 check (score_feasibility between 0 and 5),
+  score_urgency smallint not null default 0 check (score_urgency between 0 and 5),
+  priority_score numeric(3,1) not null default 0,
+  related_idea_id uuid references public.ideas(id) on delete set null,
+  project_name text,
+  management_notes text,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.ideas enable row level security;
+
+drop policy if exists "authenticated_read_ideas" on public.ideas;
+create policy "authenticated_read_ideas" on public.ideas
+for select to authenticated using (true);
+
+drop policy if exists "authenticated_update_ideas" on public.ideas;
+create policy "authenticated_update_ideas" on public.ideas
+for update to authenticated using (true) with check (true);
+
+grant select,update on public.ideas to authenticated;
+
+create or replace function public.submit_idea(
+  p_author text,
+  p_email text,
+  p_origin text,
+  p_theme text,
+  p_title text,
+  p_problem text,
+  p_description text,
+  p_beneficiaries text,
+  p_expected_benefit text,
+  p_similar_initiative text,
+  p_partners text,
+  p_references text
+) returns text
+language plpgsql
+security definer
+set search_path=public
+as $$
+declare new_code text;
+begin
+  if nullif(trim(p_author),'') is null
+     or nullif(trim(p_origin),'') is null
+     or nullif(trim(p_theme),'') is null
+     or nullif(trim(p_title),'') is null
+     or nullif(trim(p_problem),'') is null
+     or nullif(trim(p_description),'') is null
+     or nullif(trim(p_beneficiaries),'') is null
+     or nullif(trim(p_expected_benefit),'') is null then
+    raise exception 'Preencha todos os campos obrigatórios.';
+  end if;
+
+  insert into public.ideas(
+    author,email,origin,theme,title,problem,description,beneficiaries,
+    expected_benefit,similar_initiative,partners,reference_notes
+  ) values (
+    trim(p_author),nullif(trim(p_email),''),trim(p_origin),trim(p_theme),
+    trim(p_title),trim(p_problem),trim(p_description),trim(p_beneficiaries),
+    trim(p_expected_benefit),nullif(trim(p_similar_initiative),''),
+    nullif(trim(p_partners),''),nullif(trim(p_references),'')
+  ) returning code into new_code;
+
+  return new_code;
+end;
+$$;
+
+revoke all on function public.submit_idea(text,text,text,text,text,text,text,text,text,text,text,text) from public;
+grant execute on function public.submit_idea(text,text,text,text,text,text,text,text,text,text,text,text) to anon,authenticated;
