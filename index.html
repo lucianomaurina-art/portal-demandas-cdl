@@ -44,20 +44,19 @@
         <h1>Registre uma nova demanda</h1>
         <p>Preencha as informações abaixo. Após o envio, a solicitação será encaminhada ao plano de ação da CDL Novo Hamburgo.</p>
       </div>
-      <p class="notice" id="maintenanceNotice">Integração com a planilha em manutenção. Não envie novas demandas até a conclusão da validação.</p>
       <form id="demandForm">
         <div class="grid">
           <div><label for="solicitante">Nome do solicitante <span class="req">*</span></label><input id="solicitante" name="solicitante" autocomplete="name" required placeholder="Seu nome completo"></div>
           <div><label for="email">E-mail</label><input id="email" name="email" type="email" autocomplete="email" placeholder="nome@empresa.com.br"></div>
-          <div><label for="nucleo">Núcleo solicitante <span class="req">*</span></label><select id="nucleo" name="nucleo" required><option value="">Selecione</option><option>CDL Mulher</option><option>CDL Jovem</option><option>CDL Inova</option><option>CDL Cultura</option><option>CDL Empregos</option><option>Diretoria</option><option>Gestão</option><option>Outro</option></select></div>
-          <div><label for="setor">Setor de destino <span class="req">*</span></label><select id="setor" name="setor" required><option value="">Selecione</option><option>Marketing</option><option>Comercial</option><option>Financeiro</option><option>Administrativo</option><option>Eventos</option><option>TI</option><option>Gestão</option><option>Outro</option></select></div>
+          <div><label for="nucleo">Núcleo solicitante <span class="req">*</span></label><select id="nucleo" name="nucleo" required><option value="">Selecione</option><option>CDL Mulher</option><option>CDL Jovem</option><option>CDL Innova</option><option>CDL Cultura</option><option>Caminhos de Hamburgo Velho</option><option>Conselho</option><option>Diretoria</option><option>Outro</option></select></div>
+          <div><label for="setor">Setor de destino <span class="req">*</span></label><select id="setor" name="setor" required><option value="">Selecione</option><option>Marketing e Comunicação</option><option>Comercial</option><option>Relacionamento e Atendimento</option><option>Financeiro e Administrativo</option><option>TI, CRM e Automação</option><option>Eventos</option><option>Gestão Executiva</option><option>Presidência e Conselho</option><option>Outro</option></select></div>
           <div class="full"><label for="demanda">Descrição da demanda <span class="req">*</span></label><textarea id="demanda" name="demanda" required minlength="10" placeholder="Explique de forma objetiva o que precisa ser realizado"></textarea></div>
           <div class="full"><label for="resultado">Resultado esperado <span class="req">*</span></label><textarea id="resultado" name="resultado" required minlength="5" placeholder="Descreva como deve ser a entrega final"></textarea></div>
           <div><label for="prazo">Prazo necessário <span class="req">*</span></label><input id="prazo" name="prazo" type="date" required><div class="hint">Informe a data em que a entrega será necessária.</div></div>
-          <div><label for="prioridade">Prioridade <span class="req">*</span></label><select id="prioridade" name="prioridade" required><option value="">Selecione</option><option>Baixa</option><option selected>Normal</option><option>Alta</option><option>Urgente</option></select></div>
+          <div><label for="prioridade">Prioridade <span class="req">*</span></label><select id="prioridade" name="prioridade" required><option value="">Selecione</option><option>Urgente</option><option>Alta</option><option selected>Média</option><option>Baixa</option></select></div>
           <div class="full"><label for="observacoes">Observações</label><textarea id="observacoes" name="observacoes" placeholder="Links, referências ou informações complementares"></textarea></div>
         </div>
-        <div class="actions"><button id="submitBtn" type="submit" disabled>Envio temporariamente indisponível</button><div id="message" role="status" aria-live="polite"></div></div>
+        <div class="actions"><button id="submitBtn" type="submit">Enviar demanda</button><div id="message" role="status" aria-live="polite"></div></div>
       </form>
     </section>
     <footer>CDL Novo Hamburgo · Portal interno de solicitações</footer>
@@ -78,6 +77,13 @@
       if (!form.reportValidity()) return;
       button.disabled = true; button.textContent = "Enviando…"; message.textContent = "";
       const payload = Object.fromEntries(new FormData(form).entries());
+      payload.requester = payload.solicitante;
+      payload.nucleus = payload.nucleo;
+      payload.sector = payload.setor;
+      payload.description = payload.demanda;
+      payload.expectedResult = payload.resultado;
+      payload.deadline = payload.prazo;
+      payload.notes = [payload.observacoes, payload.email ? "E-mail: " + payload.email : ""].filter(Boolean).join("\n");
       payload.origem = "Portal GitHub Pages";
       payload.enviadoEm = new Date().toISOString();
       try {
