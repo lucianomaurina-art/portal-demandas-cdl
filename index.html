@@ -66,7 +66,7 @@
 
     <section id="plano" class="view hidden admin-view">
       <div class="section-head"><div><span class="eyebrow">Gestão</span><h1>Plano de ação</h1><p id="planGreeting">Este é o ambiente único para acompanhar e atualizar as solicitações.</p></div><div class="head-actions"><button id="importButton" class="ghost">Importar Excel</button><button id="exportButton" class="ghost">Exportar CSV</button><button id="refreshButton" class="ghost">Atualizar</button></div></div>
-      <div id="scopeTabs" class="scope-tabs" role="tablist"><button data-scope="sector">Meu setor <span></span></button><button data-scope="mine">Minhas demandas <span></span></button><button data-scope="all" class="active">Geral <span></span></button><button data-scope="late">Atrasadas <span></span></button><button data-scope="done">Concluídas <span></span></button></div>
+      <div id="scopeTabs" class="scope-tabs" role="tablist"><button data-scope="sector">Meu setor <span></span></button><button data-scope="mine">Minhas demandas <span></span></button><button data-scope="all" class="active">Geral <span></span></button><button data-scope="late">Atrasadas <span></span></button><button data-scope="done">Concluídas <span></span></button><button data-scope="inactive" class="hidden">Inativas <span></span></button></div>
       <div class="workspace-bar"><div class="filters card"><input id="search" placeholder="Pesquisar protocolo, demanda, solicitante ou responsável"><select id="filterStatus"></select><select id="filterNucleus"></select><select id="filterSector"></select><select id="filterPriority"></select></div><div class="view-switch" aria-label="Modo de visualização"><button data-mode="table" class="active">Tabela</button><button data-mode="kanban">Kanban</button></div></div>
       <div class="table-summary"><strong id="resultCount">0 demandas</strong><span id="viewHint">As alterações feitas na tabela são salvas automaticamente.</span></div>
       <div id="tableView" class="table-card"><div class="table-wrap"><table class="action-table"><thead><tr><th>Protocolo</th><th>Demanda</th><th>Prazo</th><th>Prioridade</th><th>Status</th><th>Responsável</th><th></th></tr></thead><tbody id="demandRows"></tbody></table></div><div id="emptyTable" class="empty hidden">Nenhuma demanda encontrada.</div></div>
@@ -104,7 +104,7 @@
         <label class="span-2">Descrição da demanda<textarea name="description" maxlength="1500" required></textarea></label>
         <label class="span-2">Resultado esperado<textarea name="expected_result" maxlength="800" required></textarea></label>
         <label class="span-2">Observações e andamento<textarea name="notes" maxlength="2000" placeholder="Registre decisões, retornos, links e andamento da demanda"></textarea></label>
-        <div class="span-2 modal-actions"><button type="button" id="cancelEdit" class="secondary">Cancelar</button><button type="submit" class="primary">Salvar alterações</button></div>
+        <div class="span-2 modal-actions"><button type="button" id="toggleDemandActive" class="danger-action hidden">Inativar demanda</button><button type="button" id="cancelEdit" class="secondary">Cancelar</button><button type="submit" class="primary">Salvar alterações</button></div>
       </form>
     </div>
   </div>
@@ -141,7 +141,7 @@
   </div>
   <div id="toast" class="toast hidden"></div>
   <script src="config.js"></script>
-  <script src="app.js?v=ideas-20260901-1"></script>
+  <script src="app.js?v=inativacao-admin-20260902-1"></script>
   <script src="ideas.js?v=ideas-20260901-1"></script>
 </body>
 </html>
