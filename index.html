@@ -13,7 +13,7 @@
 <body>
   <header class="topbar">
     <a class="brand" href="#/inicio"><span class="brand-logo-wrap" style="display:flex;align-items:center;width:230px;height:62px;padding:9px 13px;background:#fff;border-radius:12px;box-shadow:0 5px 15px rgba(0,0,0,.13)"><img class="brand-logo" src="logo-cdl.svg?v=2" alt="CDL Novo Hamburgo" width="2048" height="652" style="display:block;width:100%;height:100%;object-fit:contain"></span><small>Demandas e Ideias</small></a>
-    <nav id="nav"><a href="#/nova">Nova demanda</a><a href="#/nova-ideia">Cadastrar ideia</a><a class="admin-only" href="#/plano">Plano de ação</a><a class="admin-only" href="#/ideias">Banco de ideias</a><a class="admin-only" href="#/dashboard">Dashboard</a><a id="usersNav" class="admin-only hidden" href="#/usuarios">Usuários</a><button id="authButton" class="ghost">Área administrativa</button></nav>
+    <nav id="nav"><a href="#/nova">Nova demanda</a><a href="#/nova-ideia">Cadastrar ideia</a><a class="admin-only" href="#/plano">Plano de ação</a><a class="admin-only" href="#/ideias">Banco de ideias</a><a class="admin-only" href="#/dashboard">Dashboard</a><a id="usersNav" class="admin-only hidden" href="#/usuarios">Usuários</a><div id="notificationCenter" class="notification-center admin-only hidden"><button id="notificationBell" class="notification-bell" type="button" aria-label="Notificações">🔔<span id="notificationBadge" class="notification-badge hidden">0</span></button><div id="notificationPanel" class="notification-panel hidden"><div class="notification-head"><strong>Notificações</strong><button id="markAllRead" type="button">Marcar todas como lidas</button></div><div id="notificationList" class="notification-list"></div><button id="soundToggle" class="sound-toggle" type="button">🔇 Ativar som</button></div></div><button id="authButton" class="ghost">Área administrativa</button></nav>
   </header>
 
   <main>
@@ -141,7 +141,7 @@
   </div>
   <div id="toast" class="toast hidden"></div>
   <script src="config.js"></script>
-  <script src="app.js?v=inativacao-admin-20260902-1"></script>
+  <script src="app.js?v=notificacoes-20260902-1"></script>
   <script src="ideas.js?v=ideas-20260901-1"></script>
 </body>
 </html>
