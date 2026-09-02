@@ -287,3 +287,33 @@ revoke all on function public.set_demand_active(uuid,boolean) from public;
 revoke all on function public.set_idea_active(uuid,boolean) from public;
 grant execute on function public.set_demand_active(uuid,boolean) to authenticated;
 grant execute on function public.set_idea_active(uuid,boolean) to authenticated;
+
+-- Visão completa protegida, exclusiva para administradores.
+create or replace function public.list_admin_demands()
+returns setof public.demands
+language plpgsql security definer set search_path=public
+as $$
+begin
+  if not public.is_cdl_admin() then
+    raise exception 'Apenas administradores podem acessar a visão completa de demandas.';
+  end if;
+  return query select * from public.demands order by deadline asc, created_at desc;
+end;
+$$;
+
+create or replace function public.list_admin_ideas()
+returns setof public.ideas
+language plpgsql security definer set search_path=public
+as $$
+begin
+  if not public.is_cdl_admin() then
+    raise exception 'Apenas administradores podem acessar a visão completa de ideias.';
+  end if;
+  return query select * from public.ideas order by created_at desc;
+end;
+$$;
+
+revoke all on function public.list_admin_demands() from public;
+revoke all on function public.list_admin_ideas() from public;
+grant execute on function public.list_admin_demands() to authenticated;
+grant execute on function public.list_admin_ideas() to authenticated;
