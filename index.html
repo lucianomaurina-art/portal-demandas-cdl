@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Portal de Demandas e Ideias | CDL Novo Hamburgo</title>
   <link rel="stylesheet" href="styles.css?v=logo-20260901-2">
-  <link rel="stylesheet" href="operational.css?v=logo-20260901-2">
-  <link rel="stylesheet" href="ideas.css?v=1">
+  <link rel="stylesheet" href="operational.css?v=melhorias-20260905-1">
+  <link rel="stylesheet" href="ideas.css?v=melhorias-20260905-1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -135,13 +135,13 @@
         <label class="span-2">Relacionar a outra ideia<select name="related_idea_id"></select></label>
         <label class="span-2">Nome do projeto, se aprovado<input name="project_name" maxlength="180" placeholder="Preencha quando a ideia for transformada em projeto"></label>
         <label class="span-2">Parecer e observações da gestão<textarea name="management_notes" maxlength="2000"></textarea></label>
-        <div class="span-2 modal-actions"><button type="button" id="cancelIdeaEdit" class="secondary">Cancelar</button><button type="button" id="convertIdeaButton" class="secondary convert-button">Transformar em projeto</button><button type="submit" class="primary">Salvar análise</button></div>
+        <div class="span-2 modal-actions"><button type="button" id="toggleIdeaActive" class="danger-action hidden">Inativar ideia</button><button type="button" id="cancelIdeaEdit" class="secondary">Cancelar</button><button type="button" id="convertIdeaButton" class="secondary convert-button">Transformar em projeto</button><button type="submit" class="primary">Salvar análise</button></div>
       </form>
     </div>
   </div>
   <div id="toast" class="toast hidden"></div>
   <script src="config.js"></script>
-  <script src="app.js?v=notificacoes-20260902-1"></script>
-  <script src="ideas.js?v=ideas-20260901-1"></script>
+  <script src="app.js?v=melhorias-20260905-1"></script>
+  <script src="ideas.js?v=melhorias-20260905-1"></script>
 </body>
 </html>
