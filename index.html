@@ -139,9 +139,10 @@
       </form>
     </div>
   </div>
+  <div id="convertIdeaModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="convertIdeaTitle"><div class="modal-panel convert-idea-panel"><div class="modal-head"><div><span class="eyebrow">Execução operacional</span><h2 id="convertIdeaTitle">Transformar ideia em projeto</h2></div><button id="closeConvertIdea" class="icon-button" aria-label="Fechar">×</button></div><form id="convertIdeaForm" class="edit-grid"><input name="idea_id" type="hidden"><label class="span-2">Nome do projeto<input name="project_name" maxlength="180" required></label><label class="span-2">Responsável pela implementação<select name="owner_id" required></select><small>Lista de usuários ativos cadastrados na plataforma.</small></label><label>Prazo inicial<input name="deadline" type="date" required></label><label>Prioridade<select name="priority" required></select></label><label class="span-2">Resultado esperado<textarea name="expected_result" maxlength="800" required></textarea></label><label class="span-2">Orientações para execução<textarea name="notes" maxlength="2000"></textarea></label><div class="span-2 modal-actions"><button type="button" id="cancelConvertIdea" class="secondary">Cancelar</button><button type="submit" class="primary">Criar demanda e vincular</button></div></form></div></div>
   <div id="toast" class="toast hidden"></div>
   <script src="config.js"></script>
-  <script src="app.js?v=melhorias-20260905-1"></script>
-  <script src="ideas.js?v=melhorias-20260905-1"></script>
+  <script src="app.js?v=projeto-ideia-20260908-1"></script>
+  <script src="ideas.js?v=projeto-ideia-20260908-1"></script>
 </body>
 </html>
