@@ -32,3 +32,10 @@ window.generateProposal=async function(){
   if(currentRequestId){await sb.from('lead_quote_requests').update({status:'Proposta gerada'}).eq('id',currentRequestId)}
   showHistory(true);
 };
+
+// Carrega as evoluções de navegação e filtro de atributos sem alterar a lógica principal da calculadora.
+(function(){
+  const s=document.createElement('script');
+  s.src='portal-enhancements.js?v=20260909-1';
+  document.body.appendChild(s);
+})();
