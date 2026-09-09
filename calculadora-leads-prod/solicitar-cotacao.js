@@ -1,7 +1,7 @@
 const C=window.LEAD_CATALOG||{individual:[]};
 const $=id=>document.getElementById(id);
 const els={
-  client:$('client'),doc:$('doc'),contact:$('contact'),clientEmail:$('clientEmail'),phone:$('phone'),focus:$('focus'),person:$('person'),qty:$('qty'),objective:$('objective'),notes:$('notes'),
+  client:$('client'),doc:$('doc'),contact:$('contact'),clientEmail:$('clientEmail'),phone:$('phone'),focus:$('focus'),person:$('person'),qty:$('qty'),objective:$('objective'),notes:$('notes'),commercialAcknowledgement:$('commercialAcknowledgement'),
   needMarket:$('needMarket'),needEnrich:$('needEnrich'),solutionArea:$('solutionArea'),solutionTitle:$('solutionTitle'),solutionHelp:$('solutionHelp'),individualGroups:$('individualGroups'),msg:$('msg'),submitBtn:$('submitBtn'),formPanel:$('formPanel'),success:$('success'),requestCode:$('requestCode'),
   existingDataArea:$('existingDataArea'),existingData:$('existingData'),desiredDataTitle:$('desiredDataTitle')
 };
@@ -60,7 +60,9 @@ function clientData(){
     focus:els.focus?.value.trim()||'',
     objective:els.objective?.value.trim()||'',
     need:need==='market'?'dados novos do mercado':'enriquecimento da base',
-    existing_data:need==='enrich'?(els.existingData?.value.trim()||''):''
+    existing_data:need==='enrich'?(els.existingData?.value.trim()||''):'',
+    commercial_acknowledgement:true,
+    minimum_leads_acknowledged:1000
   };
 }
 
@@ -73,9 +75,11 @@ async function submitRequest(){
   if(els.msg)els.msg.textContent='';
   const q=Math.max(0,+els.qty?.value||0),c=clientData(),sel=selection();
   if(!c.company||!c.contact||!c.email||!q){if(els.msg)els.msg.textContent='Preencha empresa, contato, e-mail e quantidade.';return}
+  if(q<1000){if(els.msg)els.msg.textContent='A solicitação mínima para contratação e entrega do SPC Dados é de 1.000 leads.';els.qty?.focus();return}
   if(!need){if(els.msg)els.msg.textContent='Escolha o que você precisa.';return}
   if(need==='enrich'&&!c.existing_data){if(els.msg)els.msg.textContent='Informe quais dados você já possui na sua base.';els.existingData?.focus();return}
   if(!sel.length){if(els.msg)els.msg.textContent='Selecione ao menos uma informação que deseja receber no orçamento.';return}
+  if(!els.commercialAcknowledgement?.checked){if(els.msg)els.msg.textContent='Para enviar a solicitação, confirme que está ciente das condições do SPC Dados e da quantidade mínima de 1.000 leads.';els.commercialAcknowledgement?.focus();return}
   if(els.submitBtn){els.submitBtn.disabled=true;els.submitBtn.textContent='Enviando…'}
   try{
     const sb=await getSupabase();
