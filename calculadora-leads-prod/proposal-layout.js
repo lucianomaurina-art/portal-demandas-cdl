@@ -4,33 +4,64 @@ window.generateProposal=async function(){
   const w=window.open('','_blank');
   if(!w){alert('O navegador bloqueou a abertura da proposta. Autorize pop-ups para este site e tente novamente.');return}
   w.document.write('<!doctype html><html><body style="font-family:Arial;padding:40px"><h3>Gerando proposta...</h3></body></html>');
+
   const saved=await saveProposal('Gerada',true);
   if(!saved){w.close();alert('Não foi possível salvar a proposta antes da geração.');return}
 
+  const h=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const c=clientData();
   const cdlLogo=new URL('../logo-cdl.svg',location.href).href;
   const spcLogo='https://mvl-aces.nyc3.digitaloceanspaces.com/upload/produtosservicos/g_foto399.jpg';
-  const rows=quote.items.map(i=>`<tr><td>${i.name}</td><td>${money(i.commercial_unit)} / lead</td></tr>`).join('');
+
+  // Emissão, validade e usuário responsável.
+  const issuedAt=new Date();
+  const validUntil=new Date(issuedAt.getTime()+7*24*60*60*1000);
+  const fmtDateTime=d=>d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const fmtDate=d=>d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const {data:{user}}=await sb.auth.getUser();
+  let issuerName='Usuário CDL';
+  if(user){
+    const {data:profile}=await sb.from('profiles').select('name').eq('id',user.id).maybeSingle();
+    issuerName=profile?.name||user.email||issuerName;
+  }
+  const issuerEmail=user?.email||'';
+
+  // No combo, o RPC traz os itens do pacote em "details". No individual, cada flag já é um item próprio.
+  const rows=(quote.items||[]).map(i=>{
+    const details=Array.isArray(i.details)?i.details:[];
+    const detailHtml=details.length
+      ? `<div class="included"><b>Inclui:</b><ul>${details.map(d=>`<li>${h(d)}</li>`).join('')}</ul></div>`
+      : `<div class="included single">${mode==='individual'?'Dado selecionado para aquisição.':'Item adicional contratado.'}</div>`;
+    return `<tr><td><b>${h(i.name)}</b>${detailHtml}</td><td class="price">${money(i.commercial_unit)} / lead</td></tr>`;
+  }).join('');
 
   w.document.open();
-  w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${saved.code}</title><style>
-    *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;padding:42px;color:#142033;max-width:920px;margin:auto;background:#fff}.brandbar{display:flex;align-items:center;justify-content:space-between;gap:30px;border-bottom:3px solid #0b62d6;padding-bottom:20px;margin-bottom:30px}.brands{display:flex;align-items:center;gap:28px;min-height:72px}.brand-cdl{width:155px;max-height:70px;object-fit:contain;background:#fff}.brand-spc{width:170px;max-height:72px;object-fit:contain;background:#fff}.brand-fallback{display:none;font-weight:900;font-size:22px;letter-spacing:.04em;color:#0b4b96}.proposal-id{text-align:right;color:#667085;font-size:13px}.proposal-id strong{display:block;color:#071b33;font-size:16px;margin-bottom:4px}h1{color:#071b33;font-size:30px;margin:0 0 8px}.subtitle{color:#667085;margin:0 0 28px}.client-box{background:#f4f7fb;border:1px solid #dce3ed;border-radius:14px;padding:18px 20px;margin-bottom:24px}.client-box h3{margin:0 0 8px;color:#071b33}.meta{line-height:1.65;color:#344054}.section-title{font-size:18px;color:#071b33;margin:28px 0 10px}table{width:100%;border-collapse:collapse;border:1px solid #dce3ed;border-radius:12px;overflow:hidden}th{background:#f4f7fb;color:#344054;font-size:13px}td,th{padding:12px 14px;border-bottom:1px solid #e7ecf2;text-align:left}tbody tr:last-child td{border-bottom:0}.total-box{margin-top:24px;background:#071b33;color:#fff;border-radius:16px;padding:22px}.total-label{font-size:13px;opacity:.8;text-transform:uppercase;letter-spacing:.08em}.total{font-size:32px;font-weight:800;margin-top:5px}.cta{margin-top:26px;padding:18px 20px;background:#eef6ff;border-left:4px solid #0b62d6;border-radius:10px;line-height:1.55}.footer{margin-top:34px;padding-top:18px;border-top:1px solid #dce3ed;color:#667085;font-size:12px;display:flex;justify-content:space-between;gap:20px}.print{margin-top:24px;padding:11px 16px;border:0;border-radius:10px;background:#0b62d6;color:#fff;font-weight:700;cursor:pointer}@media print{body{padding:20px}.print{display:none}.brandbar{break-inside:avoid}.total-box{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+  w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${h(saved.code)}</title><style>
+    *{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;padding:42px;color:#142033;max-width:920px;margin:auto;background:#fff}.brandbar{display:flex;align-items:center;justify-content:space-between;gap:30px;border-bottom:3px solid #0b62d6;padding-bottom:20px;margin-bottom:24px}.brands{display:flex;align-items:center;gap:28px;min-height:72px}.brand-cdl{width:155px;max-height:70px;object-fit:contain;background:#fff}.brand-spc{width:170px;max-height:72px;object-fit:contain;background:#fff}.brand-fallback{display:none;font-weight:900;font-size:22px;letter-spacing:.04em;color:#0b4b96}.proposal-id{text-align:right;color:#667085;font-size:13px}.proposal-id strong{display:block;color:#071b33;font-size:16px;margin-bottom:4px}h1{color:#071b33;font-size:30px;margin:0 0 8px}.subtitle{color:#667085;margin:0 0 22px}.proposal-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 22px;background:#f8fafc;border:1px solid #dce3ed;border-radius:12px;padding:14px 16px;margin-bottom:22px;font-size:12px;color:#475467}.proposal-meta b{color:#142033}.client-box{background:#f4f7fb;border:1px solid #dce3ed;border-radius:14px;padding:18px 20px;margin-bottom:24px}.client-box h3{margin:0 0 8px;color:#071b33}.meta{line-height:1.65;color:#344054}.section-title{font-size:18px;color:#071b33;margin:28px 0 10px}table{width:100%;border-collapse:collapse;border:1px solid #dce3ed;border-radius:12px;overflow:hidden}th{background:#f4f7fb;color:#344054;font-size:13px}td,th{padding:12px 14px;border-bottom:1px solid #e7ecf2;text-align:left;vertical-align:top}tbody tr:last-child td{border-bottom:0}.price{width:190px;white-space:nowrap;font-weight:700}.included{margin-top:8px;color:#475467;font-size:12px;line-height:1.5}.included ul{margin:5px 0 0;padding-left:18px;columns:2;column-gap:26px}.included li{margin-bottom:3px;break-inside:avoid}.included.single{font-style:italic;color:#667085}.total-box{margin-top:24px;background:#071b33;color:#fff;border-radius:16px;padding:22px}.total-label{font-size:13px;opacity:.8;text-transform:uppercase;letter-spacing:.08em}.total{font-size:32px;font-weight:800;margin-top:5px}.validity{margin-top:14px;font-size:13px;opacity:.92}.cta{margin-top:26px;padding:18px 20px;background:#eef6ff;border-left:4px solid #0b62d6;border-radius:10px;line-height:1.55}.footer{margin-top:34px;padding-top:18px;border-top:1px solid #dce3ed;color:#667085;font-size:12px;display:flex;justify-content:space-between;gap:20px}.print{margin-top:24px;padding:11px 16px;border:0;border-radius:10px;background:#0b62d6;color:#fff;font-weight:700;cursor:pointer}@media(max-width:650px){.proposal-meta{grid-template-columns:1fr}.included ul{columns:1}}@media print{body{padding:20px}.print{display:none}.brandbar,.proposal-meta,.total-box{break-inside:avoid}.total-box{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
   </style></head><body>
-    <div class="brandbar"><div class="brands"><img class="brand-cdl" src="${cdlLogo}" alt="CDL Novo Hamburgo" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block'"><span class="brand-fallback">CDL NOVO HAMBURGO</span><img class="brand-spc" src="${spcLogo}" alt="SPC Brasil" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block'"><span class="brand-fallback">SPC BRASIL</span></div><div class="proposal-id"><strong>Proposta Comercial</strong>${saved.code}</div></div>
+    <div class="brandbar"><div class="brands"><img class="brand-cdl" src="${cdlLogo}" alt="CDL Novo Hamburgo" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block'"><span class="brand-fallback">CDL NOVO HAMBURGO</span><img class="brand-spc" src="${spcLogo}" alt="SPC Brasil" onerror="this.style.display='none';this.nextElementSibling.style.display='inline-block'"><span class="brand-fallback">SPC BRASIL</span></div><div class="proposal-id"><strong>Proposta Comercial</strong>${h(saved.code)}</div></div>
     <h1>SPC Dados</h1><p class="subtitle">Solução de dados preparada pela CDL Novo Hamburgo em parceria com o SPC Brasil.</p>
-    <div class="client-box"><h3>${c.company||'Cliente'}</h3><div class="meta">${c.doc?`<b>CNPJ/CPF:</b> ${c.doc}<br>`:''}${c.contact?`<b>Contato:</b> ${c.contact}<br>`:''}${c.email?`<b>E-mail:</b> ${c.email}<br>`:''}${c.phone?`<b>Telefone:</b> ${c.phone}<br>`:''}${c.focus?`<b>Região/foco:</b> ${c.focus}`:''}</div></div>
-    <div class="meta"><b>Solução:</b> ${mode==='individual'?'Dados individuais':'Combo de dados'} • ${quote.person}<br><b>Quantidade:</b> ${num(quote.quantity)} leads</div>
-    <h2 class="section-title">Composição da solução</h2>
-    <table><thead><tr><th>Informação</th><th>Investimento por lead</th></tr></thead><tbody>${rows}</tbody></table>
-    <div class="total-box"><div class="total-label">Investimento total</div><div class="total">${money(quote.sale_total)}</div></div>
+    <div class="proposal-meta">
+      <div><b>Data e hora de emissão:</b> ${h(fmtDateTime(issuedAt))}</div>
+      <div><b>Validade:</b> 7 dias — até ${h(fmtDate(validUntil))}</div>
+      <div><b>Emitida por:</b> ${h(issuerName)}</div>
+      <div><b>Usuário:</b> ${h(issuerEmail||issuerName)}</div>
+    </div>
+    <div class="client-box"><h3>${h(c.company||'Cliente')}</h3><div class="meta">${c.doc?`<b>CNPJ/CPF:</b> ${h(c.doc)}<br>`:''}${c.contact?`<b>Contato:</b> ${h(c.contact)}<br>`:''}${c.email?`<b>E-mail:</b> ${h(c.email)}<br>`:''}${c.phone?`<b>Telefone:</b> ${h(c.phone)}<br>`:''}${c.focus?`<b>Região/foco:</b> ${h(c.focus)}`:''}</div></div>
+    <div class="meta"><b>Solução:</b> ${mode==='individual'?'Dados individuais':'Combo de dados'} • ${h(quote.person)}<br><b>Quantidade:</b> ${num(quote.quantity)} leads</div>
+    <h2 class="section-title">Composição detalhada da solução</h2>
+    <table><thead><tr><th>O que está incluído</th><th>Investimento por lead</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="total-box"><div class="total-label">Investimento total</div><div class="total">${money(quote.sale_total)}</div><div class="validity">Esta proposta é válida por 7 dias a partir da emissão, até ${h(fmtDate(validUntil))}.</div></div>
     <div class="cta"><b>Próximo passo</b><br>Valide o escopo com seu consultor CDL para confirmar disponibilidade da base, condições da contratação e início do atendimento.</div>
     <div class="footer"><span>CDL Novo Hamburgo</span><span>SPC Brasil • Inteligência de dados para negócios</span></div>
     <button class="print" onclick="print()">Imprimir / salvar em PDF</button>
   </body></html>`);
   w.document.close();
 
-  if(currentRequestId){await sb.from('lead_quote_requests').update({status:'Proposta gerada'}).eq('id',currentRequestId)}
-  showHistory(true);
+  if(currentRequestId){
+    await sb.from('lead_quote_requests').update({status:'Proposta enviada',updated_at:new Date().toISOString()}).eq('id',currentRequestId);
+  }
+  if(typeof showHistory==='function')showHistory(true);
 };
 
 // Carrega as evoluções de navegação e filtro de atributos sem alterar a lógica principal da calculadora.
