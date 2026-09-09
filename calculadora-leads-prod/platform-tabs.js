@@ -52,6 +52,7 @@ function normalizeSector(s){
   const known=PORTAL_SECTORS.find(x=>x.toLocaleLowerCase('pt-BR')===v.toLocaleLowerCase('pt-BR'));
   return known||v;
 }
+function normalizeRole(role){return role==='colaborador'?'collaborator':(role||'collaborator');}
 function sectorOptions(current){
   const value=normalizeSector(current);
   const values=[...PORTAL_SECTORS];
@@ -64,13 +65,13 @@ function readPortalUser(id){
     email:portalUsersOriginal.get(id)?.email||'',
     name:(document.getElementById(`uname-${id}`)?.value||'').trim(),
     sector:normalizeSector(document.getElementById(`usector-${id}`)?.value||''),
-    role:document.getElementById(`urole-${id}`)?.value||'colaborador',
+    role:normalizeRole(document.getElementById(`urole-${id}`)?.value||'collaborator'),
     active:!!document.getElementById(`uactive-${id}`)?.checked
   };
 }
 function portalUserChanged(id){
   const a=portalUsersOriginal.get(id),b=readPortalUser(id);
-  return !a||a.name!==b.name||normalizeSector(a.sector)!==b.sector||a.role!==b.role||!!a.active!==b.active;
+  return !a||a.name!==b.name||normalizeSector(a.sector)!==b.sector||normalizeRole(a.role)!==b.role||!!a.active!==b.active;
 }
 window.markPortalUserChanged=function(id){
   const row=document.getElementById(`urow-${id}`);
@@ -93,9 +94,9 @@ window.showUsersAdmin=async function(){
   const {data,error}=await sb.rpc('admin_list_portal_users');
   if(error){console.error(error);box.innerHTML=`<p class="muted">Não foi possível carregar os usuários: ${escUser(error.message||'erro desconhecido')}.</p>`;return;}
   const rows=data||[];
-  portalUsersOriginal=new Map(rows.map(u=>[u.id,{email:u.email||'',name:(u.name||'').trim(),sector:normalizeSector(u.sector),role:u.role||'colaborador',active:!!u.active}]));
+  portalUsersOriginal=new Map(rows.map(u=>[u.id,{email:u.email||'',name:(u.name||'').trim(),sector:normalizeSector(u.sector),role:normalizeRole(u.role),active:!!u.active}]));
   const onchange=id=>`oninput="markPortalUserChanged('${id}')" onchange="markPortalUserChanged('${id}')"`;
-  box.innerHTML=rows.length?`<style>.user-pending{background:#fff9e8}.pending-badge{display:inline-block;margin-top:5px;padding:3px 7px;border-radius:999px;background:#fff0c2;color:#805b00;font-size:10px;font-weight:800}.users-table td,.users-table th{padding:9px;vertical-align:middle;border-bottom:1px solid #edf1f6;text-align:left}.users-table{width:100%;border-collapse:collapse}.users-table input,.users-table select{min-width:145px}</style><div style="overflow:auto"><table class="users-table"><thead><tr><th>Usuário</th><th>Nome</th><th>Setor</th><th>Perfil</th><th>Ativo</th></tr></thead><tbody>${rows.map(u=>`<tr id="urow-${u.id}"><td><b>${escUser(u.email)}</b><br><span id="upending-${u.id}" class="pending-badge hidden">Alteração pendente</span></td><td><input id="uname-${u.id}" value="${escUser(u.name||'')}" ${onchange(u.id)}></td><td><select id="usector-${u.id}" ${onchange(u.id)}>${sectorOptions(u.sector)}</select></td><td><select id="urole-${u.id}" ${onchange(u.id)}><option value="colaborador" ${u.role==='colaborador'?'selected':''}>Colaborador</option><option value="manager" ${u.role==='manager'?'selected':''}>Manager</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select></td><td style="text-align:center"><input id="uactive-${u.id}" type="checkbox" style="width:auto;min-width:0" ${u.active?'checked':''} ${onchange(u.id)}></td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Nenhum usuário encontrado.</p>';
+  box.innerHTML=rows.length?`<style>.user-pending{background:#fff9e8}.pending-badge{display:inline-block;margin-top:5px;padding:3px 7px;border-radius:999px;background:#fff0c2;color:#805b00;font-size:10px;font-weight:800}.users-table td,.users-table th{padding:9px;vertical-align:middle;border-bottom:1px solid #edf1f6;text-align:left}.users-table{width:100%;border-collapse:collapse}.users-table input,.users-table select{min-width:145px}</style><div style="overflow:auto"><table class="users-table"><thead><tr><th>Usuário</th><th>Nome</th><th>Setor</th><th>Perfil</th><th>Ativo</th></tr></thead><tbody>${rows.map(u=>{const r=normalizeRole(u.role);return `<tr id="urow-${u.id}"><td><b>${escUser(u.email)}</b><br><span id="upending-${u.id}" class="pending-badge hidden">Alteração pendente</span></td><td><input id="uname-${u.id}" value="${escUser(u.name||'')}" ${onchange(u.id)}></td><td><select id="usector-${u.id}" ${onchange(u.id)}>${sectorOptions(u.sector)}</select></td><td><select id="urole-${u.id}" ${onchange(u.id)}><option value="collaborator" ${r==='collaborator'?'selected':''}>Colaborador</option><option value="manager" ${r==='manager'?'selected':''}>Manager</option><option value="admin" ${r==='admin'?'selected':''}>Admin</option></select></td><td style="text-align:center"><input id="uactive-${u.id}" type="checkbox" style="width:auto;min-width:0" ${u.active?'checked':''} ${onchange(u.id)}></td></tr>`}).join('')}</tbody></table></div>`:'<p class="muted">Nenhum usuário encontrado.</p>';
   ['saveAllUsersTop','saveAllUsersBottom'].forEach(x=>document.getElementById(x)?.classList.add('hidden'));
   const msg=document.getElementById('usersSaveMsg');if(msg)msg.textContent='';
   const errBox=document.getElementById('usersErrorBox');if(errBox){errBox.classList.add('hidden');errBox.innerHTML='';}
@@ -128,7 +129,6 @@ window.saveAllPortalUsers=async function(){
     if(errBox){errBox.classList.add('hidden');errBox.innerHTML='';}
     alert(`${saved} ${saved===1?'usuário atualizado':'usuários atualizados'} com sucesso.`);
   }
-  // Só recarrega a tabela quando tudo foi salvo; em caso de erro, mantém as alterações na tela para correção/reenvio.
   if(!errors.length){
     portalAdminRole=null;
     await portalLoadRole();
