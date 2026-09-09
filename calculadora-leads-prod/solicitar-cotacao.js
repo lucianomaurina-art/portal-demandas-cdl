@@ -2,7 +2,8 @@ const C=window.LEAD_CATALOG||{individual:[]};
 const $=id=>document.getElementById(id);
 const els={
   client:$('client'),doc:$('doc'),contact:$('contact'),clientEmail:$('clientEmail'),phone:$('phone'),focus:$('focus'),person:$('person'),qty:$('qty'),objective:$('objective'),notes:$('notes'),
-  needMarket:$('needMarket'),needEnrich:$('needEnrich'),solutionArea:$('solutionArea'),solutionTitle:$('solutionTitle'),solutionHelp:$('solutionHelp'),individualGroups:$('individualGroups'),msg:$('msg'),submitBtn:$('submitBtn'),formPanel:$('formPanel'),success:$('success'),requestCode:$('requestCode')
+  needMarket:$('needMarket'),needEnrich:$('needEnrich'),solutionArea:$('solutionArea'),solutionTitle:$('solutionTitle'),solutionHelp:$('solutionHelp'),individualGroups:$('individualGroups'),msg:$('msg'),submitBtn:$('submitBtn'),formPanel:$('formPanel'),success:$('success'),requestCode:$('requestCode'),
+  existingDataArea:$('existingDataArea'),existingData:$('existingData'),desiredDataTitle:$('desiredDataTitle')
 };
 let need=null;
 let selected=new Set();
@@ -19,12 +20,15 @@ function chooseNeed(n){
   els.needMarket?.classList.toggle('active',n==='market');
   els.needEnrich?.classList.toggle('active',n==='enrich');
   els.solutionArea?.classList.remove('hidden');
+  els.existingDataArea?.classList.toggle('hidden',n!=='enrich');
+  els.desiredDataTitle?.classList.toggle('hidden',n!=='enrich');
+  if(n!=='enrich' && els.existingData) els.existingData.value='';
   if(els.solutionTitle) els.solutionTitle.textContent=n==='market'
     ?'Quais dados você gostaria de encontrar no mercado?'
-    :'Quais informações você gostaria de acrescentar à sua base?';
+    :'Vamos entender primeiro a sua base atual.';
   if(els.solutionHelp) els.solutionHelp.textContent=n==='market'
     ?'Marque as informações que deseja receber sobre os novos contatos ou empresas.'
-    :'Marque as informações que deseja complementar ou atualizar nos CPFs ou CNPJs da sua base.';
+    :'Antes de escolher os dados que quer acrescentar, informe quais dados você já possui hoje.';
   renderItems();
   setTimeout(()=>els.solutionArea?.scrollIntoView({behavior:'smooth',block:'start'}),50);
 }
@@ -47,7 +51,17 @@ function renderItems(){
 }
 
 function clientData(){
-  return {company:els.client?.value.trim()||'',doc:els.doc?.value.trim()||'',contact:els.contact?.value.trim()||'',email:els.clientEmail?.value.trim()||'',phone:els.phone?.value.trim()||'',focus:els.focus?.value.trim()||'',objective:els.objective?.value.trim()||'',need:need==='market'?'dados novos do mercado':'enriquecimento da base'};
+  return {
+    company:els.client?.value.trim()||'',
+    doc:els.doc?.value.trim()||'',
+    contact:els.contact?.value.trim()||'',
+    email:els.clientEmail?.value.trim()||'',
+    phone:els.phone?.value.trim()||'',
+    focus:els.focus?.value.trim()||'',
+    objective:els.objective?.value.trim()||'',
+    need:need==='market'?'dados novos do mercado':'enriquecimento da base',
+    existing_data:need==='enrich'?(els.existingData?.value.trim()||''):''
+  };
 }
 
 async function getSupabase(){
@@ -60,7 +74,8 @@ async function submitRequest(){
   const q=Math.max(0,+els.qty?.value||0),c=clientData(),sel=selection();
   if(!c.company||!c.contact||!c.email||!q){if(els.msg)els.msg.textContent='Preencha empresa, contato, e-mail e quantidade.';return}
   if(!need){if(els.msg)els.msg.textContent='Escolha o que você precisa.';return}
-  if(!sel.length){if(els.msg)els.msg.textContent='Selecione ao menos uma informação.';return}
+  if(need==='enrich'&&!c.existing_data){if(els.msg)els.msg.textContent='Informe quais dados você já possui na sua base.';els.existingData?.focus();return}
+  if(!sel.length){if(els.msg)els.msg.textContent='Selecione ao menos uma informação que deseja receber no orçamento.';return}
   if(els.submitBtn){els.submitBtn.disabled=true;els.submitBtn.textContent='Enviando…'}
   try{
     const sb=await getSupabase();
