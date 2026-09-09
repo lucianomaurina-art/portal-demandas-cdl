@@ -31,12 +31,10 @@ begin
     raise exception 'Usuário não encontrado no Authentication.';
   end if;
 
-  if p_role not in ('colaborador','manager','admin') then
+  if p_role not in ('collaborator','manager','admin') then
     raise exception 'Perfil inválido.';
   end if;
 
-  -- Se o perfil já existe, apenas atualiza. Isso evita interferir em outros
-  -- campos da tabela profiles que possam ser obrigatórios ou controlados por trigger.
   if exists (select 1 from public.profiles where id = p_user_id) then
     update public.profiles
        set name   = nullif(trim(coalesce(p_name,'')),''),
@@ -47,8 +45,6 @@ begin
     return;
   end if;
 
-  -- Usuários recém-criados no Auth podem ainda não ter linha em profiles.
-  -- A função se adapta caso a tabela profiles possua uma coluna email obrigatória.
   select exists (
     select 1
       from information_schema.columns
@@ -79,7 +75,6 @@ $$;
 revoke all on function public.admin_update_portal_user(uuid,text,text,text,boolean) from public;
 grant execute on function public.admin_update_portal_user(uuid,text,text,text,boolean) to authenticated;
 
--- Diagnóstico opcional: mostra quais usuários do Authentication ainda não têm perfil.
 select
   u.email,
   case when p.id is null then 'SEM PERFIL' else 'OK' end as situacao,
