@@ -18,7 +18,10 @@ window.generateProposal=async function(){
     requestNotes=req?.notes||'';
   }
 
-  const saved=await saveProposal('Proposta enviada',true);
+  // Gerar a proposta ainda não significa que ela foi enviada ao cliente.
+  // Primeiro ela entra na etapa de validação/refinamento junto ao SPC Brasil.
+  const validationStatus='Validação da proposta junto ao SPC Brasil';
+  const saved=await saveProposal(validationStatus,true);
   if(!saved){w.close();alert('Não foi possível salvar a proposta antes da geração.');return}
 
   const h=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -66,6 +69,6 @@ window.generateProposal=async function(){
   <div class="footer"><span>CDL Novo Hamburgo</span><span>SPC Brasil • Inteligência de dados para negócios</span></div><button class="print" onclick="print()">Imprimir / salvar em PDF</button>
   </body></html>`);w.document.close();
 
-  if(currentRequestId)await sb.from('lead_quote_requests').update({status:'Proposta enviada',updated_at:new Date().toISOString()}).eq('id',currentRequestId);
+  if(currentRequestId)await sb.from('lead_quote_requests').update({status:validationStatus,updated_at:new Date().toISOString()}).eq('id',currentRequestId);
   if(typeof showHistory==='function')showHistory(true);
 };
