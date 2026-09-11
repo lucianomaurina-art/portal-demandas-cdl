@@ -8,6 +8,31 @@ const els={
 let need=null;
 let selected=new Set();
 
+const PUBLIC_FLAG_LABELS={
+  'Restrição 1 bureau':'Birô de crédito 1 (SPC)',
+  'Restrição 2 bureaux':'Birô de crédito 2 (SPC e Serasa)',
+  'PEP':'PEP (Pessoa Exposta Politicamente)'
+};
+const publicFlagLabel=flag=>PUBLIC_FLAG_LABELS[flag]||flag;
+const isPJ=()=>els.person?.value==='Pessoa Jurídica';
+
+function ensureCnaeTargetUI(){
+  if($('cnaeTargetSection'))return;
+  const notesSection=els.notes?.closest('.section');
+  if(!notesSection)return;
+  const section=document.createElement('div');
+  section.id='cnaeTargetSection';
+  section.className='section hidden';
+  section.innerHTML=`<label>CNAEs ou segmentos desejados *</label><div class="muted" style="margin-bottom:8px">Informe os CNAEs, atividades ou segmentos das empresas que você deseja encontrar. Você pode descrever pelo código, pelo nome da atividade ou pelos dois.</div><textarea id="cnaeSegments" rows="4" placeholder="Ex.: CNAE 4711-3/02 – supermercados; indústrias metalúrgicas; empresas de construção civil."></textarea>`;
+  notesSection.parentNode.insertBefore(section,notesSection);
+}
+function syncPersonRules(){
+  ensureCnaeTargetUI();
+  $('cnaeTargetSection')?.classList.toggle('hidden',!isPJ());
+  if(isPJ()&&need)selected.add('CNAE');
+  if(!isPJ())$('cnaeSegments')&&($('cnaeSegments').value='');
+}
+
 function currentProduct(){
   if(need==='market') return 'SPC Mercado';
   if(need==='enrich') return 'SPC Enriquece';
@@ -17,6 +42,7 @@ function currentProduct(){
 function chooseNeed(n){
   need=n;
   selected.clear();
+  if(isPJ())selected.add('CNAE');
   els.needMarket?.classList.toggle('active',n==='market');
   els.needEnrich?.classList.toggle('active',n==='enrich');
   els.solutionArea?.classList.remove('hidden');
@@ -29,23 +55,29 @@ function chooseNeed(n){
   if(els.solutionHelp) els.solutionHelp.textContent=n==='market'
     ?'Marque as informações que deseja receber sobre os novos contatos ou empresas.'
     :'Antes de escolher os dados que quer acrescentar, informe quais dados você já possui hoje.';
+  syncPersonRules();
   renderItems();
   setTimeout(()=>els.solutionArea?.scrollIntoView({behavior:'smooth',block:'start'}),50);
 }
 
-function resetSelection(){selected.clear();if(need)renderItems()}
-function selection(){const product=currentProduct();return [...selected].map(flag=>({product,flag}))}
-function toggleFlag(flag){selected.has(flag)?selected.delete(flag):selected.add(flag);renderItems()}
+function resetSelection(){selected.clear();if(isPJ()&&need)selected.add('CNAE');syncPersonRules();if(need)renderItems()}
+function selection(){const product=currentProduct();if(isPJ()&&product)selected.add('CNAE');return [...selected].map(flag=>({product,flag}))}
+function toggleFlag(flag){if(isPJ()&&flag==='CNAE')return;selected.has(flag)?selected.delete(flag):selected.add(flag);renderItems()}
 
 function renderItems(){
   const product=currentProduct();
   if(!product){els.solutionArea?.classList.add('hidden');if(els.individualGroups)els.individualGroups.innerHTML='';return}
   const p=els.person?.value||'Pessoa Física';
+  if(p==='Pessoa Jurídica')selected.add('CNAE');
   const items=(C.individual||[]).filter(x=>x.person===p&&x.product===product);
   if(!els.individualGroups)return;
   if(!items.length){els.individualGroups.innerHTML='<p class="muted">Não encontramos opções para este perfil. Fale com a CDL para uma cotação personalizada.</p>';return}
-  els.individualGroups.innerHTML=items.map(x=>`<label class="item"><input type="checkbox" ${selected.has(x.flag)?'checked':''} data-flag="${String(x.flag).replace(/&/g,'&amp;').replace(/"/g,'&quot;')}"/><span><b>${x.flag}</b><span>${selected.has(x.flag)?'Selecionado':'Clique para incluir'}</span></span></label>`).join('');
-  els.individualGroups.querySelectorAll('input[data-flag]').forEach(input=>{
+  els.individualGroups.innerHTML=items.map(x=>{
+    const mandatory=p==='Pessoa Jurídica'&&x.flag==='CNAE';
+    const checked=selected.has(x.flag)||mandatory;
+    return `<label class="item"><input type="checkbox" ${checked?'checked':''} ${mandatory?'disabled':''} data-flag="${String(x.flag).replace(/&/g,'&amp;').replace(/"/g,'&quot;')}"/><span><b>${publicFlagLabel(x.flag)}${mandatory?' *':''}</b><span>${mandatory?'Obrigatório para Pessoa Jurídica':(checked?'Selecionado':'Clique para incluir')}</span></span></label>`;
+  }).join('');
+  els.individualGroups.querySelectorAll('input[data-flag]:not([disabled])').forEach(input=>{
     input.addEventListener('change',()=>toggleFlag(input.dataset.flag));
   });
 }
@@ -61,6 +93,7 @@ function clientData(){
     objective:els.objective?.value.trim()||'',
     need:need==='market'?'dados novos do mercado':'enriquecimento da base',
     existing_data:need==='enrich'?(els.existingData?.value.trim()||''):'',
+    cnaes_segments:isPJ()?($('cnaeSegments')?.value.trim()||''):'',
     commercial_acknowledgement:true,
     minimum_leads_acknowledged:1000
   };
@@ -78,6 +111,7 @@ async function submitRequest(){
   if(q<1000){if(els.msg)els.msg.textContent='A solicitação mínima para contratação e entrega do SPC Dados é de 1.000 leads.';els.qty?.focus();return}
   if(!need){if(els.msg)els.msg.textContent='Escolha o que você precisa.';return}
   if(need==='enrich'&&!c.existing_data){if(els.msg)els.msg.textContent='Informe quais dados você já possui na sua base.';els.existingData?.focus();return}
+  if(isPJ()&&!c.cnaes_segments){if(els.msg)els.msg.textContent='Para Pessoa Jurídica, informe obrigatoriamente quais CNAEs ou segmentos deseja buscar.';$('cnaeSegments')?.focus();return}
   if(!sel.length){if(els.msg)els.msg.textContent='Selecione ao menos uma informação que deseja receber no orçamento.';return}
   if(!els.commercialAcknowledgement?.checked){if(els.msg)els.msg.textContent='Para enviar a solicitação, confirme que está ciente das condições do SPC Dados e da quantidade mínima de 1.000 leads.';els.commercialAcknowledgement?.focus();return}
   if(els.submitBtn){els.submitBtn.disabled=true;els.submitBtn.textContent='Enviando…'}
@@ -102,6 +136,8 @@ els.needEnrich?.addEventListener('click',()=>chooseNeed('enrich'));
 els.person?.addEventListener('change',resetSelection);
 els.submitBtn?.addEventListener('click',submitRequest);
 
+ensureCnaeTargetUI();
+syncPersonRules();
 window.chooseNeed=chooseNeed;
 window.resetSelection=resetSelection;
 window.toggleFlag=toggleFlag;
