@@ -3,6 +3,7 @@ let commercialDiscountPercent=0;
 let grossQuote=null;
 
 const normLeadName=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()
+  .replace(/\s+1$/,'')
   .replace(/^nome$/,'nome completo').replace(/^endereco$/,'endereco completo').replace(/^data de abertura$/,'data de fundacao')
   .replace(/^restricao spc$/,'restricao 1 bureau').replace(/^restricao spc e serasa$/,'restricao 2 bureaux')
   .replace(/^quadro social administrativo$/,'quadro social e administrativo');
@@ -28,33 +29,49 @@ function resetCommercialDiscount(){commercialDiscountPercent=0;grossQuote=null;c
 
 async function recommendComboForRequest(r){
   if(r.mode!=='individual'||!Array.isArray(r.selection)||!r.selection.length)return null;
-  const person=r.person,requested=[...new Set(r.selection.map(x=>normLeadName(x.flag)).filter(Boolean))],combos=(C.combos||[]).filter(x=>x.person===person),addons=(C.addons||[]).filter(x=>x.person===person),addonByNorm=new Map(addons.map(a=>[normLeadName(a.name),a.name]));
-  const {data:individualQuote,error:individualError}=await sb.rpc('calculate_lead_quote',{p_mode:'individual',p_person:person,p_qty:r.quantity,p_selection:r.selection});
-  if(individualError||!individualQuote)return null;
+  const person=r.person;
+  const requested=[...new Set(r.selection.map(x=>normLeadName(x.flag)).filter(Boolean))];
+  const combos=(C.combos||[]).filter(x=>x.person===person);
+  const addons=(C.addons||[]).filter(x=>x.person===person);
+  const addonByNorm=new Map(addons.map(a=>[normLeadName(a.name),a.name]));
   const candidates=[];
+
   for(const combo of combos){
-    const included=new Set((combo.items||[]).map(normLeadName)),missing=requested.filter(flag=>!included.has(flag));
+    const included=new Set((combo.items||[]).map(normLeadName));
+    const covered=requested.filter(flag=>included.has(flag));
+    const missing=requested.filter(flag=>!included.has(flag));
+    // O combo só é sugerido quando tudo o que falta pode ser contratado como adicional avulso.
     if(missing.some(flag=>!addonByNorm.has(flag)))continue;
     const neededAdds=[...new Set(missing.map(flag=>addonByNorm.get(flag)))];
     const {data,error}=await sb.rpc('calculate_lead_quote',{p_mode:'combo',p_person:person,p_qty:r.quantity,p_selection:{level:combo.level,addons:neededAdds}});
-    if(!error&&data)candidates.push({combo,addons:neededAdds,quote:data,individualQuote,covered:requested.length-missing.length});
+    if(!error&&data)candidates.push({combo,addons:neededAdds,quote:data,covered:covered.length,requested:requested.length});
   }
   if(!candidates.length)return null;
-  candidates.sort((a,b)=>Number(a.quote.sale_total)-Number(b.quote.sale_total)||b.covered-a.covered||a.addons.length-b.addons.length);
-  const best=candidates[0];
-  if(Number(best.quote.sale_total)>Number(individualQuote.sale_total))return null;
-  best.saving=Number(individualQuote.sale_total)-Number(best.quote.sale_total);
-  return best;
+  // Prioriza: mais flags do cliente já dentro do combo; menos adicionais; menor investimento.
+  candidates.sort((a,b)=>b.covered-a.covered||a.addons.length-b.addons.length||Number(a.quote.sale_total)-Number(b.quote.sale_total));
+  return candidates[0];
 }
 
 const originalLoadRequestFromKanban=window.loadRequestFromKanban;
 window.loadRequestFromKanban=async function(id){
-  const {data:r,error}=await sb.from('lead_quote_requests').select('*').eq('id',id).single();if(error||!r){alert('Não foi possível carregar esta solicitação na calculadora.');return}
-  const recommendation=await recommendComboForRequest(r);resetCommercialDiscount();if(!recommendation)return originalLoadRequestFromKanban(id);
-  currentRequestId=r.id;mode='combo';document.getElementById('person').value=r.person;document.getElementById('qty').value=r.quantity;const c=r.client||{};document.getElementById('client').value=c.company||'';document.getElementById('doc').value=c.doc||'';document.getElementById('contact').value=c.contact||'';document.getElementById('clientEmail').value=c.email||'';document.getElementById('phone').value=c.phone||'';document.getElementById('focus').value=c.focus||'';
-  selected.clear();selectedAdds.clear();activeProducts=[];selectedCombo=recommendation.combo.level;recommendation.addons.forEach(a=>selectedAdds.add(a));document.getElementById('individualArea').classList.add('hidden');document.getElementById('comboArea').classList.remove('hidden');document.getElementById('tabInd').classList.remove('active');document.getElementById('tabCombo').classList.add('active');
-  const {data:{user}}=await sb.auth.getUser();await sb.from('lead_quote_requests').update({handled_by:user?.id||null,updated_at:new Date().toISOString()}).eq('id',id);openSection('calculator');render();window.scrollTo({top:0,behavior:'smooth'});
-  const extras=recommendation.addons.length?`\nComplementos avulsos sugeridos: ${recommendation.addons.join(', ')}.`:'\nO combo já contempla todos os dados solicitados.',saving=recommendation.saving>0?`\nEconomia estimada frente à composição avulsa: ${money(recommendation.saving)}.`:'';
-  alert(`Sugestão inteligente para ${r.code}: Combo ${recommendation.combo.level}.${extras}${saving}\n\nA calculadora foi preparada automaticamente com a alternativa de menor investimento que atende ao pedido. Você pode ajustá-la antes de gerar a proposta.`);
+  const {data:r,error}=await sb.from('lead_quote_requests').select('*').eq('id',id).single();
+  if(error||!r){alert('Não foi possível carregar esta solicitação na calculadora.');return}
+  resetCommercialDiscount();
+  const recommendation=await recommendComboForRequest(r);
+  if(!recommendation){
+    await originalLoadRequestFromKanban(id);
+    alert('Esta solicitação possui dados que não podem ser atendidos integralmente por um combo + adicionais disponíveis. Por isso ela foi aberta na composição individual.');
+    return;
+  }
+
+  currentRequestId=r.id;mode='combo';
+  document.getElementById('person').value=r.person;document.getElementById('qty').value=r.quantity;
+  const c=r.client||{};document.getElementById('client').value=c.company||'';document.getElementById('doc').value=c.doc||'';document.getElementById('contact').value=c.contact||'';document.getElementById('clientEmail').value=c.email||'';document.getElementById('phone').value=c.phone||'';document.getElementById('focus').value=c.focus||'';
+  selected.clear();selectedAdds.clear();activeProducts=[];selectedCombo=recommendation.combo.level;recommendation.addons.forEach(a=>selectedAdds.add(a));
+  document.getElementById('individualArea').classList.add('hidden');document.getElementById('comboArea').classList.remove('hidden');document.getElementById('tabInd').classList.remove('active');document.getElementById('tabCombo').classList.add('active');
+  const {data:{user}}=await sb.auth.getUser();await sb.from('lead_quote_requests').update({handled_by:user?.id||null,updated_at:new Date().toISOString()}).eq('id',id);
+  openSection('calculator');render();window.scrollTo({top:0,behavior:'smooth'});
+  const extras=recommendation.addons.length?`\nComplementos avulsos: ${recommendation.addons.join(', ')}.`:'\nO combo já contempla todos os dados solicitados.';
+  alert(`Sugestão automática para ${r.code}: Combo ${recommendation.combo.level}.${extras}\n\n${recommendation.covered} de ${recommendation.requested} flags solicitadas já estão contempladas no combo. A composição foi preparada automaticamente e pode ser ajustada antes da proposta.`);
 };
 ensureDiscountUI();
