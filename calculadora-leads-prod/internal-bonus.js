@@ -38,9 +38,14 @@
   window.renderSalesBonus=renderSalesBonus;
 })();
 
-// Propaga CNAEs/segmentos informados na solicitação pública para a gestão e proposta.
+// Contexto e rótulos amigáveis da solicitação pública.
 (() => {
+  const friendlyFlag=s=>String(s||'')
+    .replace(/Restrição 1 bureau/g,'Birô de crédito 1 (SPC)')
+    .replace(/Restrição 2 bureaux/g,'Birô de crédito 2 (SPC e Serasa)')
+    .replace(/^PEP$/g,'PEP (Pessoa Exposta Politicamente)');
   window.currentRequestCnaesSegments='';
+
   const originalClientData=window.clientData;
   if(typeof originalClientData==='function'){
     window.clientData=function(){
@@ -48,6 +53,20 @@
       return {...base,cnaes_segments:window.currentRequestCnaesSegments||base?.cnaes_segments||''};
     };
   }
+
+  // Mantém os nomes técnicos para o cálculo e usa os nomes didáticos apenas na apresentação.
+  window.smartList=function(arr,empty='Nenhum'){
+    return arr?.length?`<ul class="smart-list">${arr.map(x=>`<li>${escSmart(friendlyFlag(x))}</li>`).join('')}</ul>`:`<span class="muted">${empty}</span>`;
+  };
+  window.describeSelection=function(r){
+    if(r.mode==='individual'){
+      const arr=Array.isArray(r.selection)?r.selection:[];
+      return arr.length?arr.map(x=>`<li><b>${esc(friendlyFlag(x.flag||'Informação'))}</b><span class="muted">${x.product?` • ${esc(x.product)}`:''}</span></li>`).join(''):'<li>Nenhuma informação registrada.</li>';
+    }
+    const level=r.selection?.level||'—',addons=Array.isArray(r.selection?.addons)?r.selection.addons:[];
+    return `<li><b>Combo:</b> ${esc(level)}</li>${addons.map(a=>`<li><b>Adicional:</b> ${esc(friendlyFlag(a))}</li>`).join('')}`;
+  };
+
   const originalLoad=window.loadRequestFromKanban;
   if(typeof originalLoad==='function'){
     window.loadRequestFromKanban=async function(id){
