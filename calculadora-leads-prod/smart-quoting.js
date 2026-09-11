@@ -1,12 +1,55 @@
 // Recomendação inteligente de combos + desconto comercial opcional
 let commercialDiscountPercent=0;
 let grossQuote=null;
+let currentSmartRecommendation=null;
 
 const normLeadName=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()
   .replace(/\s+1$/,'')
   .replace(/^nome$/,'nome completo').replace(/^endereco$/,'endereco completo').replace(/^data de abertura$/,'data de fundacao')
   .replace(/^restricao spc$/,'restricao 1 bureau').replace(/^restricao spc e serasa$/,'restricao 2 bureaux')
   .replace(/^quadro social administrativo$/,'quadro social e administrativo');
+
+function ensureSmartStyles(){
+  if(document.getElementById('smartQuoteStyles'))return;
+  const s=document.createElement('style');s.id='smartQuoteStyles';s.textContent=`
+  .smart-rec{border:1px solid #b9d5fb;background:#f6faff;border-radius:16px;padding:18px;margin:0 0 18px;box-shadow:0 5px 18px rgba(11,98,214,.06)}
+  .smart-rec-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap}.smart-rec h3{margin:4px 0 4px;color:#071b33}.smart-chip{display:inline-flex;align-items:center;border-radius:999px;background:#e8f1ff;color:#084fae;font-size:11px;font-weight:900;padding:6px 9px;margin:4px 5px 0 0}.smart-chip.ok{background:#e7f6ef;color:#176b4d}.smart-chip.warn{background:#fff4df;color:#8a5a00}.smart-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}.smart-box{background:#fff;border:1px solid #dce3ed;border-radius:12px;padding:12px;font-size:12px;line-height:1.45}.smart-box b{display:block;color:#071b33;margin-bottom:5px}.smart-list{margin:5px 0 0;padding-left:18px}.smart-note{font-size:12px;color:#667085;margin-top:12px;line-height:1.45}.smart-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}@media(max-width:760px){.smart-grid{grid-template-columns:1fr}}
+  `;document.head.appendChild(s);
+}
+
+function ensureRecommendationUI(){
+  ensureSmartStyles();
+  let box=document.getElementById('smartRecommendation');
+  if(box)return box;
+  const panel=document.querySelector('#calculatorView .grid2 > .panel');
+  if(!panel)return null;
+  box=document.createElement('div');box.id='smartRecommendation';box.className='smart-rec hidden';
+  panel.insertBefore(box,panel.firstChild);
+  return box;
+}
+
+function clearRecommendation(){currentSmartRecommendation=null;const box=document.getElementById('smartRecommendation');if(box){box.classList.add('hidden');box.innerHTML=''}}
+
+function escSmart(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function smartList(arr,empty='Nenhum'){return arr.length?`<ul class="smart-list">${arr.map(x=>`<li>${escSmart(x)}</li>`).join('')}</ul>`:`<span class="muted">${empty}</span>`}
+
+function renderSmartRecommendation(rec,requestCode){
+  const box=ensureRecommendationUI();if(!box||!rec)return;
+  currentSmartRecommendation=rec;
+  const total=rec.requestedNames.length||1,inside=rec.coveredNames.length,complete=rec.unsupportedNames.length===0;
+  const extraCombo=rec.extraComboNames;
+  box.innerHTML=`
+    <div class="smart-rec-head"><div><div class="eyebrow">Sugestão inteligente • ${escSmart(requestCode||'cotação')}</div><h3>Combo ${escSmart(rec.combo.level)} é o encaixe mais próximo</h3><div class="muted" style="font-size:13px">${inside} de ${total} necessidades já estão dentro do combo${rec.addons.length?`; ${rec.addons.length} entra${rec.addons.length>1?'m':''} como adicional`:''}.</div></div><div><span class="smart-chip ${complete?'ok':'warn'}">${complete?'Necessidade coberta':'Requer avaliação'}</span><span class="smart-chip">${Math.round((inside/total)*100)}% de aderência direta</span></div></div>
+    <div class="smart-grid">
+      <div class="smart-box"><b>Já contemplado no combo</b>${smartList(rec.coveredNames,'Nenhuma flag solicitada está dentro do pacote.')}</div>
+      <div class="smart-box"><b>Adicionar para completar</b>${smartList(rec.addons,'Nenhum adicional necessário.')}</div>
+      <div class="smart-box"><b>Benefícios extras do combo</b>${smartList(extraCombo,'O combo não acrescenta outras flags além das solicitadas.')}</div>
+    </div>
+    ${rec.unsupportedNames.length?`<div class="smart-box" style="margin-top:10px;border-color:#efd39a;background:#fffaf0"><b>⚠ Fora dos adicionais disponíveis do combo</b>${smartList(rec.unsupportedNames)}<div class="smart-note">Essas flags fazem parte da solicitação original, mas hoje não possuem preço cadastrado como adicional de combo. Por isso não foram incluídas no valor automaticamente. Avalie a composição individual antes de fechar a proposta.</div></div>`:''}
+    <div class="smart-note">A recomendação prioriza o combo com maior aderência ao pedido, usando adicionais quando disponíveis. Você pode alterar a composição antes de gerar a proposta.</div>
+    ${rec.unsupportedNames.length?`<div class="smart-actions"><button class="secondary" type="button" onclick="openOriginalRequestIndividual()">Ver composição individual completa</button></div>`:''}`;
+  box.classList.remove('hidden');
+}
 
 function ensureDiscountUI(){
   const actions=document.querySelector('#calculatorView .summary .actions');
@@ -27,42 +70,69 @@ function applyCommercialDiscount(render=true){
 }
 function resetCommercialDiscount(){commercialDiscountPercent=0;grossQuote=null;const el=document.getElementById('proposalDiscount');if(el)el.value='0';const info=document.getElementById('discountInfo');if(info)info.textContent='Opcional. Deixe 0 para manter o valor calculado.'}
 
+function requestFlagMap(r){
+  const map=new Map();
+  (Array.isArray(r.selection)?r.selection:[]).forEach(x=>{const n=normLeadName(x?.flag);if(n&&!map.has(n))map.set(n,x.flag)});
+  return map;
+}
+
 async function recommendComboForRequest(r){
   if(r.mode!=='individual'||!Array.isArray(r.selection)||!r.selection.length)return null;
-  const person=r.person;
-  const requested=[...new Set(r.selection.map(x=>normLeadName(x.flag)).filter(Boolean))];
-  const combos=(C.combos||[]).filter(x=>x.person===person);
-  const addons=(C.addons||[]).filter(x=>x.person===person);
-  const addonByNorm=new Map(addons.map(a=>[normLeadName(a.name),a.name]));
+  const person=r.person,requestedMap=requestFlagMap(r),requested=[...requestedMap.keys()];
+  const combos=(C.combos||[]).filter(x=>x.person===person),addons=(C.addons||[]).filter(x=>x.person===person),addonByNorm=new Map(addons.map(a=>[normLeadName(a.name),a.name]));
   const candidates=[];
-
   for(const combo of combos){
-    const included=new Set((combo.items||[]).map(normLeadName));
-    const covered=requested.filter(flag=>included.has(flag));
-    const missing=requested.filter(flag=>!included.has(flag));
-    // O combo só é sugerido quando tudo o que falta pode ser contratado como adicional avulso.
-    if(missing.some(flag=>!addonByNorm.has(flag)))continue;
-    const neededAdds=[...new Set(missing.map(flag=>addonByNorm.get(flag)))];
+    const itemMap=new Map((combo.items||[]).map(x=>[normLeadName(x),x]));
+    const covered=requested.filter(flag=>itemMap.has(flag));
+    const missing=requested.filter(flag=>!itemMap.has(flag));
+    const supportedMissing=missing.filter(flag=>addonByNorm.has(flag));
+    const unsupported=missing.filter(flag=>!addonByNorm.has(flag));
+    const neededAdds=[...new Set(supportedMissing.map(flag=>addonByNorm.get(flag)))];
+    const extraCombo=[...itemMap.keys()].filter(flag=>!requestedMap.has(flag)).map(flag=>itemMap.get(flag));
     const {data,error}=await sb.rpc('calculate_lead_quote',{p_mode:'combo',p_person:person,p_qty:r.quantity,p_selection:{level:combo.level,addons:neededAdds}});
-    if(!error&&data)candidates.push({combo,addons:neededAdds,quote:data,covered:covered.length,requested:requested.length});
+    if(error||!data)continue;
+    candidates.push({
+      combo,addons:neededAdds,quote:data,
+      coveredNames:covered.map(x=>requestedMap.get(x)),
+      requestedNames:requested.map(x=>requestedMap.get(x)),
+      unsupportedNames:unsupported.map(x=>requestedMap.get(x)),
+      extraComboNames:extraCombo,
+      directCoverage:covered.length,
+      totalCovered:covered.length+supportedMissing.length
+    });
   }
   if(!candidates.length)return null;
-  // Prioriza: mais flags do cliente já dentro do combo; menos adicionais; menor investimento.
-  candidates.sort((a,b)=>b.covered-a.covered||a.addons.length-b.addons.length||Number(a.quote.sale_total)-Number(b.quote.sale_total));
+  // Regra comercial: 1) cobrir mais do pedido (combo + adicionais); 2) ter mais flags já dentro do combo;
+  // 3) deixar menos flags fora do pacote; 4) exigir menos adicionais; 5) menor preço.
+  candidates.sort((a,b)=>
+    b.totalCovered-a.totalCovered ||
+    b.directCoverage-a.directCoverage ||
+    a.unsupportedNames.length-b.unsupportedNames.length ||
+    a.addons.length-b.addons.length ||
+    Number(a.quote.sale_total)-Number(b.quote.sale_total)
+  );
   return candidates[0];
 }
 
+let smartOriginalRequest=null;
 const originalLoadRequestFromKanban=window.loadRequestFromKanban;
+window.openOriginalRequestIndividual=async function(){
+  if(!smartOriginalRequest)return;
+  clearRecommendation();resetCommercialDiscount();
+  // Carrega a solicitação original pelo fluxo individual já existente.
+  const r=smartOriginalRequest;
+  currentRequestId=r.id;mode='individual';document.getElementById('person').value=r.person;document.getElementById('qty').value=r.quantity;
+  const c=r.client||{};document.getElementById('client').value=c.company||'';document.getElementById('doc').value=c.doc||'';document.getElementById('contact').value=c.contact||'';document.getElementById('clientEmail').value=c.email||'';document.getElementById('phone').value=c.phone||'';document.getElementById('focus').value=c.focus||'';
+  selected.clear();selectedAdds.clear();activeProducts=[];(r.selection||[]).forEach(x=>{if(!x?.product||!x?.flag)return;selected.add(JSON.stringify({product:x.product,flag:x.flag}));if(!activeProducts.includes(x.product))activeProducts.push(x.product)});
+  document.getElementById('individualArea').classList.remove('hidden');document.getElementById('comboArea').classList.add('hidden');document.getElementById('tabInd').classList.add('active');document.getElementById('tabCombo').classList.remove('active');render();window.scrollTo({top:0,behavior:'smooth'});
+};
+
 window.loadRequestFromKanban=async function(id){
   const {data:r,error}=await sb.from('lead_quote_requests').select('*').eq('id',id).single();
   if(error||!r){alert('Não foi possível carregar esta solicitação na calculadora.');return}
-  resetCommercialDiscount();
+  resetCommercialDiscount();clearRecommendation();smartOriginalRequest=r;
   const recommendation=await recommendComboForRequest(r);
-  if(!recommendation){
-    await originalLoadRequestFromKanban(id);
-    alert('Esta solicitação possui dados que não podem ser atendidos integralmente por um combo + adicionais disponíveis. Por isso ela foi aberta na composição individual.');
-    return;
-  }
+  if(!recommendation){await originalLoadRequestFromKanban(id);return}
 
   currentRequestId=r.id;mode='combo';
   document.getElementById('person').value=r.person;document.getElementById('qty').value=r.quantity;
@@ -70,8 +140,7 @@ window.loadRequestFromKanban=async function(id){
   selected.clear();selectedAdds.clear();activeProducts=[];selectedCombo=recommendation.combo.level;recommendation.addons.forEach(a=>selectedAdds.add(a));
   document.getElementById('individualArea').classList.add('hidden');document.getElementById('comboArea').classList.remove('hidden');document.getElementById('tabInd').classList.remove('active');document.getElementById('tabCombo').classList.add('active');
   const {data:{user}}=await sb.auth.getUser();await sb.from('lead_quote_requests').update({handled_by:user?.id||null,updated_at:new Date().toISOString()}).eq('id',id);
-  openSection('calculator');render();window.scrollTo({top:0,behavior:'smooth'});
-  const extras=recommendation.addons.length?`\nComplementos avulsos: ${recommendation.addons.join(', ')}.`:'\nO combo já contempla todos os dados solicitados.';
-  alert(`Sugestão automática para ${r.code}: Combo ${recommendation.combo.level}.${extras}\n\n${recommendation.covered} de ${recommendation.requested} flags solicitadas já estão contempladas no combo. A composição foi preparada automaticamente e pode ser ajustada antes da proposta.`);
+  openSection('calculator');render();renderSmartRecommendation(recommendation,r.code);window.scrollTo({top:0,behavior:'smooth'});
 };
-ensureDiscountUI();
+
+ensureDiscountUI();ensureRecommendationUI();
