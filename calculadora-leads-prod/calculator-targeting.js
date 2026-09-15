@@ -1,13 +1,14 @@
 // Público-alvo operacional na calculadora. Não altera selection() nem RPCs de preço.
 (() => {
   let selector=null,currentTarget=null;
+  function loadBulkHelper(){if(document.querySelector('script[data-cnae-segment-bulk]'))return;const s=document.createElement('script');s.src='./cnae-segment-bulk.js?v=20260915-cnae4';s.dataset.cnaeSegmentBulk='1';document.head.appendChild(s)}
   function ensure(){
     if(document.getElementById('calculatorCnaeTarget'))return;
     const person=document.getElementById('person');if(!person)return;
     const grid=person.closest('.formgrid');if(!grid)return;
     const wrap=document.createElement('div');wrap.id='calculatorCnaeTarget';wrap.className='hidden';wrap.style.gridColumn='1 / -1';wrap.innerHTML='<div id="calculatorCnaeSelector"></div>';
     grid.insertAdjacentElement('afterend',wrap);
-    selector=window.CDLCnaeSelector?.mount(document.getElementById('calculatorCnaeSelector'))||null;
+    selector=window.CDLCnaeSelector?.mount(document.getElementById('calculatorCnaeSelector'))||null;loadBulkHelper();
   }
   function sync(){ensure();const pj=document.getElementById('person')?.value==='Pessoa Jurídica';document.getElementById('calculatorCnaeTarget')?.classList.toggle('hidden',!pj)}
   function getTarget(){return document.getElementById('person')?.value==='Pessoa Jurídica'?(selector?.getValue()||currentTarget||null):null}
