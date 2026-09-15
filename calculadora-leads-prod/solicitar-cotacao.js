@@ -5,8 +5,19 @@ let need=null,selected=new Set(),cnaeSelector=null;
 const PUBLIC_FLAG_LABELS={'Restrição 1 bureau':'Birô de crédito 1 (SPC)','Restrição 2 bureaux':'Birô de crédito 2 (SPC e Serasa)','PEP':'PEP (Pessoa Exposta Politicamente)'};
 const publicFlagLabel=flag=>PUBLIC_FLAG_LABELS[flag]||flag;
 const isPJ=()=>els.person?.value==='Pessoa Jurídica';
-function ensureCnaeTargetUI(){if($('cnaeTargetSection'))return;const notesSection=els.notes?.closest('.section');if(!notesSection)return;const section=document.createElement('div');section.id='cnaeTargetSection';section.className='section hidden';section.innerHTML='<div id="publicCnaeSelector"></div>';notesSection.parentNode.insertBefore(section,notesSection);cnaeSelector=window.CDLCnaeSelector?.mount($('publicCnaeSelector'))||null}
-function syncPersonRules(){ensureCnaeTargetUI();$('cnaeTargetSection')?.classList.toggle('hidden',!isPJ())}
+function ensureCnaeTargetUI(){
+  let section=$('cnaeTargetSection');
+  if(!section){
+    const notesSection=els.notes?.closest('.section');
+    if(!notesSection)return;
+    section=document.createElement('div');section.id='cnaeTargetSection';section.className='section hidden';section.innerHTML='<div id="publicCnaeSelector"></div>';notesSection.parentNode.insertBefore(section,notesSection);
+  }
+  if(!cnaeSelector){
+    const host=$('publicCnaeSelector');
+    if(host&&window.CDLCnaeSelector?.mount)cnaeSelector=window.CDLCnaeSelector.mount(host);
+  }
+}
+function syncPersonRules(){ensureCnaeTargetUI();const section=$('cnaeTargetSection');if(section)section.classList.toggle('hidden',!isPJ())}
 function currentProduct(){if(need==='market')return 'SPC Mercado';if(need==='enrich')return 'SPC Enriquece';return null}
 function chooseNeed(n){need=n;selected.clear();els.needMarket?.classList.toggle('active',n==='market');els.needEnrich?.classList.toggle('active',n==='enrich');els.solutionArea?.classList.remove('hidden');els.existingDataArea?.classList.toggle('hidden',n!=='enrich');els.desiredDataTitle?.classList.toggle('hidden',n!=='enrich');if(n!=='enrich'&&els.existingData)els.existingData.value='';if(els.solutionTitle)els.solutionTitle.textContent=n==='market'?'Quais dados você gostaria de encontrar no mercado?':'Vamos entender primeiro a sua base atual.';if(els.solutionHelp)els.solutionHelp.textContent=n==='market'?'Marque as informações que deseja receber sobre os novos contatos ou empresas.':'Antes de escolher os dados que quer acrescentar, informe quais dados você já possui hoje.';syncPersonRules();renderItems();setTimeout(()=>els.solutionArea?.scrollIntoView({behavior:'smooth',block:'start'}),50)}
 function resetSelection(){selected.clear();syncPersonRules();if(need)renderItems()}
