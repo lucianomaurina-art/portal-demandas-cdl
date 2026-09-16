@@ -13,5 +13,5 @@
 
 // Extensões independentes. Não alteram a navegação central.
 (() => {
-  ['calculator-proposal-notes.js?v=20260916-2','spc-other-products.js?v=20260916-1','admin-inactive-access.js?v=20260916-1'].forEach(src=>{const s=document.createElement('script');s.src=src;document.head.appendChild(s);});
+  ['calculator-proposal-notes.js?v=20260916-2','spc-other-products.js?v=20260916-2','admin-inactive-access.js?v=20260916-1'].forEach(src=>{const s=document.createElement('script');s.src=src;document.head.appendChild(s);});
 })();
