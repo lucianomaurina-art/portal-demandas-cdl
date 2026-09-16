@@ -20,6 +20,6 @@
       load('calculator-proposal-notes.js?v=20260916-2'),
       load('spc-other-products.js?v=20260916-3')
     ]);
-    await load('admin-inactive-access.js?v=20260916-2');
+    await load('admin-inactive-access.js?v=20260916-3');
   })();
 })();
