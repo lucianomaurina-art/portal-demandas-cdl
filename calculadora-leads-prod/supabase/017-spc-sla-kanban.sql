@@ -4,6 +4,38 @@
 
 begin;
 
+-- Marco comercial imutável: o SLA total começa quando a proposta entra em "Proposta fechada".
+alter table public.lead_proposals
+  add column if not exists closed_at timestamptz;
+
+update public.lead_proposals
+set closed_at = coalesce(closed_at, updated_at)
+where status = 'Proposta fechada'
+  and closed_at is null;
+
+create or replace function public.stamp_lead_proposal_closed_at()
+returns trigger
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  if tg_op = 'INSERT' then
+    if new.status = 'Proposta fechada' and new.closed_at is null then
+      new.closed_at := now();
+    end if;
+  elsif new.status = 'Proposta fechada' and old.status is distinct from new.status then
+    new.closed_at := coalesce(new.closed_at, now());
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_stamp_lead_proposal_closed_at on public.lead_proposals;
+create trigger trg_stamp_lead_proposal_closed_at
+before insert or update on public.lead_proposals
+for each row execute function public.stamp_lead_proposal_closed_at();
+
 alter table public.spc_data_orders
   add column if not exists proposal_closed_at timestamptz,
   add column if not exists count_sent_at timestamptz,
@@ -24,10 +56,9 @@ alter table public.spc_data_orders
     'Cancelada'
   ));
 
--- Preserva o marco de fechamento da proposta. Para registros já existentes,
--- usa a última atualização da proposta como melhor referência disponível.
+-- Preserva o marco de fechamento da proposta nas ordens já existentes.
 update public.spc_data_orders o
-set proposal_closed_at = coalesce(o.proposal_closed_at, p.updated_at, o.created_at)
+set proposal_closed_at = coalesce(o.proposal_closed_at, p.closed_at, p.updated_at, o.created_at)
 from public.lead_proposals p
 where p.id = o.proposal_id
   and o.proposal_closed_at is null;
@@ -51,9 +82,14 @@ set search_path = public
 as $$
 declare
   v_closed timestamptz;
+  v_stage_changed boolean := false;
 begin
+  if tg_op = 'UPDATE' then
+    v_stage_changed := old.stage is distinct from new.stage;
+  end if;
+
   if new.proposal_closed_at is null then
-    select p.updated_at into v_closed
+    select coalesce(p.closed_at, p.updated_at) into v_closed
     from public.lead_proposals p
     where p.id = new.proposal_id;
     new.proposal_closed_at := coalesce(v_closed, new.created_at, now());
@@ -61,19 +97,19 @@ begin
 
   -- Momento efetivo do envio da contagem ao SPC.
   if new.stage = 'Contagem enviada ao SPC'
-     and (tg_op = 'INSERT' or old.stage is distinct from new.stage or new.count_sent_at is null) then
+     and (tg_op = 'INSERT' or v_stage_changed or new.count_sent_at is null) then
     new.count_sent_at := coalesce(new.count_sent_at, now());
     new.count_requested_at := coalesce(new.count_requested_at, new.count_sent_at);
   end if;
 
   -- Quando a contagem retorna, inicia o SLA interno de 1 dia para validação.
   if new.stage = 'Validar contagem'
-     and (tg_op = 'INSERT' or old.stage is distinct from new.stage or new.count_returned_at is null) then
+     and (tg_op = 'INSERT' or v_stage_changed or new.count_returned_at is null) then
     new.count_returned_at := coalesce(new.count_returned_at, now());
   end if;
 
   -- Enquanto o cartão permanecer em "Validar contagem", salvar o formulário
-  -- não deve antecipar o marco de validação. O marco só nasce ao avançar a etapa.
+  -- não deve antecipar o marco de validação. O marco nasce ao avançar a etapa.
   if tg_op = 'UPDATE'
      and new.stage = 'Validar contagem'
      and old.stage = 'Validar contagem' then
@@ -83,15 +119,19 @@ begin
 
   -- Após validar, inicia o prazo do SPC para produção/entrega da planilha.
   if new.stage = 'Aguardando planilha de dados'
-     and (tg_op = 'INSERT' or old.stage is distinct from new.stage) then
-    new.count_validated_at := coalesce(old.count_validated_at, new.count_validated_at, now());
-    if new.count_validated_at is null then new.count_validated_at := now(); end if;
-    new.production_requested_at := coalesce(old.production_requested_at, new.production_requested_at, new.count_validated_at, now());
+     and (tg_op = 'INSERT' or v_stage_changed) then
+    if tg_op = 'UPDATE' then
+      new.count_validated_at := coalesce(old.count_validated_at, new.count_validated_at, now());
+      new.production_requested_at := coalesce(old.production_requested_at, new.production_requested_at, new.count_validated_at, now());
+    else
+      new.count_validated_at := coalesce(new.count_validated_at, now());
+      new.production_requested_at := coalesce(new.production_requested_at, new.count_validated_at, now());
+    end if;
     new.purpose := 'producao';
   end if;
 
   if new.stage = 'Dados enviados ao cliente'
-     and (tg_op = 'INSERT' or old.stage is distinct from new.stage or new.data_delivered_at is null) then
+     and (tg_op = 'INSERT' or v_stage_changed or new.data_delivered_at is null) then
     new.data_delivered_at := coalesce(new.data_delivered_at, now());
   end if;
 
@@ -104,7 +144,7 @@ create trigger trg_stamp_spc_data_order_sla
 before insert or update on public.spc_data_orders
 for each row execute function public.stamp_spc_data_order_sla();
 
--- View de leitura para Kanban, indicadores e futuros alertas Resend.
+-- View de leitura para Kanban, indicadores e alertas Resend.
 drop view if exists public.spc_data_order_sla;
 create view public.spc_data_order_sla
 with (security_invoker = true)
@@ -113,11 +153,12 @@ with base as (
   select
     o.*,
     p.code as proposal_code,
+    p.closed_at as proposal_closed_source_at,
     p.updated_at as proposal_updated_at,
-    coalesce(o.proposal_closed_at, p.updated_at, o.created_at) as sla_started_at,
-    coalesce(o.proposal_closed_at, p.updated_at, o.created_at) + interval '15 days' as overall_due_at,
+    coalesce(o.proposal_closed_at, p.closed_at, p.updated_at, o.created_at) as sla_started_at,
+    coalesce(o.proposal_closed_at, p.closed_at, p.updated_at, o.created_at) + interval '15 days' as overall_due_at,
     case o.stage
-      when 'Solicitar contagem' then coalesce(o.proposal_closed_at, p.updated_at, o.created_at) + interval '1 day'
+      when 'Solicitar contagem' then coalesce(o.proposal_closed_at, p.closed_at, p.updated_at, o.created_at) + interval '1 day'
       when 'Contagem enviada ao SPC' then coalesce(o.count_sent_at, o.count_requested_at, o.updated_at) + interval '7 days'
       when 'Validar contagem' then coalesce(o.count_returned_at, o.updated_at) + interval '1 day'
       when 'Aguardando planilha de dados' then coalesce(o.production_requested_at, o.count_validated_at, o.updated_at) + interval '6 days'
