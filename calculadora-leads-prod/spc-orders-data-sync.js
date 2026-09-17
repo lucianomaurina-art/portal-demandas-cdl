@@ -36,13 +36,15 @@
     const internal=o.internal_notes||pc.internal_notes||rc.internal_notes||'';
     const proposalNotes=pc.proposal_notes||rc.proposal_notes||o.filters?.proposal_notes||'';
     const existing=pc.existing_data||rc.existing_data||o.filters?.existing_data||'';
-    const focus=pc.focus||rc.focus||o.filters?.city||o.filters?.region||'';
-    // Regra contratual: a Ordem SPC não acumula atributos antigos nem opções operacionais.
-    // requested_fields é sempre refeito exclusivamente a partir da proposta fechada.
+    const city=pc.city||rc.city||o.filters?.city||pc.focus||rc.focus||o.filters?.region||'';
+    const state=pc.state||rc.state||o.filters?.state||'';
+    const cep=pc.cep||rc.cep||o.filters?.cep||'';
     const requested=proposalFields(p);
     const filters={
       ...(o.filters||{}),
-      city:o.filters?.city||focus||'',
+      state,
+      cep,
+      city,
       region:'',
       client_notes:external,
       proposal_notes:proposalNotes,
