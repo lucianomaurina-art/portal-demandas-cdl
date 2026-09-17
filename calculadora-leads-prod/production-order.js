@@ -1,16 +1,13 @@
-// Compatibilidade do botão antigo "Ordem SPC" + carregamento do novo módulo Ordens SPC.
+// Compatibilidade do botão "Iniciar Ordem SPC" + carregamento do módulo Ordens SPC.
 (()=>{
   function loadOrdersModule(){
     if(document.querySelector('script[data-spc-orders]'))return;
     const s=document.createElement('script');
-    s.src='spc-orders.js?v=20260917-1';
+    s.src='spc-orders.js?v=20260917-flow2';
     s.dataset.spcOrders='1';
     document.head.appendChild(s);
   }
   loadOrdersModule();
-
-  // O botão legado não gera mais uma ordem final diretamente: agora inicia/abre
-  // a ordem editável, começando pela etapa de Contagem SPC Brasil.
   window.generateProductionOrder=async function(proposalId){
     if(typeof window.openSpcOrders!=='function'){
       loadOrdersModule();
