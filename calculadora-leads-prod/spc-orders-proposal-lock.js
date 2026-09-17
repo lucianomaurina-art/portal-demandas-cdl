@@ -57,4 +57,12 @@
     return true;
   }
   let tries=0;const timer=setInterval(()=>{tries++;if(patch()||tries>30)clearInterval(timer)},150);
+
+  // Carrega o gerador completo mesmo quando production-order.js estiver em cache no navegador.
+  if(!document.querySelector('script[data-spc-print-complete]')){
+    const s=document.createElement('script');
+    s.src='spc-orders-print-complete.js?v=20260917-print2';
+    s.dataset.spcPrintComplete='1';
+    document.head.appendChild(s);
+  }
 })();
