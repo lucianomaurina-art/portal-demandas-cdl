@@ -36,11 +36,19 @@
     const internal=o.internal_notes||pc.internal_notes||rc.internal_notes||'';
     const proposalNotes=pc.proposal_notes||rc.proposal_notes||o.filters?.proposal_notes||'';
     const existing=pc.existing_data||rc.existing_data||o.filters?.existing_data||'';
-    const focus=pc.focus||rc.focus||o.filters?.region||'';
+    const focus=pc.focus||rc.focus||o.filters?.city||o.filters?.region||'';
     // Regra contratual: a Ordem SPC não acumula atributos antigos nem opções operacionais.
     // requested_fields é sempre refeito exclusivamente a partir da proposta fechada.
     const requested=proposalFields(p);
-    const filters={...(o.filters||{}),region:focus||o.filters?.region||'',client_notes:external,proposal_notes:proposalNotes,existing_data:existing,legacy_cnae:pc.cnaes_segments||pc.cnae_segments||rc.cnaes_segments||rc.cnae_segments||o.filters?.legacy_cnae||''};
+    const filters={
+      ...(o.filters||{}),
+      city:o.filters?.city||focus||'',
+      region:'',
+      client_notes:external,
+      proposal_notes:proposalNotes,
+      existing_data:existing,
+      legacy_cnae:pc.cnaes_segments||pc.cnae_segments||rc.cnaes_segments||rc.cnae_segments||o.filters?.legacy_cnae||''
+    };
     await sb.from('spc_data_orders').update({client,targeting:target,requested_fields:requested,filters,external_notes:external,internal_notes:internal}).eq('id',orderId);
   }
   function install(){
