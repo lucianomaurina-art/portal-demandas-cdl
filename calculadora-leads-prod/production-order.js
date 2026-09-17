@@ -12,7 +12,7 @@
     addScript('spc-orders-data-sync.js?v=20260917-sync4','spcSync');
     addScript('spc-orders-proposal-lock.js?v=20260917-lock2','spcLock');
     addScript('spc-orders-filter-controls.js?v=20260917-filter2','spcFilters');
-    addScript('spc-orders-print-complete.js?v=20260917-print4','spcPrint');
+    addScript('spc-orders-print-complete.js?v=20260917-print5','spcPrint');
     addScript('spc-orders-kanban-sla.js?v=20260917-sla1','spcSla');
   }
   loadOrdersModule();
