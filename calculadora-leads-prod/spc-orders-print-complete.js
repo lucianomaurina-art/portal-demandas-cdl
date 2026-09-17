@@ -4,18 +4,15 @@
   const br=v=>esc(v).replace(/\n/g,'<br>');
   const fmtDate=v=>{if(!v)return '—';try{return new Date(v).toLocaleDateString('pt-BR')}catch(e){return String(v)}};
   const yes=v=>v!==undefined&&v!==null&&String(v).trim()!=='';
-  const normText=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[;,.\s]+/g,' ').trim();
-  const same=(a,b)=>yes(a)&&yes(b)&&normText(a)===normText(b);
   const field=(label,value)=>yes(value)?`<div class="field"><span>${esc(label)}</span><b>${br(value)}</b></div>`:'';
   const section=(title,body)=>body?`<section><h2>${esc(title)}</h2>${body}</section>`:'';
   function attrs(o){const arr=Array.isArray(o.requested_fields)?o.requested_fields:[];return arr.length?`<div class="chips">${arr.map(x=>`<span>${esc(x)}</span>`).join('')}</div>`:'<div class="empty">Nenhum atributo registrado.</div>'}
   function filters(o){
     const f=o.filters||{};
-    const region=f.region||'';
-    const city=same(region,f.city)?'':f.city;
+    const revenue=f.revenue==='OUTRO VALOR'&&f.revenue_other?`OUTRO VALOR — ${f.revenue_other}`:f.revenue;
     const rows=[
-      field('Região / foco',region),field('Estado(s)',f.state),field('CEP / cidade',city),field('Bairros',f.districts),
-      field('Data de abertura / critério',f.opening_date),field('Faturamento mensal',f.revenue),field('CNAE / ramo de atividade',f.cnae_text||f.legacy_cnae),
+      field('Estado',f.state),field('CEP(s)',f.cep),field('Cidade(s)',f.city),field('Bairros',f.districts),
+      field('Data de abertura / critério',f.opening_date),field('Faturamento mensal',revenue),field('CNAE / ramo de atividade',f.cnae_text||f.legacy_cnae),
       field('Sexo',f.sex),field('Faixa de idade',f.age),field('Faixa de renda estimada',f.income),field('Profissão / CBO',f.cbo)
     ].join('');
     return rows?`<div class="grid">${rows}</div>`:'<div class="empty">Nenhum filtro adicional informado.</div>';
@@ -36,7 +33,7 @@
       if(typeof window.saveSpcOrder==='function'){const ok=await window.saveSpcOrder(id,true);if(ok===false)return;}
       const {data:o,error}=await sb.from('spc_data_orders').select('*').eq('id',id).single();if(error||!o){alert('Não foi possível carregar a Ordem SPC.');return;}
       const {data:p}=await sb.from('lead_proposals').select('*').eq('id',o.proposal_id).maybeSingle();
-      const c=o.client||{},f=o.filters||{},stage=String(o.stage||''),isCount=stage==='Solicitar contagem'||stage==='Validar contagem',title=isCount?'Ordem de Contagem de Dados':'Ordem de Produção de Dados';
+      const c=o.client||{},stage=String(o.stage||''),isCount=stage==='Solicitar contagem'||stage==='Validar contagem',title=isCount?'Ordem de Contagem de Dados':'Ordem de Produção de Dados';
       const w=open('','_blank');if(!w){alert('Autorize pop-ups para gerar a ordem.');return;}
       const entity=o.entity||{};
       const html=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(title)} ${esc(c.proposal_code||p?.code||'')}</title><style>
@@ -48,9 +45,9 @@
       ${section('Composição aprovada na proposta',composition(p))}
       ${section('Atributos que o SPC deve retornar',attrs(o))}
       ${section('Filtros e público-alvo',filters(o))}
-      ${yes(f.existing_data)?section('Dados que o cliente já possui',`<div class="box">${br(f.existing_data)}</div>`):''}
+      ${yes(o.filters?.existing_data)?section('Dados que o cliente já possui',`<div class="box">${br(o.filters.existing_data)}</div>`):''}
       ${yes(o.external_notes)?section('Observações do cliente / solicitação',`<div class="box">${br(o.external_notes)}</div>`):''}
-      ${yes(f.proposal_notes)?section('Informações adicionais da proposta',`<div class="box">${br(f.proposal_notes)}</div>`):''}
+      ${yes(o.filters?.proposal_notes)?section('Informações adicionais da proposta',`<div class="box">${br(o.filters.proposal_notes)}</div>`):''}
       ${yes(o.internal_notes)?section('Informações adicionais internas',`<div class="notice">Uso interno CDL.<br><br>${br(o.internal_notes)}</div>`):''}
       ${section('Contagem SPC',`<div class="grid">${field('Data da solicitação',fmtDate(o.count_requested_at))}${field('Referência da contagem',o.count_reference)}${field('Quantidade encontrada',o.count_result===null||o.count_result===undefined?'':Number(o.count_result).toLocaleString('pt-BR'))}${field('Data de retorno',fmtDate(o.count_returned_at))}${field('Data de validação',fmtDate(o.count_validated_at))}</div>${yes(o.count_notes)?`<div class="box" style="margin-top:10px"><b>Observações da contagem</b><br>${br(o.count_notes)}</div>`:''}`)}
       ${yes(o.production_notes)||yes(o.production_requested_at)?section('Produção / faturamento',`<div class="grid">${field('Data da solicitação de produção',fmtDate(o.production_requested_at))}</div>${yes(o.production_notes)?`<div class="box" style="margin-top:10px"><b>Orientações para produção / faturamento</b><br>${br(o.production_notes)}</div>`:''}`):''}
