@@ -2,32 +2,28 @@
 (()=>{
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const br=v=>esc(v).replace(/\n/g,'<br>');
-  const fmtDate=v=>{if(!v)return '—';try{return new Date(v).toLocaleDateString('pt-BR')}catch(e){return String(v)}};
-  const fmtDateTime=v=>{if(!v)return '—';try{return new Date(v).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch(e){return String(v)}};
+  const fmt=v=>{if(!v)return '—';try{return new Date(v).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}catch(e){return String(v)}};
   const addDays=(v,n)=>v?new Date(new Date(v).getTime()+n*86400000):null;
   const yes=v=>v!==undefined&&v!==null&&String(v).trim()!=='';
   const field=(label,value)=>yes(value)?`<div class="field"><span>${esc(label)}</span><b>${br(value)}</b></div>`:'';
   const section=(title,body)=>body?`<section><h2>${esc(title)}</h2>${body}</section>`:'';
-  function attrs(o){const arr=Array.isArray(o.requested_fields)?o.requested_fields:[];return arr.length?`<div class="chips">${arr.map(x=>`<span>${esc(x)}</span>`).join('')}</div>`:'<div class="empty">Nenhum atributo registrado.</div>`}
+  function attrs(o){const arr=Array.isArray(o.requested_fields)?o.requested_fields:[];return arr.length?`<div class="chips">${arr.map(x=>`<span>${esc(x)}</span>`).join('')}</div>`:'<div class="empty">Nenhum atributo registrado.</div>'}
   function filters(o){
     const f=o.filters||{};
     const revenue=f.revenue==='OUTRO VALOR'&&f.revenue_other?`OUTRO VALOR — ${f.revenue_other}`:f.revenue;
     const rows=[field('Estado',f.state),field('CEP(s)',f.cep),field('Cidade(s)',f.city),field('Bairros',f.districts),field('Data de abertura / critério',f.opening_date),field('Faturamento mensal',revenue),field('CNAE / ramo de atividade',f.cnae_text||f.legacy_cnae),field('Sexo',f.sex),field('Faixa de idade',f.age),field('Faixa de renda estimada',f.income),field('Profissão / CBO',f.cbo)].join('');
     return rows?`<div class="grid">${rows}</div>`:'<div class="empty">Nenhum filtro adicional informado.</div>';
   }
-  function previousCount(o){
-    const f=o.filters||{},based=f.prior_count_based===true||String(f.prior_count_based)==='true';
-    return `<div class="grid">${field('Baseada em contagem anterior?',based?'Sim':'Não')}${based?field('Número do RC',f.prior_count_rc):''}</div>`;
-  }
+  function previousCount(o){const f=o.filters||{},based=f.prior_count_based===true||String(f.prior_count_based)==='true';return `<div class="grid">${field('Baseada em contagem anterior?',based?'Sim':'Não')}${based?field('Número do RC',f.prior_count_rc):''}</div>`}
   function composition(p){
     const items=p?.quote?.items||[],lines=[];
     if(p?.mode==='combo'){lines.push(`<li><b>Combo:</b> ${esc(p.selection?.level||'—')}</li>`);const adds=p.selection?.addons||[];if(adds.length)lines.push(`<li><b>Adicionais:</b> ${esc(adds.join(', '))}</li>`)}else lines.push('<li><b>Modalidade:</b> Dados individuais</li>');
-    items.forEach(i=>lines.push(`<li><b>${esc(i.name||'Item')}</b>${Array.isArray(i.details)&&i.details.length?` — ${esc(i.details.join(', '))}`:''}</li>`));return `<ul>${lines.join('')}</ul>`;
+    items.forEach(i=>lines.push(`<li><b>${esc(i.name||'Item')}</b>${Array.isArray(i.details)&&i.details.length?` — ${esc(i.details.join(', '))}`:''}</li>`));
+    return `<ul>${lines.join('')}</ul>`;
   }
   function slaBlock(o,p){
-    const closed=o.proposal_closed_at||p?.updated_at||o.created_at;
-    const totalDue=addDays(closed,15),countSent=o.count_sent_at||null,countDue=addDays(countSent,7),returnAt=o.count_returned_at||null,validationDue=addDays(returnAt,1),validated=o.count_validated_at||null,productionAt=o.production_requested_at||validated,dataDue=addDays(productionAt,6);
-    return `<div class="grid">${field('Proposta fechada',fmtDateTime(closed))}${field('Entrega máxima ao cliente',fmtDateTime(totalDue))}${field('Contagem enviada ao SPC',fmtDateTime(countSent))}${field('Prazo retorno da contagem',fmtDateTime(countDue))}${field('Contagem retornada',fmtDateTime(returnAt))}${field('Prazo para validar',fmtDateTime(validationDue))}${field('Contagem validada',fmtDateTime(validated))}${field('Prazo da planilha de dados',fmtDateTime(dataDue))}${field('Dados enviados ao cliente',fmtDateTime(o.data_delivered_at))}</div>`;
+    const closed=o.proposal_closed_at||p?.updated_at||o.created_at,totalDue=addDays(closed,15),countSent=o.count_sent_at||null,countDue=addDays(countSent,7),returned=o.count_returned_at||null,validationDue=addDays(returned,1),validated=o.count_validated_at||null,productionAt=o.production_requested_at||validated,dataDue=addDays(productionAt,6);
+    return `<div class="grid">${field('Proposta fechada',fmt(closed))}${field('Entrega máxima ao cliente',fmt(totalDue))}${field('Contagem enviada ao SPC',fmt(countSent))}${field('Prazo retorno da contagem',fmt(countDue))}${field('Contagem retornada',fmt(returned))}${field('Prazo para validar',fmt(validationDue))}${field('Contagem validada',fmt(validated))}${field('Prazo da planilha de dados',fmt(dataDue))}${field('Dados enviados ao cliente',fmt(o.data_delivered_at))}</div>`;
   }
   function install(){
     if(typeof window.printSpcOrder!=='function'||window.printSpcOrder.__completePrint)return false;
@@ -47,8 +43,8 @@
       ${section('Cliente',`<div class="grid">${field('Empresa / Razão social',c.company)}${field('CNPJ / CPF',c.doc)}${field('Contato',c.contact)}${field('E-mail',c.email)}${field('Telefone',c.phone)}</div>`)}
       ${section('Composição aprovada na proposta',composition(p))}${section('Atributos que o SPC deve retornar',attrs(o))}${section('Filtros e público-alvo',filters(o))}
       ${yes(o.filters?.existing_data)?section('Dados que o cliente já possui',`<div class="box">${br(o.filters.existing_data)}</div>`):''}${yes(o.external_notes)?section('Observações do cliente / solicitação',`<div class="box">${br(o.external_notes)}</div>`):''}${yes(o.filters?.proposal_notes)?section('Informações adicionais da proposta',`<div class="box">${br(o.filters.proposal_notes)}</div>`):''}${yes(o.internal_notes)?section('Informações adicionais internas',`<div class="notice">Uso interno CDL.<br><br>${br(o.internal_notes)}</div>`):''}
-      ${section('Contagem SPC',`<div class="grid">${field('Contagem enviada ao SPC',fmtDateTime(o.count_sent_at))}${field('Referência da contagem',o.count_reference)}${field('Quantidade encontrada',o.count_result===null||o.count_result===undefined?'':Number(o.count_result).toLocaleString('pt-BR'))}${field('Data de retorno',fmtDateTime(o.count_returned_at))}${field('Data de validação',fmtDateTime(o.count_validated_at))}</div>${yes(o.count_notes)?`<div class="box" style="margin-top:10px"><b>Observações da contagem</b><br>${br(o.count_notes)}</div>`:''}`)}
-      ${yes(o.production_notes)||yes(o.production_requested_at)?section('Produção / faturamento',`<div class="grid">${field('Data da solicitação de produção',fmtDateTime(o.production_requested_at))}${field('Dados enviados ao cliente',fmtDateTime(o.data_delivered_at))}</div>${yes(o.production_notes)?`<div class="box" style="margin-top:10px"><b>Orientações para produção / faturamento</b><br>${br(o.production_notes)}</div>`:''}`):''}
+      ${section('Contagem SPC',`<div class="grid">${field('Contagem enviada ao SPC',fmt(o.count_sent_at))}${field('Referência da contagem',o.count_reference)}${field('Quantidade encontrada',o.count_result===null||o.count_result===undefined?'':Number(o.count_result).toLocaleString('pt-BR'))}${field('Data de retorno',fmt(o.count_returned_at))}${field('Data de validação',fmt(o.count_validated_at))}</div>${yes(o.count_notes)?`<div class="box" style="margin-top:10px"><b>Observações da contagem</b><br>${br(o.count_notes)}</div>`:''}`)}
+      ${yes(o.production_notes)||yes(o.production_requested_at)||yes(o.data_delivered_at)?section('Produção / faturamento',`<div class="grid">${field('Data da solicitação de produção',fmt(o.production_requested_at))}${field('Dados enviados ao cliente',fmt(o.data_delivered_at))}</div>${yes(o.production_notes)?`<div class="box" style="margin-top:10px"><b>Orientações para produção / faturamento</b><br>${br(o.production_notes)}</div>`:''}`):''}
       <button class="print" onclick="print()">Imprimir / salvar PDF</button></body></html>`;
       w.document.open();w.document.write(html);w.document.close();
     };
