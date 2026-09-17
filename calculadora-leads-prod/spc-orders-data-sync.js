@@ -1,23 +1,22 @@
 // Sincronização defensiva: toda Ordem SPC herda a proposta completa e, quando houver, a solicitação de origem.
 (()=>{
   const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
-  const uniq=a=>[...new Set((a||[]).filter(Boolean))];
+  const uniq=a=>{const out=[];(a||[]).filter(Boolean).forEach(x=>{if(!out.some(y=>norm(y)===norm(x)))out.push(x)});return out};
   function comboItems(p){
     if(p?.mode!=='combo')return [];
     const level=p.selection?.level,person=p.person;
-    const combo=(window.LEAD_CATALOG?.combos||[]).find(x=>x.person===person&&x.level===level);
+    const combo=(window.LEAD_CATALOG?.combos||[]).find(x=>x.person===person&&norm(x.level)===norm(level));
     return [...(combo?.items||[]),...(p.selection?.addons||[])];
   }
   function proposalFields(p){
+    if(p?.mode==='combo')return uniq(comboItems(p));
     const out=[];
-    const add=x=>{if(x&&!out.includes(x))out.push(x)};
-    comboItems(p).forEach(add);
+    const add=x=>{if(x&&!out.some(y=>norm(y)===norm(x)))out.push(x)};
     (p?.quote?.items||[]).forEach(i=>{
       if(Array.isArray(i.details)&&i.details.length)i.details.forEach(add);
       else add(i.name);
     });
-    if(p?.mode==='individual'&&Array.isArray(p.selection))p.selection.forEach(x=>add(x.flag));
-    if(p?.mode==='combo')(p.selection?.addons||[]).forEach(add);
+    if(Array.isArray(p?.selection))p.selection.forEach(x=>add(x.flag||x.name||x));
     return out;
   }
   async function findRequest(p){
@@ -38,7 +37,9 @@
     const proposalNotes=pc.proposal_notes||rc.proposal_notes||o.filters?.proposal_notes||'';
     const existing=pc.existing_data||rc.existing_data||o.filters?.existing_data||'';
     const focus=pc.focus||rc.focus||o.filters?.region||'';
-    const requested=uniq([...(o.requested_fields||[]),...proposalFields(p)]);
+    // Regra contratual: a Ordem SPC não acumula atributos antigos nem opções operacionais.
+    // requested_fields é sempre refeito exclusivamente a partir da proposta fechada.
+    const requested=proposalFields(p);
     const filters={...(o.filters||{}),region:focus||o.filters?.region||'',client_notes:external,proposal_notes:proposalNotes,existing_data:existing,legacy_cnae:pc.cnaes_segments||pc.cnae_segments||rc.cnaes_segments||rc.cnae_segments||o.filters?.legacy_cnae||''};
     await sb.from('spc_data_orders').update({client,targeting:target,requested_fields:requested,filters,external_notes:external,internal_notes:internal}).eq('id',orderId);
   }
