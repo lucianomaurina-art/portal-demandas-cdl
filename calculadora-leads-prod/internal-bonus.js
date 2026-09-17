@@ -1,5 +1,6 @@
-// Bonificação comercial interna — visível apenas para admin e manager.
-// Base: valor líquido da venda (já descontado), nunca o custo/margem.
+// Bonificação SPC Dados — visível apenas para admin e manager.
+// Base: valor efetivamente fechado/líquido da venda, após eventual desconto.
+// Política: markup 100% = 10%; 70% = 7%; 50% = 5%. Rateio 50/50 entre Vendas e Operação/Serviços SPC.
 (() => {
   const bonusRate=markup=>{
     const m=Math.round(Number(markup||0)*100);
@@ -26,9 +27,13 @@
     try{role=typeof portalLoadRole==='function'?await portalLoadRole():''}catch(_e){}
     if(!eligibleRole(role)||!internalOpen||!internalQuote||!quote){box.classList.add('hidden');box.innerHTML='';return}
     const rate=bonusRate(internalQuote.markup);
+    // quote.sale_total já representa o valor líquido vigente da simulação/proposta,
+    // portanto eventual desconto comercial reduz automaticamente a base da bonificação.
     const netSale=Number(quote.sale_total||0);
-    const bonus=Number((netSale*rate).toFixed(2));
-    box.innerHTML=`<div class="eyebrow">Bonificação comercial</div><div class="kv"><span>Base da bonificação</span><b>${money(netSale)}</b></div><div class="kv"><span>Percentual</span><b>${Math.round(rate*100)}%</b></div><div class="kv"><span>Bonificação estimada</span><b>${money(bonus)}</b></div><div class="muted" style="font-size:11px;line-height:1.4">Base: valor líquido da proposta após eventual desconto. Informação restrita aos perfis Gestor e Administrador.</div>`;
+    const totalBonus=Number((netSale*rate).toFixed(2));
+    const salesBonus=Number((totalBonus/2).toFixed(2));
+    const spcBonus=Number((totalBonus-salesBonus).toFixed(2));
+    box.innerHTML=`<div class="eyebrow">Bonificação SPC Dados</div><div class="kv"><span>Valor efetivamente fechado</span><b>${money(netSale)}</b></div><div class="kv"><span>Faixa de bonificação</span><b>${Math.round(rate*100)}%</b></div><div class="kv"><span>Bonificação total</span><b>${money(totalBonus)}</b></div><div class="kv"><span>Vendas (50%)</span><b>${money(salesBonus)}</b></div><div class="kv"><span>Operação/Serviços SPC (50%)</span><b>${money(spcBonus)}</b></div><div class="muted" style="font-size:11px;line-height:1.4">Base: valor líquido efetivamente fechado, após eventual desconto. Informação restrita aos perfis Gestor e Administrador.</div>`;
     box.classList.remove('hidden');
   }
   const originalLoadInternal=window.loadInternal;
