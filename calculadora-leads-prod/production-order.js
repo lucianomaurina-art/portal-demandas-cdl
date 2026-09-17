@@ -11,6 +11,7 @@
     addScript('spc-orders.js?v=20260917-flow3','spcOrders');
     addScript('spc-orders-data-sync.js?v=20260917-sync2','spcSync');
     addScript('spc-orders-proposal-lock.js?v=20260917-lock2','spcLock');
+    addScript('spc-orders-print-complete.js?v=20260917-print1','spcPrint');
   }
   loadOrdersModule();
   window.generateProductionOrder=async function(proposalId){
