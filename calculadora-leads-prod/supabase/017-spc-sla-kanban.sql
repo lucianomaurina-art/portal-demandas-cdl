@@ -72,11 +72,21 @@ begin
     new.count_returned_at := coalesce(new.count_returned_at, now());
   end if;
 
+  -- Enquanto o cartão permanecer em "Validar contagem", salvar o formulário
+  -- não deve antecipar o marco de validação. O marco só nasce ao avançar a etapa.
+  if tg_op = 'UPDATE'
+     and new.stage = 'Validar contagem'
+     and old.stage = 'Validar contagem' then
+    new.count_validated_at := old.count_validated_at;
+    new.production_requested_at := old.production_requested_at;
+  end if;
+
   -- Após validar, inicia o prazo do SPC para produção/entrega da planilha.
   if new.stage = 'Aguardando planilha de dados'
      and (tg_op = 'INSERT' or old.stage is distinct from new.stage) then
-    new.count_validated_at := coalesce(new.count_validated_at, now());
-    new.production_requested_at := coalesce(new.production_requested_at, new.count_validated_at, now());
+    new.count_validated_at := coalesce(old.count_validated_at, new.count_validated_at, now());
+    if new.count_validated_at is null then new.count_validated_at := now(); end if;
+    new.production_requested_at := coalesce(old.production_requested_at, new.production_requested_at, new.count_validated_at, now());
     new.purpose := 'producao';
   end if;
 
