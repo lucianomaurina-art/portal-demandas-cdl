@@ -10,6 +10,7 @@
   function loadOrdersModule(){
     addScript('spc-orders.js?v=20260917-flow3','spcOrders');
     addScript('spc-orders-data-sync.js?v=20260917-sync1','spcSync');
+    addScript('spc-orders-proposal-lock.js?v=20260917-lock1','spcLock');
   }
   loadOrdersModule();
   window.generateProductionOrder=async function(proposalId){
