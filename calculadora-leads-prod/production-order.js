@@ -9,10 +9,10 @@
   }
   function loadOrdersModule(){
     addScript('spc-orders.js?v=20260917-flow3','spcOrders');
-    addScript('spc-orders-data-sync.js?v=20260917-sync3','spcSync');
+    addScript('spc-orders-data-sync.js?v=20260917-sync4','spcSync');
     addScript('spc-orders-proposal-lock.js?v=20260917-lock2','spcLock');
-    addScript('spc-orders-filter-controls.js?v=20260917-filter1','spcFilters');
-    addScript('spc-orders-print-complete.js?v=20260917-print3','spcPrint');
+    addScript('spc-orders-filter-controls.js?v=20260917-filter2','spcFilters');
+    addScript('spc-orders-print-complete.js?v=20260917-print4','spcPrint');
   }
   loadOrdersModule();
   window.generateProductionOrder=async function(proposalId){
