@@ -4,13 +4,17 @@
   const br=v=>esc(v).replace(/\n/g,'<br>');
   const fmtDate=v=>{if(!v)return '—';try{return new Date(v).toLocaleDateString('pt-BR')}catch(e){return String(v)}};
   const yes=v=>v!==undefined&&v!==null&&String(v).trim()!=='';
+  const normText=v=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[;,.\s]+/g,' ').trim();
+  const same=(a,b)=>yes(a)&&yes(b)&&normText(a)===normText(b);
   const field=(label,value)=>yes(value)?`<div class="field"><span>${esc(label)}</span><b>${br(value)}</b></div>`:'';
   const section=(title,body)=>body?`<section><h2>${esc(title)}</h2>${body}</section>`:'';
   function attrs(o){const arr=Array.isArray(o.requested_fields)?o.requested_fields:[];return arr.length?`<div class="chips">${arr.map(x=>`<span>${esc(x)}</span>`).join('')}</div>`:'<div class="empty">Nenhum atributo registrado.</div>'}
   function filters(o){
     const f=o.filters||{};
+    const region=f.region||'';
+    const city=same(region,f.city)?'':f.city;
     const rows=[
-      field('Região / foco',f.region),field('Estado(s)',f.state),field('CEP / cidade',f.city),field('Bairros',f.districts),
+      field('Região / foco',region),field('Estado(s)',f.state),field('CEP / cidade',city),field('Bairros',f.districts),
       field('Data de abertura / critério',f.opening_date),field('Faturamento mensal',f.revenue),field('CNAE / ramo de atividade',f.cnae_text||f.legacy_cnae),
       field('Sexo',f.sex),field('Faixa de idade',f.age),field('Faixa de renda estimada',f.income),field('Profissão / CBO',f.cbo)
     ].join('');
