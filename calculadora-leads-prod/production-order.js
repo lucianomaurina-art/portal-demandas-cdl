@@ -8,12 +8,12 @@
     document.head.appendChild(s);
   }
   function loadOrdersModule(){
-    addScript('spc-orders.js?v=20260917-flow3','spcOrders');
+    addScript('spc-orders.js?v=20260917-regions-ticket1','spcOrders');
     addScript('spc-orders-data-sync.js?v=20260917-sync4','spcSync');
-    addScript('spc-orders-proposal-lock.js?v=20260917-lock2','spcLock');
-    addScript('spc-orders-filter-controls.js?v=20260917-filter2','spcFilters');
-    addScript('spc-orders-print-complete.js?v=20260917-print5','spcPrint');
-    addScript('spc-orders-kanban-sla.js?v=20260917-sla1','spcSla');
+    addScript('spc-orders-proposal-lock.js?v=20260917-regions-ticket1','spcLock');
+    addScript('spc-orders-filter-controls.js?v=20260917-regions-ticket1','spcFilters');
+    addScript('spc-orders-print-complete.js?v=20260917-regions-ticket1','spcPrint');
+    addScript('spc-orders-kanban-sla.js?v=20260917-regions-ticket1','spcSla');
   }
   loadOrdersModule();
   window.generateProductionOrder=async function(proposalId){

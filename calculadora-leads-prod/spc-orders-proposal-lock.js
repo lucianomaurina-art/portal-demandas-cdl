@@ -61,7 +61,7 @@
   // Carrega o gerador completo mesmo quando production-order.js estiver em cache no navegador.
   if(!document.querySelector('script[data-spc-print-complete]')){
     const s=document.createElement('script');
-    s.src='spc-orders-print-complete.js?v=20260917-print2';
+    s.src='spc-orders-print-complete.js?v=20260917-regions-ticket1';
     s.dataset.spcPrintComplete='1';
     document.head.appendChild(s);
   }

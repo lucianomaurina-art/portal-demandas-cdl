@@ -67,7 +67,8 @@
   function cardHtml(o){
     const c=o.client||{},st=state(o),ost=overallState(o),due=stageDue(o),total=overallDue(o),info=stageInfo(o.stage);
     const opts=STAGES.map(x=>`<option value="${esc(x.key)}" ${x.key===o.stage?'selected':''}>${esc(x.label)}</option>`).join('');
-    return `<article class="spc-sla-card ${st}" draggable="true" data-order="${o.id}"><div class="spc-sla-code">${esc(o.proposal_code||c.proposal_code||'ORDEM SPC')}</div><h4>${esc(c.company||'Cliente')}</h4><div class="spc-sla-meta">${esc(o.product||'SPC Dados')} • ${esc(o.person||'')}<br>${qty(c.quantity)} leads${o.count_result!=null?` • Contagem: ${qty(o.count_result)}`:''}</div>${due?`<div class="spc-sla-timer">${esc(colorLabel(st))} • ${esc(remaining(due))}<br><span style="font-weight:600">Prazo da etapa: ${esc(fmt(due))}</span></div>`:''}<div class="spc-sla-total">Entrega ao cliente até <strong class="${ost}">${esc(fmt(total))}</strong> • SLA total 15 dias</div><div class="spc-sla-actions"><button class="secondary" data-open="${o.id}">Abrir ordem</button><select data-stage="${o.id}" aria-label="Mover etapa">${opts}</select></div></article>`;
+    const ticket=o.filters?.spc_ticket_number||'';
+    return `<article class="spc-sla-card ${st}" draggable="true" data-order="${o.id}"><div class="spc-sla-code">${esc(o.proposal_code||c.proposal_code||'ORDEM SPC')}</div><h4>${esc(c.company||'Cliente')}</h4><div class="spc-sla-meta">${esc(o.product||'SPC Dados')} • ${esc(o.person||'')}<br>${qty(c.quantity)} leads${ticket?`<br><b>Chamado SPC:</b> ${esc(ticket)}`:''}${o.count_result!=null?` • Contagem: ${qty(o.count_result)}`:''}</div>${due?`<div class="spc-sla-timer">${esc(colorLabel(st))} • ${esc(remaining(due))}<br><span style="font-weight:600">Prazo da etapa: ${esc(fmt(due))}</span></div>`:''}<div class="spc-sla-total">Entrega ao cliente até <strong class="${ost}">${esc(fmt(total))}</strong> • SLA total 15 dias</div><div class="spc-sla-actions"><button class="secondary" data-open="${o.id}">Abrir ordem</button><select data-stage="${o.id}" aria-label="Mover etapa">${opts}</select></div></article>`;
   }
 
   async function render(){
@@ -97,13 +98,18 @@
     const {data:o,error}=await sb.from('spc_data_orders').select('*').eq('id',id).single();
     if(error||!o)return alert('Não foi possível carregar a Ordem SPC.');
     if(o.stage===next)return;
-    if(next==='Aguardando planilha de dados'&&(o.count_result===null||o.count_result===undefined)){
-      alert('Antes de validar a contagem, registre a quantidade retornada pelo SPC na ordem.');
+    if(next!=='Solicitar contagem'&&!String(o.filters?.spc_ticket_number||'').trim()){
+      alert('Informe o número do chamado/protocolo SPC na ordem antes de avançar a solicitação.');
+      return window.editSpcOrder?.(id);
+    }
+    if(next==='Aguardando planilha de dados'&&(!String(o.count_reference||'').trim()||o.count_result===null||o.count_result===undefined)){
+      alert('Antes de validar a contagem, registre a referência e a quantidade retornada pelo SPC na ordem.');
       return window.editSpcOrder?.(id);
     }
     const {error:e}=await sb.from('spc_data_orders').update({stage:next}).eq('id',id);
     if(e){console.error(e);alert('Não foi possível mover a ordem. Se a migração 017 ainda não foi executada no Supabase, execute-a antes de usar a nova etapa.');return}
     await render();
+    if(next==='Validar contagem')window.editSpcOrder?.(id);
   }
   window.renderSpcSlaKanban=render;
   window.moveSpcOrderStage=moveStage;

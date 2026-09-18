@@ -89,10 +89,12 @@
     window.saveSpcOrder=async function(id,silent=false){
       const prior=val('soPriorCount')==='sim',priorRc=val('soPriorRc');
       if(prior&&!priorRc){if(!silent)alert('Informe o número do RC da contagem anterior.');return false}
-      const state=val('soState'),city=val('soCity'),cep=val('soCep'),revenue=val('soRevenue'),revenueOther=val('soRevenueOther');
+      const stateInput=document.getElementById('soState'),cityInput=document.getElementById('soCity'),cepInput=document.getElementById('soCep');
+      const revenue=val('soRevenue'),revenueOther=val('soRevenueOther');
       const ok=await save.apply(this,arguments);if(ok===false)return false;
       const {data:o}=await sb.from('spc_data_orders').select('filters').eq('id',id).maybeSingle();
-      const filters={...(o?.filters||{}),prior_count_based:prior,prior_count_rc:prior?priorRc:'',state,city,cep,region:'',revenue,revenue_other:revenue==='OUTRO VALOR'?revenueOther:''};
+      const current=o?.filters||{};
+      const filters={...current,prior_count_based:prior,prior_count_rc:prior?priorRc:'',state:stateInput?val('soState'):current.state||'',city:cityInput?val('soCity'):current.city||'',cep:cepInput?val('soCep'):current.cep||'',region:'',revenue,revenue_other:revenue==='OUTRO VALOR'?revenueOther:''};
       const {error}=await sb.from('spc_data_orders').update({filters}).eq('id',id);
       if(error){console.error(error);if(!silent)alert('A ordem foi salva, mas houve erro ao atualizar os filtros operacionais.');return false}
       return true;
