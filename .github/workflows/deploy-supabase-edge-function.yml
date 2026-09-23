@@ -1,0 +1,32 @@
+name: Publicar função de alertas no Supabase
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - calculadora-leads-prod/supabase/functions/spc-sla-alerts/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-spc-sla-alerts
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Publicar spc-sla-alerts
+        working-directory: calculadora-leads-prod
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: >-
+          npx --yes supabase@latest functions deploy spc-sla-alerts
+          --project-ref uswsagujxwcfvauulhzq
+          --no-verify-jwt
