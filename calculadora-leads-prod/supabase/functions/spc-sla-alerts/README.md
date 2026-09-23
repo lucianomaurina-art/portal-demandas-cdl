@@ -1,6 +1,6 @@
 # Alertas SLA — Ordens SPC
 
-Edge Function para avisar por e-mail quando uma etapa vence em até 24 horas ou está atrasada, e quando o SLA total de 15 dias está próximo do vencimento ou vencido.
+Edge Function para avisar por e-mail quando uma etapa vence em até 24 horas ou está atrasada, quando o SLA total de 15 dias está próximo do vencimento ou vencido e quando chega a data do contato de pós-venda, 60 dias após o envio dos dados ao cliente.
 
 ## Segredos necessários
 
@@ -37,5 +37,6 @@ Enviar o header:
 - `Validar contagem`: prazo de 1 dia para validação CDL.
 - `Aguardando planilha de dados`: prazo de 6 dias para entrega do SPC.
 - SLA total: 15 dias corridos do fechamento da proposta até dados enviados ao cliente.
+- Pós-venda: um único alerta 60 dias após `data_delivered_at`, para ordens movidas à coluna Pós-venda.
 
-Alertas são enviados quando faltam até 24 horas ou quando o prazo já venceu.
+Alertas de SLA são enviados quando faltam até 24 horas ou quando o prazo já venceu. O alerta de pós-venda é enviado uma única vez.

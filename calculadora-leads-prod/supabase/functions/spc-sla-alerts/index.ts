@@ -4,6 +4,7 @@ const TZ = 'America/Sao_Paulo';
 const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c] as string));
 const dateKey = (d = new Date()) => new Intl.DateTimeFormat('en-CA',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
 const fmt = (v: string | null) => v ? new Intl.DateTimeFormat('pt-BR',{timeZone:TZ,dateStyle:'short',timeStyle:'short'}).format(new Date(v)) : '—';
+const addDays = (v: string | null,n: number) => v ? new Date(new Date(v).getTime()+n*86400000) : null;
 
 Deno.serve(async (req) => {
   try {
@@ -28,13 +29,17 @@ Deno.serve(async (req) => {
     const sb = createClient(supabaseUrl, serviceKey, {auth:{persistSession:false}});
     const {data:orders,error} = await sb
       .from('spc_data_order_sla')
-      .select('id,proposal_code,client,stage,stage_due_at,overall_due_at,stage_sla_state,overall_sla_state,product,person,count_result')
+      .select('id,proposal_code,client,stage,stage_due_at,overall_due_at,stage_sla_state,overall_sla_state,product,person,count_result,data_delivered_at,filters')
       .eq('active',true);
     if (error) throw error;
 
     const today = dateKey();
-    const rawAlerts: Array<{order:any,type:string,severity:'warn'|'late',label:string}> = [];
+    const rawAlerts: Array<{order:any,type:string,severity:'warn'|'late'|'followup',label:string,deadline?:string|null}> = [];
     for (const o of orders || []) {
+      const postSaleDue = o.filters?.post_sale === true ? addDays(o.data_delivered_at,60) : null;
+      if (postSaleDue && postSaleDue.getTime() <= Date.now()) {
+        rawAlerts.push({order:o,type:'post_sale_60_days',severity:'followup',label:'Realizar contato de pós-venda',deadline:postSaleDue.toISOString()});
+      }
       if (o.stage === 'Dados enviados ao cliente' || o.stage === 'Cancelada') continue;
       if (o.stage_sla_state === 'atencao') rawAlerts.push({order:o,type:'stage_due_soon',severity:'warn',label:'Etapa vence em até 24h'});
       if (o.stage_sla_state === 'atrasado') rawAlerts.push({order:o,type:'stage_overdue',severity:'late',label:'Etapa atrasada'});
@@ -51,14 +56,20 @@ Deno.serve(async (req) => {
       .eq('recipient',recipientKey);
     if (logError) throw logError;
     const sent = new Set((logs||[]).map((x:any)=>`${x.order_id}|${x.alert_type}`));
-    const alerts = rawAlerts.filter(a=>!sent.has(`${a.order.id}|${a.type}`));
+    const {data:postSaleLogs,error:postSaleLogError} = await sb
+      .from('spc_data_order_alert_log')
+      .select('order_id,alert_type')
+      .eq('alert_type','post_sale_60_days');
+    if (postSaleLogError) throw postSaleLogError;
+    const postSaleSent = new Set((postSaleLogs||[]).map((x:any)=>x.order_id));
+    const alerts = rawAlerts.filter(a=>a.type==='post_sale_60_days'?!postSaleSent.has(a.order.id):!sent.has(`${a.order.id}|${a.type}`));
     if (!alerts.length) return Response.json({ok:true,sent:false,message:'Alertas de hoje já enviados.'});
 
     const lateCount = alerts.filter(a=>a.severity==='late').length;
     const rows = alerts.map(a=>{
       const o=a.order,c=o.client||{};
-      const deadline=a.type.startsWith('overall_')?o.overall_due_at:o.stage_due_at;
-      return `<tr><td style="padding:10px;border-bottom:1px solid #e5e7eb"><b>${esc(o.proposal_code||c.proposal_code||'—')}</b><br>${esc(c.company||'Cliente')}</td><td style="padding:10px;border-bottom:1px solid #e5e7eb">${esc(o.stage)}</td><td style="padding:10px;border-bottom:1px solid #e5e7eb;color:${a.severity==='late'?'#b42318':'#8a5a00'}"><b>${esc(a.label)}</b><br>Prazo: ${esc(fmt(deadline))}</td></tr>`;
+      const deadline=a.deadline||(a.type.startsWith('overall_')?o.overall_due_at:o.stage_due_at),color=a.severity==='late'?'#b42318':a.severity==='followup'?'#0b62d6':'#8a5a00';
+      return `<tr><td style="padding:10px;border-bottom:1px solid #e5e7eb"><b>${esc(o.proposal_code||c.proposal_code||'—')}</b><br>${esc(c.company||'Cliente')}</td><td style="padding:10px;border-bottom:1px solid #e5e7eb">${esc(a.type==='post_sale_60_days'?'Pós-venda':o.stage)}</td><td style="padding:10px;border-bottom:1px solid #e5e7eb;color:${color}"><b>${esc(a.label)}</b><br>Data programada: ${esc(fmt(deadline))}</td></tr>`;
     }).join('');
 
     const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#142033"><div style="max-width:760px;margin:auto"><h2 style="color:#071b33">Controle de prazos • SPC Dados</h2><p>Há ${alerts.length} alerta(s) que exigem acompanhamento no fluxo de Ordens SPC.</p><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#f4f7fb"><th style="text-align:left;padding:10px">Proposta / cliente</th><th style="text-align:left;padding:10px">Etapa</th><th style="text-align:left;padding:10px">Situação</th></tr></thead><tbody>${rows}</tbody></table><p style="margin-top:20px"><a href="${esc(portalUrl)}" style="background:#0b62d6;color:#fff;text-decoration:none;padding:11px 16px;border-radius:8px;display:inline-block">Abrir Portal SPC Dados</a></p><p style="font-size:12px;color:#667085">SLA operacional: até 15 dias corridos da proposta fechada até a entrega ao cliente.</p></div></body></html>`;
@@ -66,7 +77,7 @@ Deno.serve(async (req) => {
     const resend = await fetch('https://api.resend.com/emails',{
       method:'POST',
       headers:{'Authorization':`Bearer ${resendKey}`,'Content-Type':'application/json'},
-      body:JSON.stringify({from,to:recipients,subject:lateCount?`[SPC Dados] ${lateCount} prazo(s) em atraso`:'[SPC Dados] Prazos próximos do vencimento',html})
+      body:JSON.stringify({from,to:recipients,subject:alerts.some(a=>a.type==='post_sale_60_days')?'[SPC Dados] Contato de pós-venda programado':lateCount?`[SPC Dados] ${lateCount} prazo(s) em atraso`:'[SPC Dados] Prazos próximos do vencimento',html})
     });
     if (!resend.ok) throw new Error(`Resend ${resend.status}: ${await resend.text()}`);
 
