@@ -18,6 +18,8 @@ Nome da função: `spc-sla-alerts`.
 
 Ela deve aceitar chamadas agendadas sem JWT da sessão do usuário e ser protegida pelo header `x-cron-secret`, com o mesmo valor de `SPC_ALERT_CRON_SECRET`.
 
+O deploy de produção é automatizado pelo GitHub Actions quando os arquivos desta função são alterados na branch `main`. A automação utiliza o segredo `SUPABASE_ACCESS_TOKEN` configurado no repositório.
+
 ## Agendamento
 
 Recomendado: executar a cada hora. A própria função consulta `spc_data_order_sla` e usa `spc_data_order_alert_log` para impedir e-mails repetidos do mesmo tipo no mesmo dia.
