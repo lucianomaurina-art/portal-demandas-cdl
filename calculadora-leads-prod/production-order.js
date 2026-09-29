@@ -14,7 +14,7 @@
     addScript('spc-orders-filter-controls.js?v=20260917-regions-ticket1','spcFilters');
     addScript('spc-orders-print-complete.js?v=20260917-regions-ticket1','spcPrint');
     addScript('spc-orders-kanban-sla.js?v=20260923-lifecycle1','spcSla');
-    addScript('calculator-manual-improvements.js?v=20260923-1','calculatorManualImprovements');
+    addScript('calculator-manual-improvements.js?v=20260929-house-holding1','calculatorManualImprovements');
     addScript('spc-orders-lifecycle.js?v=20260923-1','spcOrdersLifecycle');
   }
   loadOrdersModule();
