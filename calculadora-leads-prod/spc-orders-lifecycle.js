@@ -10,6 +10,8 @@
   const addDays=(value,days)=>value?new Date(new Date(value).getTime()+days*86400000):null;
   const moneyBr=value=>value===null||value===undefined||value===''?'':Number(value).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   const norm=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
+  const blobDataUrl=blob=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob)});
+  const pngDataUrl=async url=>{const response=await fetch(url,{cache:'force-cache'});if(!response.ok)throw new Error(`Logo não encontrado: ${url}`);if(/svg/i.test(response.headers.get('content-type')||url)){const svg=await response.text(),match=svg.match(/(?:href|xlink:href)=["'](data:image\/png;base64,[^"']+)["']/i);if(!match)throw new Error('O logotipo SVG não contém uma imagem PNG incorporada.');return match[1]}return blobDataUrl(await response.blob())};
   const admin=()=>typeof isAdmin==='function'&&isAdmin();
 
   function currentDialogStage(){return document.getElementById('soStage')?.value||'Solicitar contagem'}
@@ -94,8 +96,10 @@
     const workbook=new ExcelJS.Workbook();workbook.creator='CDL Novo Hamburgo';workbook.created=new Date();workbook.subject='Ordem SPC Dados';
     const sheet=workbook.addWorksheet('Ordem SPC',{views:[{showGridLines:false}],pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.3,right:.3,top:.55,bottom:.55,header:.2,footer:.2}}});
     sheet.columns=[{key:'field',width:27},{key:'value',width:65}];
-    sheet.mergeCells('A1:B1');const title=sheet.getCell('A1');title.value='ORDEM SPC DADOS';title.font={name:'Arial',size:16,bold:true,color:{argb:'FFFFFFFF'}};title.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0B62D6'}};title.alignment={horizontal:'center',vertical:'middle'};sheet.getRow(1).height=32;
-    sheet.mergeCells('A2:B2');const subtitle=sheet.getCell('A2');subtitle.value=`CDL Novo Hamburgo • ${code}`;subtitle.font={name:'Arial',size:11,bold:true,color:{argb:'FF24496F'}};subtitle.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFEAF3FF'}};subtitle.alignment={horizontal:'center',vertical:'middle'};sheet.getRow(2).height=24;
+    sheet.mergeCells('A1:B3');sheet.getCell('A1').fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};[1,2,3].forEach(row=>sheet.getRow(row).height=24);
+    try{const [cdlLogo,spcLogo]=await Promise.all([pngDataUrl(new URL('../logo-cdl.svg',location.href).href),pngDataUrl(new URL('../logo-spc-brasil.png',location.href).href)]),cdlId=workbook.addImage({base64:cdlLogo,extension:'png'}),spcId=workbook.addImage({base64:spcLogo,extension:'png'});sheet.addImage(cdlId,{tl:{col:.04,row:.15},ext:{width:210,height:67},editAs:'oneCell'});sheet.addImage(spcId,{tl:{col:1.66,row:.15},ext:{width:145,height:67},editAs:'oneCell'})}catch(logoError){console.warn('Não foi possível incorporar os logotipos na planilha.',logoError)}
+    sheet.mergeCells('A4:B4');const title=sheet.getCell('A4');title.value='ORDEM SPC DADOS';title.font={name:'Arial',size:16,bold:true,color:{argb:'FFFFFFFF'}};title.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0B62D6'}};title.alignment={horizontal:'center',vertical:'middle'};sheet.getRow(4).height=32;
+    sheet.mergeCells('A5:B5');const subtitle=sheet.getCell('A5');subtitle.value=`CDL Novo Hamburgo • ${code}`;subtitle.font={name:'Arial',size:11,bold:true,color:{argb:'FF24496F'}};subtitle.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFEAF3FF'}};subtitle.alignment={horizontal:'center',vertical:'middle'};sheet.getRow(5).height=24;
     sheet.addRow([]);
     const border={top:{style:'thin',color:{argb:'FFD7E0EA'}},left:{style:'thin',color:{argb:'FFD7E0EA'}},bottom:{style:'thin',color:{argb:'FFD7E0EA'}},right:{style:'thin',color:{argb:'FFD7E0EA'}}};
     sections.forEach(([heading,fields])=>{
@@ -103,7 +107,7 @@
       fields.forEach(([label,raw],index)=>{const value=display(raw),row=sheet.addRow([label,value]),estimatedLines=value.split('\n').reduce((n,line)=>n+Math.max(1,Math.ceil(line.length/62)),0);row.height=Math.min(150,Math.max(22,estimatedLines*15));const labelCell=row.getCell(1),valueCell=row.getCell(2);labelCell.font={name:'Arial',size:10,bold:true,color:{argb:'FF344054'}};valueCell.font={name:'Arial',size:10,color:{argb:'FF1D2939'}};labelCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:index%2?'FFF9FBFD':'FFF4F7FB'}};valueCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:index%2?'FFFFFFFF':'FFFCFDFE'}};[labelCell,valueCell].forEach(x=>{x.border=border;x.alignment={vertical:'top',wrapText:true}})});
       sheet.addRow([]).height=8;
     });
-    sheet.pageSetup.printArea=`A1:B${sheet.rowCount}`;sheet.headerFooter.oddFooter='&L CDL Novo Hamburgo&R Página &P de &N';sheet.properties.defaultRowHeight=20;
+    sheet.pageSetup.printArea=`A1:B${sheet.rowCount}`;sheet.pageSetup.printTitlesRow='1:5';sheet.headerFooter.oddFooter='&L CDL Novo Hamburgo&R Página &P de &N';sheet.properties.defaultRowHeight=20;
     const buffer=await workbook.xlsx.writeBuffer(),safe=String(code||'ordem-spc').replace(/[^a-z0-9_-]+/gi,'-');download(`${safe}-ordem-spc.xlsx`,buffer,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   };
 
