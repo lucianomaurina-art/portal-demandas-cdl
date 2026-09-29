@@ -2,13 +2,15 @@
 (()=>{
   const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const number=value=>Math.max(0,Math.floor(Number(value)||0));
+  const normalize=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toUpperCase();
   const stageRank=stage=>['Solicitar contagem','Contagem enviada ao SPC','Validar contagem','Aguardando planilha de dados','Dados enviados ao cliente','Pós-venda'].indexOf(stage);
+  let orderLocations=[];
 
   function rowHtml(row={},isPJ=false){
     return `<div class="spc-count-row">
-      <div><label>Cidade</label><input class="spc-count-city" value="${esc(row.city||'')}" placeholder="Cidade"></div>
-      <div><label>UF</label><input class="spc-count-state" value="${esc(row.state||'')}" maxlength="2" placeholder="RS"></div>
-      <div><label>CEP</label><input class="spc-count-cep" value="${esc(row.cep||'')}" placeholder="Opcional"></div>
+      <div><label>Cidade</label><input class="spc-count-city" value="${esc(row.city||'')}" placeholder="Cidade" oninput="syncSpcCountLocation(this)"></div>
+      <div><label>UF</label><input class="spc-count-state" value="${esc(row.state||'')}" maxlength="2" placeholder="—" readonly title="Preenchido pelos dados da ordem"></div>
+      <div><label>CEP</label><input class="spc-count-cep" value="${esc(row.cep||'')}" placeholder="Cidade inteira" readonly title="Preenchido pelos dados da ordem"></div>
       ${isPJ?`<div><label>CNAE</label><input class="spc-count-cnae" value="${esc(row.cnae||'')}" placeholder="Código ou atividade"></div>`:''}
       <div><label>Disponível</label><input class="spc-count-available" type="number" min="0" step="1" value="${number(row.available)}" oninput="refreshSpcAllocation()"></div>
       <div><label>Produzir</label><input class="spc-count-allocated" type="number" min="0" step="1" value="${number(row.allocated)}" oninput="refreshSpcAllocation()"></div>
@@ -17,6 +19,9 @@
   }
 
   function block(){return document.getElementById('spcAllocationBlock')}
+  function locationFor(city,index=-1){return orderLocations.find(location=>normalize(location.city)===normalize(city))||orderLocations[index]||null}
+  function mergeLocation(row,index){const location=locationFor(row.city,index);return location?{...row,city:row.city||location.city||'',state:location.state||row.state||'',cep:location.cep||row.cep||''}:row}
+  window.syncSpcCountLocation=input=>{const row=input?.closest('.spc-count-row'),location=locationFor(input?.value);if(!row||!location)return;row.querySelector('.spc-count-state').value=location.state||'';row.querySelector('.spc-count-cep').value=location.cep||''};
   function readRows(){
     return [...document.querySelectorAll('#spcCountRows .spc-count-row')].map(row=>({
       city:row.querySelector('.spc-count-city')?.value.trim()||'',
@@ -60,16 +65,17 @@
     document.querySelectorAll('.spc-count-allocated').forEach((input,index)=>input.value=allocation[index]||0);window.refreshSpcAllocation();
   };
 
-  window.addSpcCountRow=(row={})=>{const host=document.getElementById('spcCountRows'),isPJ=block()?.dataset.pj==='true';if(!host)return;host.insertAdjacentHTML('beforeend',rowHtml(row,isPJ));host.lastElementChild?.querySelector('.spc-count-city')?.focus();window.refreshSpcAllocation()};
+  window.addSpcCountRow=(row={})=>{const host=document.getElementById('spcCountRows'),isPJ=block()?.dataset.pj==='true';if(!host)return;const initial=Object.keys(row).length?row:{...(orderLocations[0]||{})};host.insertAdjacentHTML('beforeend',rowHtml(mergeLocation(initial),isPJ));host.lastElementChild?.querySelector('.spc-count-city')?.focus();window.refreshSpcAllocation()};
   window.removeSpcCountRow=button=>{const rows=document.querySelectorAll('#spcCountRows .spc-count-row');if(rows.length<=1){button.closest('.spc-count-row')?.querySelectorAll('input').forEach(input=>input.value=input.type==='number'?0:'');window.refreshSpcAllocation();return}button.closest('.spc-count-row')?.remove();window.refreshSpcAllocation()};
 
   async function enhance(id){
     const section=document.getElementById('soCountReturnSection');if(!section||block())return;
     const {data:order}=await sb.from('spc_data_orders').select('filters,person,client').eq('id',id).maybeSingle();if(!order)return;
     const filters=order.filters||{},isPJ=String(order.person||'').includes('Jurídica'),saved=Array.isArray(filters.count_breakdown)?filters.count_breakdown:[],locations=Array.isArray(filters.locations)?filters.locations:[];
-    const initial=saved.length?saved:(locations.length?locations.map(location=>({...location,cnae:'',available:0,allocated:0})):[{city:'',state:'',cep:'',cnae:'',available:0,allocated:0}]);
+    orderLocations=locations.map(location=>({city:String(location.city||''),state:String(location.state||'').toUpperCase().slice(0,2),cep:String(location.cep||'')}));
+    const initial=(saved.length?saved:(orderLocations.length?orderLocations.map(location=>({...location,cnae:'',available:0,allocated:0})):[{city:'',state:'',cep:'',cnae:'',available:0,allocated:0}])).map(mergeLocation);
     const html=`<div id="spcAllocationBlock" data-pj="${isPJ}" data-contracted="${number(order.client?.quantity)}">
-      <style>.spc-allocation{margin:18px 0;padding:17px;border:1px solid #bfd4ee;background:#f8fbff;border-radius:14px}.spc-allocation-head{display:flex;justify-content:space-between;gap:12px;align-items:start;flex-wrap:wrap}.spc-count-row{display:grid;grid-template-columns:minmax(150px,1.25fr) 65px 125px ${isPJ?'minmax(150px,1.1fr) ':''}105px 105px 42px;gap:8px;align-items:end;padding:10px 0;border-top:1px solid #dce6f1}.spc-count-row label{margin:0 0 5px;font-size:11px}.spc-count-row input{padding:9px}.spc-count-remove{padding:9px 11px;color:#b42318}.spc-allocation-summary{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:9px;margin:14px 0}.spc-allocation-metric{background:#fff;border:1px solid #dce3ed;border-radius:10px;padding:11px}.spc-allocation-metric span{display:block;color:#667085;font-size:10px;font-weight:800;text-transform:uppercase;margin-bottom:5px}.spc-allocation-metric b{font-size:18px}.spc-allocation-controls{display:flex;gap:9px;align-items:end;flex-wrap:wrap}.spc-allocation-controls>div{min-width:260px;flex:1}@media(max-width:850px){.spc-count-row{grid-template-columns:1fr 70px}.spc-count-row>div:nth-child(n+3){grid-column:span 1}.spc-allocation-summary{grid-template-columns:1fr 1fr}}</style>
+      <style>.spc-allocation{margin:18px 0;padding:17px;border:1px solid #bfd4ee;background:#f8fbff;border-radius:14px}.spc-allocation-head{display:flex;justify-content:space-between;gap:12px;align-items:start;flex-wrap:wrap}.spc-count-row{display:grid;grid-template-columns:minmax(150px,1.25fr) 65px 125px ${isPJ?'minmax(150px,1.1fr) ':''}105px 105px 42px;gap:8px;align-items:end;padding:10px 0;border-top:1px solid #dce6f1}.spc-count-row label{margin:0 0 5px;font-size:11px}.spc-count-row input{padding:9px}.spc-count-row input[readonly]{background:#eef3f8;color:#475467}.spc-count-remove{padding:9px 11px;color:#b42318}.spc-allocation-summary{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:9px;margin:14px 0}.spc-allocation-metric{background:#fff;border:1px solid #dce3ed;border-radius:10px;padding:11px}.spc-allocation-metric span{display:block;color:#667085;font-size:10px;font-weight:800;text-transform:uppercase;margin-bottom:5px}.spc-allocation-metric b{font-size:18px}.spc-allocation-controls{display:flex;gap:9px;align-items:end;flex-wrap:wrap}.spc-allocation-controls>div{min-width:260px;flex:1}@media(max-width:850px){.spc-count-row{grid-template-columns:1fr 70px}.spc-count-row>div:nth-child(n+3){grid-column:span 1}.spc-allocation-summary{grid-template-columns:1fr 1fr}}</style>
       <div class="spc-allocation"><div class="spc-allocation-head"><div><h3 style="margin:0">Detalhamento da contagem e distribuição</h3><div class="muted" style="font-size:12px;margin-top:5px">Registre o retorno do SPC por ${isPJ?'cidade e CNAE':'cidade'}. O total encontrado será calculado automaticamente.</div></div><button type="button" class="secondary" onclick="addSpcCountRow()">+ Adicionar resultado</button></div>
       <div id="spcCountRows" style="margin-top:12px">${initial.map(row=>rowHtml(row,isPJ)).join('')}</div>
       <div class="spc-allocation-summary"><div class="spc-allocation-metric"><span>Contratado</span><b id="spcAllocationContracted">0</b></div><div class="spc-allocation-metric"><span>Disponível</span><b id="spcAllocationAvailable">0</b></div><div class="spc-allocation-metric"><span>Distribuído</span><b id="spcAllocationAllocated">0</b></div><div class="spc-allocation-metric"><span>Diferença</span><b id="spcAllocationPending">0</b></div></div>
