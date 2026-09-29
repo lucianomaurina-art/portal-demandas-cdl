@@ -4,6 +4,7 @@
     if(document.querySelector(`script[data-${key}]`))return;
     const s=document.createElement('script');
     s.src=src;
+    s.async=false;
     s.dataset[key]='1';
     document.head.appendChild(s);
   }
@@ -16,6 +17,7 @@
     addScript('spc-orders-kanban-sla.js?v=20260923-lifecycle1','spcSla');
     addScript('calculator-manual-improvements.js?v=20260929-house-holding1','calculatorManualImprovements');
     addScript('spc-orders-lifecycle.js?v=20260923-1','spcOrdersLifecycle');
+    addScript('commercial-ownership.js?v=20260929-team1','commercialOwnership');
   }
   loadOrdersModule();
   window.generateProductionOrder=async function(proposalId){
