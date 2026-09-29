@@ -6,6 +6,9 @@
   const download=(name,data,type)=>{const blob=new Blob([data],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)};
   const excelJs=()=>window.ExcelJS?Promise.resolve(window.ExcelJS):(window.__spcExcelJsPromise||(window.__spcExcelJsPromise=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';s.crossOrigin='anonymous';s.onload=()=>window.ExcelJS?resolve(window.ExcelJS):reject(new Error('ExcelJS não carregou'));s.onerror=()=>reject(new Error('Falha ao carregar ExcelJS'));document.head.appendChild(s)})));
   const display=value=>{if(value===null||value===undefined||value==='')return '—';if(Array.isArray(value))return value.length?value.map(display).filter(x=>x!=='—').join('\n'):'—';if(typeof value==='object')return Object.values(value).filter(Boolean).join(' / ')||'—';return String(value).trim()||'—'};
+  const fmtDate=value=>{if(!value)return '';const date=new Date(value);return Number.isNaN(date.getTime())?String(value):date.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})};
+  const addDays=(value,days)=>value?new Date(new Date(value).getTime()+days*86400000):null;
+  const moneyBr=value=>value===null||value===undefined||value===''?'':Number(value).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   const admin=()=>typeof isAdmin==='function'&&isAdmin();
 
   function currentDialogStage(){return document.getElementById('soStage')?.value||'Solicitar contagem'}
@@ -37,22 +40,49 @@
     const [{data:o,error},{data:p}]=await Promise.all([sb.from('spc_data_orders').select('*').eq('id',id).single(),sb.from('spc_data_orders').select('proposal_id').eq('id',id).single().then(async r=>r.data?.proposal_id?sb.from('lead_proposals').select('*').eq('id',r.data.proposal_id).maybeSingle():({data:null}))]);
     if(error||!o)return alert('Não foi possível preparar a planilha da Ordem SPC.');
     let ExcelJS;try{ExcelJS=await excelJs()}catch(e){console.error(e);return alert('Não foi possível carregar o gerador da planilha. Verifique sua conexão e tente novamente.')}
-    const c=o.client||{},f=o.filters||{},locations=Array.isArray(f.locations)?f.locations:[],code=c.proposal_code||p?.code||'Ordem SPC';
+    const c=o.client||{},f=o.filters||{},entity=o.entity||{},locations=Array.isArray(f.locations)?f.locations:[],code=c.proposal_code||p?.code||'Ordem SPC';
+    const isPJ=String(o.person||p?.person||'').includes('Jurídica'),isMarket=(o.product||'SPC Mercado')!=='SPC Enriquece';
+    const additions=[...new Set([...(Array.isArray(p?.selection?.addons)?p.selection.addons:[]),...(Array.isArray(c.combo_addons)?c.combo_addons:[])])],quoteItems=(p?.quote?.items||[]).map(item=>`• ${item.name||'Item'}${Array.isArray(item.details)&&item.details.length?` — ${item.details.join(', ')}`:''}`);
+    const revenue=f.revenue==='OUTRO VALOR'&&f.revenue_other?`OUTRO VALOR — ${f.revenue_other}`:f.revenue;
+    const closed=o.proposal_closed_at||p?.updated_at||o.created_at,countSent=o.count_sent_at||null,returned=o.count_returned_at||null,validated=o.count_validated_at||null,productionAt=o.production_requested_at||validated;
+    const filterFields=isMarket?(isPJ?[
+      ['Data de abertura / critério',f.opening_date],['Faturamento mensal',revenue],['Bairros',f.districts],['CNAE / Código do ramo de atividade',f.cnae_text||f.legacy_cnae]
+    ]:[
+      ['Sexo',f.sex],['Faixa de idade',f.age],['Faixa de renda estimada',f.income],['Profissão / CBO',f.cbo],['Bairros',f.districts]
+    ]):[];
     const sections=[
+      ['DADOS DA ENTIDADE',[
+        ['Razão social',entity.company||'Câmara de Dirigentes Lojistas de Novo Hamburgo'],['Código da entidade',entity.code||'22097'],['Contato da entidade',entity.contact||'Priscila Cristiane de Oliveira Istan'],['E-mail da entidade',entity.email||'priscila@cdl-nh.com.br']
+      ]],
       ['IDENTIFICAÇÃO DA ORDEM',[
-        ['Proposta',code],['Finalidade',o.purpose==='producao'?'Produção / Faturamento':'Contagem de dados'],['Produto',o.product],['Tipo de pessoa',o.person||p?.person],['Modalidade',p?.mode==='combo'?'Combo':'Individual'],['Combo contratado',p?.mode==='combo'?p.selection?.level:''],['Quantidade aprovada',c.quantity||p?.quantity],['Gerado em',new Date().toLocaleString('pt-BR')]
+        ['Proposta',code],['Etapa operacional',f.post_sale===true||String(f.post_sale)==='true'?'Pós-venda':o.stage],['Finalidade',o.purpose==='producao'?'Produção / Faturamento':'Contagem de dados'],['Produto',o.product],['Tipo de pessoa',o.person||p?.person],['Modalidade',p?.mode==='combo'?'Combo':'Individual'],['Combo contratado',p?.mode==='combo'?p.selection?.level:''],['Adicionais contratados',additions.map(x=>`• ${x}`)],['Composição contratada',quoteItems],['Quantidade aprovada',c.quantity||p?.quantity],['Região / foco',c.focus||p?.client?.focus||f.region],['Valor fechado',moneyBr(p?.quote?.sale_total)],['Dados que o cliente já possui',f.existing_data],['Gerado em',new Date().toLocaleString('pt-BR')]
+      ]],
+      ['CONTROLE OPERACIONAL E PRAZOS',[
+        ['Ordem criada em',fmtDate(o.created_at)],['Última atualização',fmtDate(o.updated_at)],['Proposta fechada',fmtDate(closed)],['Entrega máxima ao cliente',fmtDate(addDays(closed,15))],['Contagem solicitada',fmtDate(o.count_requested_at)],['Contagem enviada ao SPC',fmtDate(countSent)],['Prazo de retorno da contagem',fmtDate(addDays(countSent,7))],['Contagem retornada',fmtDate(returned)],['Prazo para validar a contagem',fmtDate(addDays(returned,1))],['Contagem validada',fmtDate(validated)],['Produção solicitada',fmtDate(productionAt)],['Prazo da planilha de dados',fmtDate(addDays(productionAt,6))],['Dados enviados ao cliente',fmtDate(o.data_delivered_at)]
+      ]],
+      ['CONTAGEM ANTERIOR',[
+        ['Baseada em contagem anterior?',f.prior_count_based===true||String(f.prior_count_based)==='true'?'Sim':'Não'],['Número do RC anterior',f.prior_count_rc]
       ]],
       ['DADOS DO CLIENTE',[
         ['Cliente / Razão social',c.company],['CNPJ / CPF',c.doc],['Contato',c.contact],['E-mail',c.email],['Telefone',c.phone]
       ]],
       ['SEGMENTAÇÃO E FILTROS',[
-        ['Cidades / UF / CEP',locations.map(x=>[x.city,x.state,x.cep].filter(Boolean).join(' / '))],['Bairros',f.districts],['Data de abertura / critério',f.opening_date],['Faturamento mensal',f.revenue],['Sexo',f.sex],['Faixa de idade',f.age],['Faixa de renda estimada',f.income],['Profissão / CBO',f.cbo],['CNAE / Ramo de atividade',f.cnae_text]
+        ['Cidades / UF / CEP',locations.map((x,index)=>`${index+1}. ${[x.city,x.state,x.cep].filter(Boolean).join(' / ')}`)],...filterFields
       ]],
       ['DADOS E ATRIBUTOS SOLICITADOS',[
         ['Atributos solicitados',(o.requested_fields||[]).map(x=>`• ${x}`)]
       ]],
       ['OBSERVAÇÕES',[
         ['Observações do cliente',o.external_notes||f.client_notes],['Informações adicionais da proposta',f.proposal_notes],['Informações internas',o.internal_notes]
+      ]],
+      ['ACOMPANHAMENTO NO SPC',[
+        ['Número do chamado / protocolo SPC',f.spc_ticket_number],['Enviado ao SPC em',fmtDate(o.count_sent_at)]
+      ]],
+      ['RETORNO DA CONTAGEM',[
+        ['Referência da contagem SPC',o.count_reference],['Quantidade encontrada',o.count_result],['Data do retorno',fmtDate(o.count_returned_at)],['Data da validação',fmtDate(o.count_validated_at)],['Observações da contagem',o.count_notes]
+      ]],
+      ['PRODUÇÃO E FATURAMENTO',[
+        ['Data da solicitação de produção',fmtDate(o.production_requested_at)],['Orientações para produção / faturamento',o.production_notes],['Dados enviados ao cliente em',fmtDate(o.data_delivered_at)]
       ]]
     ];
     const workbook=new ExcelJS.Workbook();workbook.creator='CDL Novo Hamburgo';workbook.created=new Date();workbook.subject='Ordem SPC Dados';
