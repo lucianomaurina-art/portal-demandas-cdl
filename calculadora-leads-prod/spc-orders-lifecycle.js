@@ -9,6 +9,7 @@
   const fmtDate=value=>{if(!value)return '';const date=new Date(value);return Number.isNaN(date.getTime())?String(value):date.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})};
   const addDays=(value,days)=>value?new Date(new Date(value).getTime()+days*86400000):null;
   const moneyBr=value=>value===null||value===undefined||value===''?'':Number(value).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const norm=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
   const admin=()=>typeof isAdmin==='function'&&isAdmin();
 
   function currentDialogStage(){return document.getElementById('soStage')?.value||'Solicitar contagem'}
@@ -43,6 +44,11 @@
     const c=o.client||{},f=o.filters||{},entity=o.entity||{},locations=Array.isArray(f.locations)?f.locations:[],code=c.proposal_code||p?.code||'Ordem SPC';
     const isPJ=String(o.person||p?.person||'').includes('Jurídica'),isMarket=(o.product||'SPC Mercado')!=='SPC Enriquece';
     const additions=[...new Set([...(Array.isArray(p?.selection?.addons)?p.selection.addons:[]),...(Array.isArray(c.combo_addons)?c.combo_addons:[])])],quoteItems=(p?.quote?.items||[]).map(item=>`• ${item.name||'Item'}${Array.isArray(item.details)&&item.details.length?` — ${item.details.join(', ')}`:''}`);
+    const requested=Array.isArray(o.requested_fields)?o.requested_fields:[],comboLevel=p?.selection?.level||c.combo_level||'',comboDefinition=(window.LEAD_CATALOG?.combos||[]).find(combo=>norm(combo.person)===norm(o.person||p?.person)&&norm(combo.level)===norm(comboLevel));
+    const comboAttributes=comboDefinition?.items?.length?comboDefinition.items:requested.filter(item=>!additions.some(addon=>norm(addon)===norm(item)));
+    const attributeFields=p?.mode==='combo'?
+      [['Tipo da composição',`Combo ${comboLevel||'—'}`],[`Atributos do Combo ${comboLevel||''}`.trim(),comboAttributes.map(x=>`• ${x}`)],['Atributos adicionais',additions.map(x=>`• ${x}`)]]:
+      [['Tipo da composição','Dados individuais'],['Atributos individuais contratados',requested.map(x=>`• ${x}`)]];
     const revenue=f.revenue==='OUTRO VALOR'&&f.revenue_other?`OUTRO VALOR — ${f.revenue_other}`:f.revenue;
     const closed=o.proposal_closed_at||p?.updated_at||o.created_at,countSent=o.count_sent_at||null,returned=o.count_returned_at||null,validated=o.count_validated_at||null,productionAt=o.production_requested_at||validated;
     const filterFields=isMarket?(isPJ?[
@@ -70,7 +76,7 @@
         ['Cidades / UF / CEP',locations.map((x,index)=>`${index+1}. ${[x.city,x.state,x.cep].filter(Boolean).join(' / ')}`)],...filterFields
       ]],
       ['DADOS E ATRIBUTOS SOLICITADOS',[
-        ['Atributos solicitados',(o.requested_fields||[]).map(x=>`• ${x}`)]
+        ...attributeFields
       ]],
       ['OBSERVAÇÕES',[
         ['Observações do cliente',o.external_notes||f.client_notes],['Informações adicionais da proposta',f.proposal_notes],['Informações internas',o.internal_notes]
