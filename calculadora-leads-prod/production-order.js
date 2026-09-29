@@ -16,7 +16,8 @@
     addScript('spc-orders-print-complete.js?v=20260917-regions-ticket1','spcPrint');
     addScript('spc-orders-kanban-sla.js?v=20260923-lifecycle1','spcSla');
     addScript('calculator-manual-improvements.js?v=20260929-house-holding1','calculatorManualImprovements');
-    addScript('spc-orders-lifecycle.js?v=20260929-excel-logos-4','spcOrdersLifecycle');
+    addScript('spc-orders-lifecycle.js?v=20260929-excel-allocation2','spcOrdersLifecycle');
+    addScript('spc-orders-allocation.js?v=20260929-allocation2','spcOrdersAllocation');
     addScript('commercial-ownership.js?v=20260929-team1','commercialOwnership');
   }
   loadOrdersModule();

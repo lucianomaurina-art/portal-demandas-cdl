@@ -53,6 +53,8 @@
       [['Tipo da composição','Dados individuais'],['Atributos individuais contratados',requested.map(x=>`• ${x}`)]];
     const revenue=f.revenue==='OUTRO VALOR'&&f.revenue_other?`OUTRO VALOR — ${f.revenue_other}`:f.revenue;
     const closed=o.proposal_closed_at||p?.updated_at||o.created_at,countSent=o.count_sent_at||null,returned=o.count_returned_at||null,validated=o.count_validated_at||null,productionAt=o.production_requested_at||validated;
+    const countBreakdown=Array.isArray(f.count_breakdown)?f.count_breakdown:[],distributionNames={proportional:'Proporcional à disponibilidade',uniform:'Uniforme entre cidade/CNAE',custom:'Personalizada'},distributed=countBreakdown.reduce((sum,row)=>sum+Number(row.allocated||0),0);
+    const distributionLines=countBreakdown.map(row=>`• ${[row.city,row.state,row.cep].filter(Boolean).join(' / ')}${row.cnae?` | CNAE: ${row.cnae}`:''} | Disponível: ${Number(row.available||0).toLocaleString('pt-BR')} | Produzir: ${Number(row.allocated||0).toLocaleString('pt-BR')}`);
     const filterFields=isMarket?(isPJ?[
       ['Data de abertura / critério',f.opening_date],['Faturamento mensal',revenue],['Bairros',f.districts],['CNAE / Código do ramo de atividade',f.cnae_text||f.legacy_cnae]
     ]:[
@@ -85,6 +87,9 @@
       ]],
       ['ACOMPANHAMENTO NO SPC',[
         ['Número do chamado / protocolo SPC',f.spc_ticket_number],['Enviado ao SPC em',fmtDate(o.count_sent_at)]
+      ]],
+      ['DISTRIBUIÇÃO PARA PRODUÇÃO',[
+        ['Critério de distribuição',distributionNames[f.distribution_method]||distributionNames.proportional],['Quantidade contratada',c.quantity||p?.quantity],['Quantidade total disponível',countBreakdown.reduce((sum,row)=>sum+Number(row.available||0),0)],['Quantidade total distribuída',distributed],['Detalhamento por cidade / CNAE',distributionLines]
       ]],
       ['RETORNO DA CONTAGEM',[
         ['Referência da contagem SPC',o.count_reference],['Quantidade encontrada',o.count_result],['Data do retorno',fmtDate(o.count_returned_at)],['Data da validação',fmtDate(o.count_validated_at)],['Observações da contagem',o.count_notes]
