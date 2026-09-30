@@ -1,7 +1,8 @@
 // Funil comercial compartilhado com responsável por solicitação e proposta.
 (() => {
   const requestFlow=['Pendente','Validação da proposta junto ao SPC Brasil'];
-  const proposalFlow=['Validação da proposta junto ao SPC Brasil','Proposta enviada','Proposta fechada','Validação dos dados SPC Brasil','Aguardando envio da compra de leads do SPC Brasil','Dados enviados ao cliente'];
+  const proposalFlow=['Validação da proposta junto ao SPC Brasil','Proposta enviada','Proposta fechada'];
+  const operationalProposalStages=new Set(['Validação dos dados SPC Brasil','Aguardando envio da compra de leads do SPC Brasil','Compra de leads enviada para o cliente','Dados enviados ao cliente']);
   const terminal=new Set(['Negócio perdido','Perdida','Cancelada','Encerrada','Compra de leads enviada para o cliente','Dados enviados ao cliente']);
   const legacyInactive=new Set(['Negócio perdido','Perdida','Cancelada','Inativa','Inativo']);
   const state={requestView:'kanban',proposalView:'kanban',requestOwner:'open',proposalOwner:'open',requestScope:'active',proposalScope:'active',users:[],userId:'',role:'',loaded:false};
@@ -10,6 +11,9 @@
   const html=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const sameText=(a,b)=>String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();
   const normalized=s=>typeof flowStatus==='function'?flowStatus(s):s;
+  const proposalStatus=s=>operationalProposalStages.has(normalized(s))?'Proposta fechada':normalized(s);
+  const visibleStatus=(row,type)=>type==='proposal'?proposalStatus(row.status):normalized(row.status);
+  const proposalRank=s=>proposalFlow.indexOf(proposalStatus(s));
   const recordOwner=(row,type)=>type==='proposal'?(row.assigned_to||row.created_by||''):(row.handled_by||'');
   const userName=id=>state.users.find(u=>u.id===id)?.name||state.users.find(u=>u.id===id)?.email||'Sem responsável';
   const manager=()=>['manager','admin'].includes(state.role);
@@ -17,6 +21,19 @@
   const inactive=row=>row?.active===false||Boolean(row?.inactivated_at)||legacyInactive.has(String(row?.status||''));
   const canOperate=(row,type)=>manager()||!recordOwner(row,type)||recordOwner(row,type)===state.userId;
   const proposalPrice=row=>row.quote?.sale_total===null||row.quote?.sale_total===undefined?'Valor não registrado':money(row.quote.sale_total);
+  const numeric=v=>Number(v||0);
+
+  function sameOpportunity(a,b,maxDays=60){
+    const ac=a?.client||{},bc=b?.client||{},sameIdentity=(ac.doc&&sameText(ac.doc,bc.doc))||(ac.email&&sameText(ac.email,bc.email))||(ac.company&&sameText(ac.company,bc.company)&&(sameText(ac.contact,bc.contact)||sameText(ac.email,bc.email)));
+    if(!sameIdentity||numeric(a?.quantity)!==numeric(b?.quantity))return false;
+    const aTime=new Date(a?.created_at||0).getTime(),bTime=new Date(b?.created_at||0).getTime();
+    return !aTime||!bTime||Math.abs(aTime-bTime)<=maxDays*86400000;
+  }
+
+  function linkedProposal(request,proposals){
+    const matches=(proposals||[]).filter(proposal=>proposal.client?.source_request_id===request.id||sameOpportunity(request,proposal));
+    return matches.sort((a,b)=>Number(inactive(a))-Number(inactive(b))||proposalRank(b.status)-proposalRank(a.status)||Number(Boolean(a.client?.promoted_from_request))-Number(Boolean(b.client?.promoted_from_request))||new Date(b.created_at||0)-new Date(a.created_at||0))[0]||null;
+  }
 
   async function loadContext(force=false){
     if(state.loaded&&!force)return;
@@ -40,7 +57,7 @@
   function statusEditor(row,type){
     if(!canOperate(row,type))return `<span class="status-pill">${html(normalized(row.status))}</span>`;
     const flow=type==='proposal'?proposalFlow:requestFlow;
-    return `<select onchange="changeCommercialStatus('${type}','${row.id}',this.value)">${flow.map(s=>`<option ${normalized(row.status)===s?'selected':''}>${html(s)}</option>`).join('')}</select>`;
+    return `<select onchange="changeCommercialStatus('${type}','${row.id}',this.value)">${flow.map(s=>`<option ${visibleStatus(row,type)===s?'selected':''}>${html(s)}</option>`).join('')}</select>`;
   }
 
   function actions(row,type){
@@ -55,7 +72,7 @@
     if(scope==='inactive')return rows.filter(inactive);
     if(scope==='all')return rows;
     const value=state[`${type}Owner`];
-    const open=rows.filter(row=>!inactive(row)&&!terminal.has(normalized(row.status))&&(type!=='request'||requestFlow.includes(normalized(row.status))));
+    const open=rows.filter(row=>!inactive(row)&&!terminal.has(visibleStatus(row,type))&&(type!=='request'||requestFlow.includes(visibleStatus(row,type))));
     if(value==='open')return open;
     if(value==='mine')return open.filter(row=>recordOwner(row,type)===state.userId);
     if(value==='unassigned')return open.filter(row=>!recordOwner(row,type));
@@ -80,7 +97,7 @@
 
   function board(rows,type){
     const flow=type==='proposal'?proposalFlow:requestFlow;
-    return `<div class="kanban" style="grid-template-columns:repeat(${flow.length},minmax(245px,1fr));overflow-x:auto">${flow.map(stage=>{const list=rows.filter(row=>normalized(row.status)===stage);return `<div class="kanban-col"><div class="kanban-head"><b>${html(stage)}</b><span>${list.length}</span></div><div class="kanban-stack">${list.length?list.map(row=>card(row,type)).join(''):'<div class="kanban-empty">Nenhum registro</div>'}</div></div>`}).join('')}</div>`;
+    return `<div class="kanban" style="grid-template-columns:repeat(${flow.length},minmax(245px,1fr));overflow-x:auto">${flow.map(stage=>{const list=rows.filter(row=>visibleStatus(row,type)===stage);return `<div class="kanban-col"><div class="kanban-head"><b>${html(stage)}</b><span>${list.length}</span></div><div class="kanban-stack">${list.length?list.map(row=>card(row,type)).join(''):'<div class="kanban-empty">Nenhum registro</div>'}</div></div>`}).join('')}</div>`;
   }
 
   function table(rows,type){
@@ -98,13 +115,25 @@
     box.innerHTML=toolbar('request')+(history?table(rows,'request'):board(rows,'request'));
   }
 
+  async function cleanupAutoPromotedDuplicates(proposals){
+    for(const duplicate of proposals.filter(row=>!inactive(row)&&row.client?.promoted_from_request===true)){
+      const original=proposals.find(row=>row.id!==duplicate.id&&!inactive(row)&&row.client?.promoted_from_request!==true&&sameOpportunity(row,duplicate,14));
+      if(!original)continue;
+      let error=null;
+      if(admin())error=await persistActive('proposal',duplicate.id,false);
+      if(error){console.error('Não foi possível inativar a proposta automática duplicada.',duplicate.code,error);continue}
+      duplicate.active=false;
+      duplicate.inactivated_at=new Date().toISOString();
+    }
+  }
+
   async function renderProposals(){
     await loadContext();
     const box=document.getElementById('historyList');if(!box)return;
     box.innerHTML='<p class="muted">Carregando propostas…</p>';
     const result=await sb.from('lead_proposals').select('*').order('created_at',{ascending:false}).limit(500);
     if(result.error){console.error(result.error);box.innerHTML='<p class="muted">Não foi possível carregar as propostas.</p>';return}
-    const allRows=result.data||[];await reconcileExistingProposalStages(allRows);const rows=filterRows(allRows,'proposal'),history=state.proposalScope!=='active'||state.proposalView==='history';
+    const allRows=result.data||[];await cleanupAutoPromotedDuplicates(allRows);await reconcileExistingProposalStages(allRows);const rows=filterRows(allRows,'proposal'),history=state.proposalScope!=='active'||state.proposalView==='history';
     box.innerHTML=toolbar('proposal')+(history?table(rows,'proposal'):board(rows,'proposal'));
   }
 
@@ -112,9 +141,8 @@
   window.setCommercialOwnerFilter=(type,value)=>{state[`${type}Owner`]=value;type==='proposal'?renderProposals():renderRequests()};
   window.setCommercialRecordScope=(type,value)=>{state[`${type}Scope`]=value;type==='proposal'?renderProposals():renderRequests()};
   window.changeCommercialOwner=async(type,id,userId)=>{const {error}=await sb.rpc('assign_commercial_owner',{p_record_type:type,p_record_id:id,p_user_id:userId||null});if(error){console.error(error);alert(error.message||'Não foi possível atribuir o responsável.');return}type==='proposal'?renderProposals():renderRequests()};
-  window.setCommercialRecordActive=async(type,id,active,code)=>{
-    if(!admin())return alert('Ação exclusiva do administrador.');
-    if(!confirm(`${active?'Reativar':'Inativar'} ${type==='proposal'?'a proposta':'a solicitação'} ${code}?`))return;
+
+  async function persistActive(type,id,active){
     const tableName=type==='proposal'?'lead_proposals':'lead_quote_requests',rpc=type==='proposal'?'admin_set_proposal_active':'admin_set_quote_request_active',args=type==='proposal'?{p_proposal_id:id,p_active:active}:{p_request_id:id,p_active:active};
     let {error}=await sb.rpc(rpc,args);
     if(error){
@@ -127,6 +155,13 @@
         ({error}=await sb.from(tableName).update({status:legacyStatus,updated_at:new Date().toISOString()}).eq('id',id));
       }
     }
+    return error;
+  }
+
+  window.setCommercialRecordActive=async(type,id,active,code)=>{
+    if(!admin())return alert('Ação exclusiva do administrador.');
+    if(!confirm(`${active?'Reativar':'Inativar'} ${type==='proposal'?'a proposta':'a solicitação'} ${code}?`))return;
+    const tableName=type==='proposal'?'lead_proposals':'lead_quote_requests',error=await persistActive(type,id,active);
     if(error){console.error(error);return alert(`Não foi possível ${active?'reativar':'inativar'} o registro. Detalhe: ${error.message||'erro do Supabase'}`)}
     if(active){
       const {data:restored}=await sb.from(tableName).select('status').eq('id',id).maybeSingle();
@@ -149,15 +184,22 @@
   async function reconcileExistingProposalStages(proposals){
     const {data:requests,error}=await sb.from('lead_quote_requests').select('*').order('created_at',{ascending:false}).limit(500);
     if(error){console.error(error);return}
-    for(const request of (requests||[]).filter(item=>!inactive(item)&&normalized(item.status)==='Proposta enviada')){const client=request.client||{},requestAt=new Date(request.created_at||0).getTime();let proposal=proposals.find(item=>item.client?.source_request_id===request.id)||proposals.find(item=>{const other=item.client||{},proposalAt=new Date(item.created_at||0).getTime();return proposalAt>=requestAt&&((client.doc&&sameText(other.doc,client.doc))||(client.email&&sameText(other.email,client.email))||(client.company&&sameText(other.company,client.company)))});if(!proposal){proposal=await createProposalFromRequest(request);if(proposal)proposals.push(proposal);continue}if(!inactive(proposal)&&normalized(proposal.status)==='Validação da proposta junto ao SPC Brasil'){proposal.status='Proposta enviada';proposal.client={...(proposal.client||{}),source_request_id:request.id};const {error:updateError}=await sb.from('lead_proposals').update({status:'Proposta enviada',client:proposal.client,updated_at:new Date().toISOString()}).eq('id',proposal.id);if(updateError)console.error(updateError)}}
+    for(const request of (requests||[]).filter(item=>!inactive(item)&&normalized(item.status)==='Proposta enviada')){
+      let proposal=linkedProposal(request,proposals);
+      if(!proposal){proposal=await createProposalFromRequest(request);if(proposal)proposals.push(proposal);continue}
+      if(inactive(proposal))continue;
+      const client={...(proposal.client||{}),source_request_id:request.id},status=proposalStatus(proposal.status)==='Validação da proposta junto ao SPC Brasil'?'Proposta enviada':proposal.status;
+      if(proposal.client?.source_request_id!==request.id||status!==proposal.status){
+        const {error:updateError}=await sb.from('lead_proposals').update({status,client,updated_at:new Date().toISOString()}).eq('id',proposal.id);
+        if(updateError)console.error(updateError);else{proposal.status=status;proposal.client=client}
+      }
+    }
   }
 
   async function proposalLinkedToRequest(request){
-    const {data,error}=await sb.from('lead_proposals').select('id,status,client,created_at').order('created_at',{ascending:false}).limit(500);
+    const {data,error}=await sb.from('lead_proposals').select('id,status,client,quantity,active,inactivated_at,created_at').order('created_at',{ascending:false}).limit(500);
     if(error){console.error(error);return null}
-    const proposals=data||[],direct=proposals.find(proposal=>proposal.client?.source_request_id===request.id);if(direct)return direct;
-    const client=request.client||{},createdAt=new Date(request.created_at||0).getTime();
-    return proposals.find(proposal=>{const other=proposal.client||{},proposalAt=new Date(proposal.created_at||0).getTime(),sameDoc=client.doc&&sameText(other.doc,client.doc),sameEmail=client.email&&sameText(other.email,client.email),sameCompany=client.company&&sameText(other.company,client.company);return proposalAt>=createdAt&&(sameDoc||sameEmail||sameCompany)})||null;
+    return linkedProposal(request,data||[]);
   }
 
   const previousStatusChange=window.changeCommercialStatus;
@@ -168,7 +210,7 @@
     const result=await previousStatusChange.apply(this,arguments);
     if(['Validação da proposta junto ao SPC Brasil','Proposta enviada'].includes(status)){
       let proposal=await proposalLinkedToRequest(request);if(!proposal&&status==='Proposta enviada')proposal=await createProposalFromRequest({...request,status});
-      if(proposal){const client={...(proposal.client||{}),source_request_id:request.id},{error:updateError}=await sb.from('lead_proposals').update({status,client,updated_at:new Date().toISOString()}).eq('id',proposal.id);if(updateError){console.error(updateError);alert('A solicitação foi atualizada, mas não foi possível sincronizar a proposta.')}else if(status==='Proposta enviada')await renderProposals()}
+      if(proposal&&!inactive(proposal)){const client={...(proposal.client||{}),source_request_id:request.id},nextStatus=proposalRank(status)>proposalRank(proposal.status)?status:proposal.status,{error:updateError}=await sb.from('lead_proposals').update({status:nextStatus,client,updated_at:new Date().toISOString()}).eq('id',proposal.id);if(updateError){console.error(updateError);alert('A solicitação foi atualizada, mas não foi possível sincronizar a proposta.')}else if(status==='Proposta enviada')await renderProposals()}
       else if(status==='Proposta enviada'){await sb.from('lead_quote_requests').update({status:'Validação da proposta junto ao SPC Brasil',updated_at:new Date().toISOString()}).eq('id',id);alert('Não foi possível criar a proposta vinculada. A solicitação voltou para validação para não desaparecer do fluxo.');await renderRequests()}
     }
     return result;
