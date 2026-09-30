@@ -14,9 +14,9 @@
     await addScript('spc-orders-print-complete.js?v=20260917-regions-ticket1','spcPrint');
     await addScript('spc-orders-kanban-sla.js?v=20260923-lifecycle1','spcSla');
     await addScript('calculator-manual-improvements.js?v=20260929-house-holding1','calculatorManualImprovements');
-    await addScript('spc-orders-lifecycle.js?v=20260930-excel-allocation3','spcOrdersLifecycle');
+    await addScript('spc-orders-lifecycle.js?v=20260930-excel-final-distribution4','spcOrdersLifecycle');
     await addScript('spc-orders-allocation.js?v=20260930-count-validation4','spcOrdersAllocation');
-    await addScript('commercial-ownership.js?v=20260930-funnel-sync3','commercialOwnership');
+    await addScript('commercial-ownership.js?v=20260930-funnel-admin4','commercialOwnership');
   }
   const ordersReady=loadOrdersModule().catch(error=>{console.error('Falha ao carregar os módulos das Ordens SPC.',error);return false});
   window.generateProductionOrder=async function(proposalId){
