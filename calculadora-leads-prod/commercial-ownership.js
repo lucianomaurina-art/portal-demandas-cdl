@@ -7,6 +7,7 @@
   window.currentRequestOwnerId=window.currentRequestOwnerId||null;
 
   const html=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const sameText=(a,b)=>String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();
   const normalized=s=>typeof flowStatus==='function'?flowStatus(s):s;
   const recordOwner=(row,type)=>type==='proposal'?(row.assigned_to||row.created_by||''):(row.handled_by||'');
   const userName=id=>state.users.find(u=>u.id===id)?.name||state.users.find(u=>u.id===id)?.email||'Sem responsável';
@@ -94,7 +95,7 @@
     box.innerHTML='<p class="muted">Carregando propostas…</p>';
     const result=await sb.from('lead_proposals').select('*').order('created_at',{ascending:false}).limit(500);
     if(result.error){console.error(result.error);box.innerHTML='<p class="muted">Não foi possível carregar as propostas.</p>';return}
-    const rows=filterRows(result.data||[],'proposal');
+    const allRows=result.data||[];await reconcileExistingProposalStages(allRows);const rows=filterRows(allRows,'proposal');
     box.innerHTML=toolbar('proposal')+(state.proposalView==='kanban'?board(rows,'proposal'):table(rows,'proposal'));
   }
 
@@ -105,7 +106,13 @@
   window.showRequests=async open=>{if(open===false)return;await renderRequests()};
   window.showHistory=async open=>{if(open===false)return;await renderProposals()};
 
-  const sameText=(a,b)=>String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();
+  async function reconcileExistingProposalStages(proposals){
+    const {data:requests,error}=await sb.from('lead_quote_requests').select('id,status,client,created_at').eq('status','Proposta enviada').order('created_at',{ascending:false}).limit(500);
+    if(error){console.error(error);return}
+    const updates=[];(requests||[]).forEach(request=>{const client=request.client||{},requestAt=new Date(request.created_at||0).getTime(),proposal=proposals.find(item=>item.client?.source_request_id===request.id)||proposals.find(item=>{const other=item.client||{},proposalAt=new Date(item.created_at||0).getTime();return proposalAt>=requestAt&&((client.doc&&sameText(other.doc,client.doc))||(client.email&&sameText(other.email,client.email))||(client.company&&sameText(other.company,client.company)))});if(proposal&&normalized(proposal.status)==='Validação da proposta junto ao SPC Brasil'){proposal.status='Proposta enviada';proposal.client={...(proposal.client||{}),source_request_id:request.id};updates.push(sb.from('lead_proposals').update({status:'Proposta enviada',client:proposal.client,updated_at:new Date().toISOString()}).eq('id',proposal.id))}});
+    if(updates.length)await Promise.all(updates);
+  }
+
   async function proposalLinkedToRequest(request){
     const {data,error}=await sb.from('lead_proposals').select('id,status,client,created_at').order('created_at',{ascending:false}).limit(500);
     if(error){console.error(error);return null}
