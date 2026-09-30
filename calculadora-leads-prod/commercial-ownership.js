@@ -30,6 +30,12 @@
     return !aTime||!bTime||Math.abs(aTime-bTime)<=maxDays*86400000;
   }
 
+  function sameProposalRecord(a,b){
+    if(!sameOpportunity(a,b,14)||String(a?.mode||'')!==String(b?.mode||''))return false;
+    const aTotal=a?.quote?.sale_total,bTotal=b?.quote?.sale_total;
+    return aTotal===null||aTotal===undefined||bTotal===null||bTotal===undefined||Math.abs(Number(aTotal)-Number(bTotal))<0.01;
+  }
+
   function linkedProposal(request,proposals){
     const matches=(proposals||[]).filter(proposal=>proposal.client?.source_request_id===request.id||sameOpportunity(request,proposal));
     return matches.sort((a,b)=>Number(inactive(a))-Number(inactive(b))||proposalRank(b.status)-proposalRank(a.status)||Number(Boolean(a.client?.promoted_from_request))-Number(Boolean(b.client?.promoted_from_request))||new Date(b.created_at||0)-new Date(a.created_at||0))[0]||null;
@@ -115,15 +121,18 @@
     box.innerHTML=toolbar('request')+(history?table(rows,'request'):board(rows,'request'));
   }
 
-  async function cleanupAutoPromotedDuplicates(proposals){
-    for(const duplicate of proposals.filter(row=>!inactive(row)&&row.client?.promoted_from_request===true)){
-      const original=proposals.find(row=>row.id!==duplicate.id&&!inactive(row)&&row.client?.promoted_from_request!==true&&sameOpportunity(row,duplicate,14));
-      if(!original)continue;
-      let error=null;
-      if(admin())error=await persistActive('proposal',duplicate.id,false);
-      if(error){console.error('Não foi possível inativar a proposta automática duplicada.',duplicate.code,error);continue}
-      duplicate.active=false;
-      duplicate.inactivated_at=new Date().toISOString();
+  async function cleanupDuplicateProposals(proposals){
+    const ordered=proposals.filter(row=>!inactive(row)).sort((a,b)=>proposalRank(b.status)-proposalRank(a.status)||Number(Boolean(a.client?.promoted_from_request))-Number(Boolean(b.client?.promoted_from_request))||new Date(a.created_at||0)-new Date(b.created_at||0));
+    const kept=[];
+    for(const proposal of ordered){
+      const canonical=kept.find(other=>sameProposalRecord(other,proposal)&&((other.client?.source_request_id&&other.client.source_request_id===proposal.client?.source_request_id)||proposalRank(other.status)!==proposalRank(proposal.status)));
+      if(!canonical){kept.push(proposal);continue}
+      proposal.active=false;
+      proposal.inactivated_at=new Date().toISOString();
+      if(admin()){
+        const error=await persistActive('proposal',proposal.id,false);
+        if(error)console.error('A proposta duplicada foi ocultada do funil, mas não foi possível registrar sua inativação.',proposal.code,error);
+      }
     }
   }
 
@@ -133,7 +142,7 @@
     box.innerHTML='<p class="muted">Carregando propostas…</p>';
     const result=await sb.from('lead_proposals').select('*').order('created_at',{ascending:false}).limit(500);
     if(result.error){console.error(result.error);box.innerHTML='<p class="muted">Não foi possível carregar as propostas.</p>';return}
-    const allRows=result.data||[];await cleanupAutoPromotedDuplicates(allRows);await reconcileExistingProposalStages(allRows);const rows=filterRows(allRows,'proposal'),history=state.proposalScope!=='active'||state.proposalView==='history';
+    const allRows=result.data||[];await cleanupDuplicateProposals(allRows);await reconcileExistingProposalStages(allRows);const rows=filterRows(allRows,'proposal'),history=state.proposalScope!=='active'||state.proposalView==='history';
     box.innerHTML=toolbar('proposal')+(history?table(rows,'proposal'):board(rows,'proposal'));
   }
 
