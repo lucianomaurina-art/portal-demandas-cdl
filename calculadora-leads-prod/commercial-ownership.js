@@ -1,7 +1,7 @@
 // Funil comercial compartilhado com responsável por solicitação e proposta.
 (() => {
   const requestFlow=['Pendente','Validação da proposta junto ao SPC Brasil','Proposta enviada'];
-  const proposalFlow=['Proposta enviada','Proposta fechada','Validação dos dados SPC Brasil','Aguardando envio da compra de leads do SPC Brasil','Dados enviados ao cliente'];
+  const proposalFlow=['Validação da proposta junto ao SPC Brasil','Proposta enviada','Proposta fechada','Validação dos dados SPC Brasil','Aguardando envio da compra de leads do SPC Brasil','Dados enviados ao cliente'];
   const terminal=new Set(['Negócio perdido','Perdida','Cancelada','Encerrada','Compra de leads enviada para o cliente','Dados enviados ao cliente']);
   const state={requestView:'kanban',proposalView:'kanban',requestOwner:'open',proposalOwner:'open',users:[],userId:'',role:'',loaded:false};
   window.currentRequestOwnerId=window.currentRequestOwnerId||null;
@@ -104,6 +104,29 @@
 
   window.showRequests=async open=>{if(open===false)return;await renderRequests()};
   window.showHistory=async open=>{if(open===false)return;await renderProposals()};
+
+  const sameText=(a,b)=>String(a||'').trim().toLowerCase()===String(b||'').trim().toLowerCase();
+  async function proposalLinkedToRequest(request){
+    const {data,error}=await sb.from('lead_proposals').select('id,status,client,created_at').order('created_at',{ascending:false}).limit(500);
+    if(error){console.error(error);return null}
+    const proposals=data||[],direct=proposals.find(proposal=>proposal.client?.source_request_id===request.id);if(direct)return direct;
+    const client=request.client||{},createdAt=new Date(request.created_at||0).getTime();
+    return proposals.find(proposal=>{const other=proposal.client||{},proposalAt=new Date(proposal.created_at||0).getTime(),sameDoc=client.doc&&sameText(other.doc,client.doc),sameEmail=client.email&&sameText(other.email,client.email),sameCompany=client.company&&sameText(other.company,client.company);return proposalAt>=createdAt&&(sameDoc||sameEmail||sameCompany)})||null;
+  }
+
+  const previousStatusChange=window.changeCommercialStatus;
+  if(typeof previousStatusChange==='function')window.changeCommercialStatus=async function(type,id,status){
+    if(type!=='request')return previousStatusChange.apply(this,arguments);
+    const {data:request,error}=await sb.from('lead_quote_requests').select('*').eq('id',id).maybeSingle();
+    if(error||!request){console.error(error);return alert('Não foi possível carregar a solicitação para alterar a etapa.')}
+    const result=await previousStatusChange.apply(this,arguments);
+    if(['Validação da proposta junto ao SPC Brasil','Proposta enviada'].includes(status)){
+      const proposal=await proposalLinkedToRequest(request);
+      if(proposal){const client={...(proposal.client||{}),source_request_id:request.id},{error:updateError}=await sb.from('lead_proposals').update({status,client,updated_at:new Date().toISOString()}).eq('id',proposal.id);if(updateError){console.error(updateError);alert('A solicitação foi atualizada, mas não foi possível sincronizar a proposta.')}else if(status==='Proposta enviada')await renderProposals()}
+      else if(status==='Proposta enviada')alert('A solicitação foi atualizada, mas ainda não existe uma proposta gerada para ela. Abra a solicitação, clique em Orçar e gere a proposta.')
+    }
+    return result;
+  };
 
   const previousLoad=window.loadRequestFromKanban;
   if(typeof previousLoad==='function')window.loadRequestFromKanban=async function(id){
