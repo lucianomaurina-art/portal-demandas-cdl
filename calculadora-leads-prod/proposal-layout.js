@@ -3,7 +3,6 @@ window.generateProposal=async function(){
   if(!quote){alert('Monte uma simulação antes de gerar a proposta.');return}
   const w=window.open('','_blank');if(!w){alert('O navegador bloqueou a abertura da proposta. Autorize pop-ups para este site e tente novamente.');return}
   w.document.write('<!doctype html><html><body style="font-family:Arial;padding:40px"><h3>Gerando proposta...</h3></body></html>');
-  if(typeof window.syncSpcOtherProductsQuote==='function')await window.syncSpcOtherProductsQuote();
   const {data:{user}}=await sb.auth.getUser();if(!user){w.close();alert('Sua sessão expirou. Entre novamente no portal para gerar a proposta.');return}
   const {data:profile}=await sb.from('profiles').select('name,email').eq('id',user.id).maybeSingle();const issuerName=(profile?.name||user.user_metadata?.name||user.email||'Usuário CDL').trim(),issuerEmail=profile?.email||user.email||'';
   let requestNotes='',requestCnaes='',requestProposalNotes='';if(currentRequestId){const {data:req}=await sb.from('lead_quote_requests').select('notes,client').eq('id',currentRequestId).maybeSingle();requestNotes=req?.notes||'';requestCnaes=req?.client?.cnaes_segments||req?.client?.cnae_segments||req?.client?.target_segments||'';requestProposalNotes=req?.client?.proposal_notes||''}
