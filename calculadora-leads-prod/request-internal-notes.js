@@ -13,5 +13,5 @@
 
 // Extensões independentes da calculadora. Não substituem a navegação nem showHistory.
 (() => {
-  ['calculator-proposal-notes.js?v=20260916-2','spc-other-products.js?v=20260916-3'].forEach(src=>{const s=document.createElement('script');s.src=src;document.head.appendChild(s);});
+  ['calculator-proposal-notes.js?v=20260916-2','spc-other-products.js?v=20261008-proposal-sync1'].forEach(src=>{const s=document.createElement('script');s.src=src;document.head.appendChild(s);});
 })();

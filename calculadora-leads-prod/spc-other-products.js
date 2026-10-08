@@ -8,6 +8,9 @@
   function renderPicker(){ensureCalculator();const box=document.getElementById('spcOtherProductsPicker');if(!box)return;box.innerHTML=catalog.length?catalog.map(p=>{const x=calculated.find(x=>x.id===p.id);return `<label class="item"><input type="checkbox" ${selectedIds.has(p.id)?'checked':''} onchange="toggleSpcOtherProduct('${p.id}',this.checked)"><span><b>${esc(p.name)}</b><span>${selectedIds.has(p.id)?(x?`Investimento: <strong>${money2(x.commercial_unit)}</strong> / unidade`:'Calculando investimento…'):'Selecione para incluir na solução'}</span></span></label>`}).join(''):'<p class="muted" style="padding:8px">Nenhum produto complementar cadastrado.</p>'}
   window.toggleSpcOtherProduct=async(id,on)=>{on?selectedIds.add(id):selectedIds.delete(id);await recalc()};
   async function recalc(){const qty=Math.max(0,+document.getElementById('qty')?.value||0);calculated=[];if(qty&&selectedIds.size){const rs=await Promise.all([...selectedIds].map(id=>sb.rpc('calculate_spc_other_product',{p_product_id:id,p_qty:qty})));rs.forEach(r=>{if(r.error)console.error('Erro ao calcular Outro Produto SPC:',r.error)});calculated=rs.filter(r=>!r.error&&r.data).map(r=>r.data)}integrateQuote();renderPicker()}
+  // A geração da proposta usa este ponto de sincronização para garantir que
+  // os produtos complementares selecionados estejam no objeto final da cotação.
+  window.syncSpcOtherProductsQuote=recalc;
   function integrateQuote(){
     // `quote` é uma variável global lexical do app.js (let), não uma propriedade de window.
     // Usar diretamente a mesma variável garante que o total exibido e o objeto salvo na proposta sejam atualizados.
