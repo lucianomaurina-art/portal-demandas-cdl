@@ -7,7 +7,12 @@
 
   async function loadCatalog(){
     const {data,error}=await sb.rpc('list_spc_other_products');
-    if(error){console.error(error);return}
+    if(error){
+      console.error(error);
+      calculationError='Não foi possível carregar os produtos adicionais. Atualize a página e tente novamente.';
+      renderPicker();
+      return;
+    }
     catalog=data||[];
     renderPicker();
   }
@@ -18,7 +23,7 @@
     if(!panel)return;
     const box=document.createElement('div');
     box.id='spcOtherProductsBox';
-    box.innerHTML=`<div class="section-title"><div><h3>Outros Produtos SPC</h3><span class="muted">Inclua produtos complementares SPC na mesma proposta.</span></div></div><div class="product-builder"><div id="spcOtherProductsPicker" class="items"></div><div id="spcOtherProductsError" class="muted" style="display:none;color:#b42318;margin-top:8px"></div></div>`;
+    box.innerHTML=`<div class="section-title"><div><h3>Outros produtos adicionais</h3><span class="muted">Inclua produtos complementares SPC na mesma proposta.</span></div></div><div class="product-builder"><div id="spcOtherProductsPicker" class="items"></div><div id="spcOtherProductsError" class="muted" style="display:none;color:#b42318;margin-top:8px"></div></div>`;
     panel.appendChild(box);
   }
 
