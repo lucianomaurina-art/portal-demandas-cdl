@@ -29,6 +29,8 @@ async function ensureUsersArea(){
   }
 }
 
+window.prepareUsersModule=ensureUsersArea;
+
 window.openSection=async function(section){
   await ensureUsersArea();
   const map={calculator:'calculatorView',requests:'requestsView',proposals:'proposalsView',users:'usersView'};
@@ -149,5 +151,3 @@ const _showHistory=window.showHistory;
 if(typeof _showHistory==='function'){
   window.showHistory=async function(show=true){const result=await _showHistory(show);if(show)document.getElementById('proposalsView')?.classList.remove('hidden');return result;};
 }
-
-document.addEventListener('DOMContentLoaded',()=>{setTimeout(ensureUsersArea,300)});

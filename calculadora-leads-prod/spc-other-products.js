@@ -167,5 +167,12 @@
   async function renderAdmin(){const box=document.getElementById('spcProductsAdminList');if(!box)return;const {data,error}=await sb.from('spc_other_products').select('id,name,unit_cost,active').order('name');if(error){box.innerHTML='<p class="muted">Não foi possível carregar o cadastro.</p>';return}box.innerHTML=(data||[]).length?`<div style="overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left">Produto</th><th style="text-align:left">Custo unitário SPC</th><th>Status</th><th></th></tr></thead><tbody>${data.map(p=>`<tr><td style="padding:10px 0"><b>${esc(p.name)}</b></td><td>${money2(p.unit_cost)}</td><td>${p.active?'Ativo':'Inativo'}</td><td><button class="secondary" onclick="toggleSpcProductActive('${p.id}',${!p.active})">${p.active?'Inativar':'Ativar'}</button></td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">Nenhum produto cadastrado.</p>'}
   window.saveSpcProduct=async()=>{const name=document.getElementById('spcProductName')?.value.trim(),cost=Number(document.getElementById('spcProductCost')?.value);if(!name||!Number.isFinite(cost)||cost<0){alert('Informe nome e custo unitário válido.');return}const {error}=await sb.from('spc_other_products').insert({name,unit_cost:cost,active:true});if(error){alert('Não foi possível cadastrar o produto.');console.error(error);return}document.getElementById('spcProductName').value='';document.getElementById('spcProductCost').value='';await renderAdmin();await loadCatalog()};
   window.toggleSpcProductActive=async(id,active)=>{const {error}=await sb.from('spc_other_products').update({active,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert('Não foi possível atualizar o produto.');return}await renderAdmin();await loadCatalog()};
-  setTimeout(async()=>{ensureCalculator();await loadCatalog();await ensureAdmin()},650);
+  let preparationPromise=null;
+  window.prepareSpcOtherProducts=()=>{
+    if(!preparationPromise)preparationPromise=(async()=>{
+      ensureCalculator();
+      await Promise.all([loadCatalog(),ensureAdmin()]);
+    })();
+    return preparationPromise;
+  };
 })();

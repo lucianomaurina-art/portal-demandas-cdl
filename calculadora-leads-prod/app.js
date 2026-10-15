@@ -2,7 +2,27 @@ const sb=window.supabase.createClient(window.CDL_CONFIG.supabaseUrl,window.CDL_C
 const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:4});const num=v=>Number(v||0).toLocaleString('pt-BR');
 async function login(){const email=document.getElementById('email').value.trim(),password=document.getElementById('password').value,msg=document.getElementById('loginMsg');msg.textContent='';if(!email||!password){msg.textContent='Informe e-mail e senha.';return}const {error}=await sb.auth.signInWithPassword({email,password});if(error){msg.textContent='Acesso não autorizado. Confira e-mail e senha.';return}document.getElementById('password').value='';await boot()}
 async function logout(){await sb.auth.signOut();location.reload()}
-async function boot(){const {data:{session}}=await sb.auth.getSession();if(!session)return;document.getElementById('login').classList.add('hidden');document.getElementById('app').classList.remove('hidden');document.getElementById('userLabel').textContent=session.user.email||'';internalOpen=false;render()}
+async function waitPortalExtensions(){
+  const tasks=[window.prepareUsersModule,window.prepareSpcOtherProducts]
+    .filter(fn=>typeof fn==='function')
+    .map(fn=>Promise.resolve().then(()=>fn()));
+  if(!tasks.length)return;
+  const timeout=new Promise(resolve=>setTimeout(resolve,5000));
+  await Promise.race([Promise.allSettled(tasks),timeout]);
+}
+async function boot(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session)return;
+  const msg=document.getElementById('loginMsg');
+  if(msg)msg.textContent='Carregando a plataforma…';
+  await waitPortalExtensions();
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('userLabel').textContent=session.user.email||'';
+  if(msg)msg.textContent='';
+  internalOpen=false;
+  render();
+}
 sb.auth.onAuthStateChange((_e,s)=>{if(!s)return;});
 function setMode(m){mode=m;selected.clear();selectedAdds.clear();selectedCombo='Básico';activeProducts=[];quote=internalQuote=null;document.getElementById('individualArea').classList.toggle('hidden',m!=='individual');document.getElementById('comboArea').classList.toggle('hidden',m!=='combo');document.getElementById('tabInd').classList.toggle('active',m==='individual');document.getElementById('tabCombo').classList.toggle('active',m==='combo');render()}
 function resetSelection(){selected.clear();selectedAdds.clear();selectedCombo='Básico';activeProducts=[];quote=internalQuote=null;render()}
@@ -50,4 +70,4 @@ async function generateProposal(){if(!quote){alert('Monte uma simulação antes 
 async function showHistory(open=true){document.getElementById('history').classList.toggle('hidden',!open);if(!open)return;document.getElementById('requests').classList.add('hidden');const {data,error}=await sb.from('lead_proposals').select('code,created_at,status,mode,quantity,client,quote').order('created_at',{ascending:false}).limit(100);document.getElementById('historyList').innerHTML=error?'<p class="muted">Não foi possível carregar o histórico.</p>':data.length?`<table class="proposal-table"><thead><tr><th>Proposta</th><th>Cliente</th><th>Tipo</th><th>Valor</th><th>Data</th><th>Status</th></tr></thead><tbody>${data.map(p=>`<tr><td>${p.code}</td><td>${p.client?.company||'—'}</td><td>${p.mode==='individual'?'Individual':'Combo'}</td><td><b>${money(p.quote?.sale_total)}</b></td><td>${new Date(p.created_at).toLocaleDateString('pt-BR')}</td><td>${p.status}</td></tr>`).join('')}</tbody></table>`:'<p class="muted">Nenhuma proposta salva.</p>'}
 async function showRequests(open=true){document.getElementById('requests').classList.toggle('hidden',!open);if(!open)return;document.getElementById('history').classList.add('hidden');const {data,error}=await sb.from('lead_quote_requests').select('id,code,created_at,status,mode,person,quantity,client,selection,notes').order('created_at',{ascending:false}).limit(100);document.getElementById('requestList').innerHTML=error?'<p class="muted">A caixa de solicitações ainda não está disponível. Execute a migração 005 no Supabase.</p>':data.length?`<table class="proposal-table"><thead><tr><th>Solicitação</th><th>Empresa</th><th>Necessidade</th><th>Quantidade</th><th>Data</th><th>Status</th><th></th></tr></thead><tbody>${data.map(r=>`<tr><td><b>${r.code}</b></td><td>${r.client?.company||'—'}<br><span class="muted">${r.client?.contact||''}</span></td><td>${r.mode==='individual'?'Individual':'Combo'} • ${r.person}</td><td>${num(r.quantity)}</td><td>${new Date(r.created_at).toLocaleDateString('pt-BR')}</td><td><span class="status-pill">${r.status}</span></td><td><button class="secondary" onclick="loadRequest('${r.id}')">Carregar na calculadora</button></td></tr>`).join('')}</tbody></table>`:'<p class="muted">Nenhuma solicitação recebida.</p>'}
 async function loadRequest(id){const {data:r,error}=await sb.from('lead_quote_requests').select('*').eq('id',id).single();if(error||!r){alert('Não foi possível abrir esta solicitação.');return}currentRequestId=r.id;mode=r.mode;document.getElementById('individualArea').classList.toggle('hidden',mode!=='individual');document.getElementById('comboArea').classList.toggle('hidden',mode!=='combo');document.getElementById('tabInd').classList.toggle('active',mode==='individual');document.getElementById('tabCombo').classList.toggle('active',mode==='combo');document.getElementById('person').value=r.person;document.getElementById('qty').value=r.quantity;const c=r.client||{};document.getElementById('client').value=c.company||'';document.getElementById('doc').value=c.doc||'';document.getElementById('contact').value=c.contact||'';document.getElementById('clientEmail').value=c.email||'';document.getElementById('phone').value=c.phone||'';document.getElementById('focus').value=c.focus||'';selected.clear();selectedAdds.clear();activeProducts=[];if(mode==='individual'){(r.selection||[]).forEach(x=>{selected.add(JSON.stringify({product:x.product,flag:x.flag}));if(!activeProducts.includes(x.product))activeProducts.push(x.product)})}else{selectedCombo=r.selection?.level||'Básico';(r.selection?.addons||[]).forEach(x=>selectedAdds.add(x))}const {data:{user}}=await sb.auth.getUser();await sb.from('lead_quote_requests').update({status:'Em análise',handled_by:user?.id||null}).eq('id',id);document.getElementById('requests').classList.add('hidden');render();window.scrollTo({top:0,behavior:'smooth'})}
-boot();
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
