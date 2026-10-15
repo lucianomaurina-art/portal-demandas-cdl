@@ -186,6 +186,7 @@
         position: sticky;
         top: 0;
         z-index: 10;
+        overflow-x: auto;
       }
       header .brand-lockup {
         flex: 0 0 auto;
@@ -194,26 +195,31 @@
         flex: 1;
       }
       .mainnav {
-        background: #fff;
-        border-bottom: 1px solid var(--line);
-        position: sticky;
-        top: 72px;
-        z-index: 9;
+        background: transparent;
+        border: 0;
+        position: static;
+        flex: 0 1 auto;
+        min-width: 0;
       }
       .mainnav-inner {
-        max-width: 1440px;
-        margin: auto;
         display: flex;
-        gap: 6px;
-        padding: 10px 30px;
+        gap: 3px;
+        padding: 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .mainnav-inner::-webkit-scrollbar {
+        display: none;
       }
       .navbtn {
         border: 0;
         background: transparent;
-        padding: 11px 17px;
+        padding: 10px 12px;
         border-radius: 10px;
         font-weight: 800;
-        color: #475467;
+        color: #dbe6f5;
+        flex: 0 0 auto;
+        white-space: nowrap;
       }
       .navbtn.active {
         background: #e8f1ff;
@@ -528,8 +534,11 @@
           grid-template-columns: 1fr;
         }
         .mainnav-inner {
-          padding: 8px 18px;
+          padding: 0;
           overflow: auto;
+        }
+        header #userLabel {
+          display: none;
         }
         .toprow {
           display: block;
@@ -585,6 +594,29 @@
           />
         </div>
         <b>Portal Comercial • SPC Dados</b>
+        <nav class="mainnav" aria-label="Navegação principal">
+          <div class="mainnav-inner">
+            <button
+              id="navCalc"
+              class="navbtn active"
+              onclick="openSection('calculator')"
+            >
+              Calculadora</button
+            ><button
+              id="navRequests"
+              class="navbtn"
+              onclick="openSection('requests')"
+            >
+              Solicitações de cotação</button
+            ><button
+              id="navProposals"
+              class="navbtn"
+              onclick="openSection('proposals')"
+            >
+              Propostas
+            </button>
+          </div>
+        </nav>
         <div class="spacer"></div>
         <span id="modeBadge" class="mode-badge">Modo Cliente</span
         ><button id="internalBtn" class="ghost" onclick="toggleInternal()">
@@ -592,29 +624,6 @@
         ><small id="userLabel"></small
         ><button class="ghost" onclick="logout()">Sair</button>
       </header>
-      <nav class="mainnav">
-        <div class="mainnav-inner">
-          <button
-            id="navCalc"
-            class="navbtn active"
-            onclick="openSection('calculator')"
-          >
-            Calculadora</button
-          ><button
-            id="navRequests"
-            class="navbtn"
-            onclick="openSection('requests')"
-          >
-            Solicitações de cotação</button
-          ><button
-            id="navProposals"
-            class="navbtn"
-            onclick="openSection('proposals')"
-          >
-            Propostas
-          </button>
-        </div>
-      </nav>
       <main class="shell">
         <section id="calculatorView">
           <div class="toprow">
