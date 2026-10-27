@@ -1,4 +1,4 @@
-name: Publicar função de alertas no Supabase
+name: Publicar funções de notificação no Supabase
 
 on:
   workflow_dispatch:
@@ -6,26 +6,34 @@ on:
     branches:
       - main
     paths:
+      - supabase/functions/notificar-nova-demanda/**
       - calculadora-leads-prod/supabase/functions/spc-sla-alerts/**
+      - .github/workflows/deploy-supabase-edge-function.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: deploy-spc-sla-alerts
+  group: deploy-supabase-functions
   cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
     steps:
       - name: Baixar repositório
         uses: actions/checkout@v4
 
-      - name: Publicar spc-sla-alerts
+      - name: Publicar notificação de novas demandas
+        run: >-
+          npx --yes supabase@latest functions deploy notificar-nova-demanda
+          --project-ref uswsagujxwcfvauulhzq
+          --no-verify-jwt
+
+      - name: Publicar alertas de SLA do SPC
         working-directory: calculadora-leads-prod
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: >-
           npx --yes supabase@latest functions deploy spc-sla-alerts
           --project-ref uswsagujxwcfvauulhzq
