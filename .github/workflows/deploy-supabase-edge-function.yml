@@ -38,10 +38,10 @@ jobs:
         run: |
           jq -n \
             --rawfile query supabase/migrations/20261027115000_notify_new_demand.sql \
-            '{name:"notify_new_demand_20261027",query:$query}' > /tmp/notify-migration.json
+            '{query:$query}' > /tmp/notify-migration.json
           curl --fail-with-body --silent --show-error \
             --request POST \
-            --url https://api.supabase.com/v1/projects/uswsagujxwcfvauulhzq/database/migrations \
+            --url https://api.supabase.com/v1/projects/uswsagujxwcfvauulhzq/database/query \
             --header "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
             --header "Content-Type: application/json" \
             --data @/tmp/notify-migration.json
