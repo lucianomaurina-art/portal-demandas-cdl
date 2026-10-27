@@ -65,8 +65,29 @@ Deno.serve(async (req) => {
       `profiles?select=id,email,name,active&id=eq.${encodeURIComponent(demand.assignee_id)}&limit=1`
     );
     const recipient = profiles?.[0];
-    if (!recipient?.active || !recipient?.email) {
-      return json({ error: 'Responsável sem e-mail ativo cadastrado' }, 422);
+    if (!recipient?.active) {
+      return json({ error: 'Responsável inativo ou não encontrado' }, 422);
+    }
+
+    let recipientEmail = String(recipient.email || '').trim();
+    if (!recipientEmail) {
+      const authResponse = await fetch(
+        `${SUPABASE_URL}/auth/v1/admin/users/${encodeURIComponent(demand.assignee_id)}`,
+        {
+          headers: {
+            apikey: SERVICE_ROLE_KEY!,
+            Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+            Accept: 'application/json',
+          },
+        }
+      );
+      if (authResponse.ok) {
+        const authUser = await authResponse.json();
+        recipientEmail = String(authUser?.email || '').trim();
+      }
+    }
+    if (!recipientEmail) {
+      return json({ error: 'Responsável sem e-mail cadastrado' }, 422);
     }
 
     const recipientName = escapeHtml(recipient.name || demand.assignee || 'Responsável');
@@ -118,8 +139,8 @@ Deno.serve(async (req) => {
         'Idempotency-Key': `cdl-nova-demanda-${demand.id}`,
       },
       body: JSON.stringify({
-        from: 'Portal de Demandas CDL <notificacoes@cdl-nh.com.br>',
-        to: [recipient.email],
+        from: 'Portal de Demandas CDL <spcdados@cdl-nh.com.br>',
+        to: [recipientEmail],
         subject: `Nova demanda ${demand.protocol} — ${demand.priority}`,
         html,
       }),
