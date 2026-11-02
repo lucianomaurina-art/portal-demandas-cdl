@@ -29,17 +29,17 @@
   async function sync(orderId){
     const {data:o}=await sb.from('spc_data_orders').select('*').eq('id',orderId).maybeSingle();if(!o)return;
     const {data:p}=await sb.from('lead_proposals').select('*').eq('id',o.proposal_id).maybeSingle();if(!p)return;
-    const r=await findRequest(p),pc=p.client||{},rc=r?.client||{};
+    const r=await findRequest(p),pc=p.client||{},rc=r?.client||{},recount=Boolean(o.parent_order_id)||Number(o.revision_number||1)>1;
     const client={...rc,...pc,...(o.client||{}),proposal_code:p.code,quantity:p.quantity||p.quote?.quantity||o.client?.quantity,mode:p.mode,combo_level:p.selection?.level||'',combo_addons:p.selection?.addons||[]};
-    const target=pc.cnae_target||rc.cnae_target||o.targeting||{};
+    const target=recount?(o.targeting||{}):(pc.cnae_target||rc.cnae_target||o.targeting||{});
     const external=o.external_notes||pc.client_notes||r?.notes||rc.client_notes||'';
     const internal=o.internal_notes||pc.internal_notes||rc.internal_notes||'';
     const proposalNotes=pc.proposal_notes||rc.proposal_notes||o.filters?.proposal_notes||'';
     const existing=pc.existing_data||rc.existing_data||o.filters?.existing_data||'';
-    const city=pc.city||rc.city||o.filters?.city||pc.focus||rc.focus||o.filters?.region||'';
-    const state=pc.state||rc.state||o.filters?.state||'';
-    const cep=pc.cep||rc.cep||o.filters?.cep||'';
-    const requested=proposalFields(p);
+    const city=recount?(o.filters?.city||''):(pc.city||rc.city||o.filters?.city||pc.focus||rc.focus||o.filters?.region||'');
+    const state=recount?(o.filters?.state||''):(pc.state||rc.state||o.filters?.state||'');
+    const cep=recount?(o.filters?.cep||''):(pc.cep||rc.cep||o.filters?.cep||'');
+    const requested=recount&&Array.isArray(o.requested_fields)&&o.requested_fields.length?o.requested_fields:proposalFields(p);
     const filters={
       ...(o.filters||{}),
       state,
@@ -61,7 +61,7 @@
     const create=window.createSpcOrder;
     window.createSpcOrder=async proposalId=>{
       await create(proposalId);
-      const {data:o}=await sb.from('spc_data_orders').select('id').eq('proposal_id',proposalId).eq('active',true).maybeSingle();
+      const {data:o}=await sb.from('spc_data_orders').select('id,stage').eq('proposal_id',proposalId).eq('active',true).not('stage','in','("Recontagem","Cancelada")').order('created_at',{ascending:false}).limit(1).maybeSingle();
       if(o?.id){await sync(o.id);document.getElementById('spcOrderDialog')?.close();return edit(o.id)}
     };
     return true;
