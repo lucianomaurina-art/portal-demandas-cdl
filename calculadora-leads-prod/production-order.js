@@ -9,7 +9,7 @@
   async function loadOrdersModule(){
     await addScript('spc-orders.js?v=20261102-recount1','spcOrders');
     await addScript('spc-orders-data-sync.js?v=20261102-recount1','spcSync');
-    await addScript('spc-orders-proposal-lock.js?v=20260917-regions-ticket1','spcLock');
+    await addScript('spc-orders-proposal-lock.js?v=20261102-recount1','spcLock');
     await addScript('spc-orders-filter-controls.js?v=20260917-regions-ticket1','spcFilters');
     await addScript('spc-orders-print-complete.js?v=20260917-regions-ticket1','spcPrint');
     await addScript('spc-orders-kanban-sla.js?v=20261102-recount1','spcSla');
