@@ -5,6 +5,9 @@ begin;
 
 -- 1) Novas etapas do Kanban de propostas.
 alter table public.lead_proposals
+  add column if not exists closed_at timestamptz;
+
+alter table public.lead_proposals
   drop constraint if exists lead_proposals_status_check;
 
 alter table public.lead_proposals
