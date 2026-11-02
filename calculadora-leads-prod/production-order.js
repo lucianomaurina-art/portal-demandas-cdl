@@ -7,14 +7,14 @@
     return new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.async=false;s.dataset.ordersModule=key;s.addEventListener('load',()=>{s.dataset.loaded='true';resolve()},{once:true});s.addEventListener('error',()=>reject(new Error(`Falha ao carregar ${src}`)),{once:true});document.head.appendChild(s)});
   }
   async function loadOrdersModule(){
-    await addScript('spc-orders.js?v=20261102-recount2','spcOrders');
-    await addScript('spc-orders-data-sync.js?v=20261102-recount2','spcSync');
-    await addScript('spc-orders-proposal-lock.js?v=20261102-recount2','spcLock');
+    await addScript('spc-orders.js?v=20261102-recount3','spcOrders');
+    await addScript('spc-orders-data-sync.js?v=20261102-recount3','spcSync');
+    await addScript('spc-orders-proposal-lock.js?v=20261102-recount3','spcLock');
     await addScript('spc-orders-filter-controls.js?v=20260917-regions-ticket1','spcFilters');
     await addScript('spc-orders-print-complete.js?v=20260917-regions-ticket1','spcPrint');
-    await addScript('spc-orders-kanban-sla.js?v=20261102-recount2','spcSla');
+    await addScript('spc-orders-kanban-sla.js?v=20261102-recount3','spcSla');
     await addScript('calculator-manual-improvements.js?v=20261008-additional-products2','calculatorManualImprovements');
-    await addScript('spc-orders-lifecycle.js?v=20261102-recount2','spcOrdersLifecycle');
+    await addScript('spc-orders-lifecycle.js?v=20261102-recount3','spcOrdersLifecycle');
     await addScript('spc-orders-allocation.js?v=20260930-count-validation4','spcOrdersAllocation');
     await addScript('commercial-ownership.js?v=20261102-proposal-stages1','commercialOwnership');
   }
