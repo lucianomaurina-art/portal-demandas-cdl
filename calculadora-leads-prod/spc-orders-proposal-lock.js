@@ -40,8 +40,9 @@
     const originalEdit=window.editSpcOrder;
     window.editSpcOrder=async function(id){
       const r=await originalEdit.apply(this,arguments);
-      const proposalId=(await sb.from('spc_data_orders').select('proposal_id').eq('id',id).single()).data?.proposal_id;
-      if(proposalId){const {data:p}=await sb.from('lead_proposals').select('*').eq('id',proposalId).single();if(p)lockDialog(p)}
+      const {data:o}=await sb.from('spc_data_orders').select('proposal_id,parent_order_id,revision_number').eq('id',id).single(),proposalId=o?.proposal_id,recount=Boolean(o?.parent_order_id)||Number(o?.revision_number||1)>1;
+      if(recount){const heading=[...document.querySelectorAll('#spcOrderDialog h3')].find(x=>x.textContent.includes('Atributos que o SPC deve retornar')),note=heading?.nextElementSibling;if(note?.classList.contains('muted'))note.textContent='Recontagem: revise os atributos e mantenha somente o novo escopo solicitado pelo cliente.'}
+      else if(proposalId){const {data:p}=await sb.from('lead_proposals').select('*').eq('id',proposalId).single();if(p)lockDialog(p)}
       return r;
     };
     window.editSpcOrder.__proposalLocked=true;
