@@ -1,5 +1,5 @@
 // Kanban comercial + histórico + controles administrativos
-const CDL_FLOW=['Pendente','Proposta enviada','Proposta fechada','Aguardando envio da compra de leads do SPC Brasil','Compra de leads enviada para o cliente'];
+const CDL_FLOW=['Pendente','Proposta enviada','Proposta fechada (teste)','Proposta fechada','Proposta rejeitada','Negócio perdido','Aguardando envio da compra de leads do SPC Brasil','Compra de leads enviada para o cliente'];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const flowStatus=s=>({'Nova':'Pendente','Em análise':'Pendente','Proposta gerada':'Proposta enviada','Respondida':'Proposta enviada','Encerrada':'Compra de leads enviada para o cliente','Rascunho':'Pendente','Gerada':'Proposta enviada','Enviada':'Proposta enviada','Aprovada':'Proposta fechada'}[s]||s||'Pendente');
 let commercialView={request:'kanban',proposal:'kanban'},currentProfileRole=null,editingProposalId=null,editingProposalCode=null;
