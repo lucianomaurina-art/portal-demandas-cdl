@@ -16,11 +16,11 @@
 
   function currentDialogStage(){return document.getElementById('soStage')?.value||'Solicitar contagem'}
   function syncLifecycleUi(){
-    const stage=currentDialogStage(),ticketBox=document.querySelector('#spcOrderDialog .spc-ticket-box'),returnSection=document.getElementById('soCountReturnSection'),purpose=document.getElementById('soPurpose');
-    ticketBox?.classList.toggle('hidden',stageRank(stage)<stageRank('Contagem enviada ao SPC'));
-    returnSection?.classList.toggle('hidden',stageRank(stage)<stageRank('Validar contagem'));
-    if(purpose&&stageRank(stage)>=stageRank('Aguardando planilha de dados'))purpose.value='producao';
-    const sent=document.getElementById('soCountSentAt');if(sent&&stageRank(stage)>=stageRank('Contagem enviada ao SPC')&&!sent.value)sent.value=localDateTime(new Date());
+    const stage=currentDialogStage(),ticketBox=document.querySelector('#spcOrderDialog .spc-ticket-box'),returnSection=document.getElementById('soCountReturnSection'),purpose=document.getElementById('soPurpose'),recount=stage==='Recontagem';
+    ticketBox?.classList.toggle('hidden',!recount&&stageRank(stage)<stageRank('Contagem enviada ao SPC'));
+    returnSection?.classList.toggle('hidden',!recount&&stageRank(stage)<stageRank('Validar contagem'));
+    if(purpose&&['Aguardando planilha de dados','Dados enviados ao cliente','Pós-venda'].includes(stage))purpose.value='producao';
+    const sent=document.getElementById('soCountSentAt');if(sent&&!recount&&stageRank(stage)>=stageRank('Contagem enviada ao SPC')&&!sent.value)sent.value=localDateTime(new Date());
   }
 
   async function enhanceDialog(id){
