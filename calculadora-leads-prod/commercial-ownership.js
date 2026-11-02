@@ -1,7 +1,7 @@
 // Funil comercial compartilhado com responsável por solicitação e proposta.
 (() => {
   const requestFlow=['Pendente','Validação da proposta junto ao SPC Brasil'];
-  const proposalFlow=['Validação da proposta junto ao SPC Brasil','Proposta enviada','Proposta fechada'];
+  const proposalFlow=['Validação da proposta junto ao SPC Brasil','Proposta enviada','Proposta fechada (teste)','Proposta fechada','Proposta rejeitada','Negócio perdido'];
   const operationalProposalStages=new Set(['Validação dos dados SPC Brasil','Aguardando envio da compra de leads do SPC Brasil','Compra de leads enviada para o cliente','Dados enviados ao cliente']);
   const terminal=new Set(['Negócio perdido','Perdida','Cancelada','Encerrada','Compra de leads enviada para o cliente','Dados enviados ao cliente']);
   const legacyInactive=new Set(['Negócio perdido','Perdida','Cancelada','Inativa','Inativo']);
@@ -69,8 +69,10 @@
   function actions(row,type){
     if(inactive(row))return admin()?`<button class="secondary" onclick="setCommercialRecordActive('${type}','${row.id}',true,'${html(row.code)}')">Reativar</button>`:'';
     if(type==='request')return `<button class="ghost" onclick="viewRequest('${row.id}')">Ver solicitação</button>${canOperate(row,type)?`<button class="secondary" onclick="loadRequestFromKanban('${row.id}')">${recordOwner(row,type)?'Orçar':'Assumir e orçar'}</button>`:''}${admin()?`<button class="danger" onclick="setCommercialRecordActive('request','${row.id}',false,'${html(row.code)}')">Inativar</button>`:''}`;
-    if(admin())return `<button class="ghost" onclick="editProposal('${row.id}')">Editar</button><button class="danger" onclick="setCommercialRecordActive('proposal','${row.id}',false,'${html(row.code)}')">Inativar</button>`;
-    return '';
+    const closed=['Proposta fechada','Proposta fechada (teste)'].includes(visibleStatus(row,type));
+    const startOrder=closed&&canOperate(row,type)?`<button class="secondary" onclick="generateProductionOrder('${row.id}')">Iniciar Ordem SPC</button>`:'';
+    if(admin())return `${startOrder}<button class="ghost" onclick="editProposal('${row.id}')">Editar</button><button class="danger" onclick="setCommercialRecordActive('proposal','${row.id}',false,'${html(row.code)}')">Inativar</button>`;
+    return startOrder;
   }
 
   function filterRows(rows,type){
@@ -78,7 +80,7 @@
     if(scope==='inactive')return rows.filter(inactive);
     if(scope==='all')return rows;
     const value=state[`${type}Owner`];
-    const open=rows.filter(row=>!inactive(row)&&!terminal.has(visibleStatus(row,type))&&(type!=='request'||requestFlow.includes(visibleStatus(row,type))));
+    const open=rows.filter(row=>!inactive(row)&&(type==='proposal'?proposalFlow.includes(visibleStatus(row,type)):requestFlow.includes(visibleStatus(row,type))));
     if(value==='open')return open;
     if(value==='mine')return open.filter(row=>recordOwner(row,type)===state.userId);
     if(value==='unassigned')return open.filter(row=>!recordOwner(row,type));
