@@ -33,19 +33,17 @@ function make(text){
  const lines=text.split(/\r?\n/).filter(x=>x.trim()),semi=(lines[0]?.match(/;/g)||[]).length,comma=(lines[0]?.match(/,/g)||[]).length;
  // A full Google Sheet CSV has at least 19 columns; choose separator from first row.
  const delim=semi>comma?';':',';
- const rows=parseCSV(text.replaceAll('\u0000',''),delim); // parser supports both delimiters
- // If source uses decimal comma and semicolon, parser already splits semicolons.
- // If comma-delimited source includes semicolons within quoted values, parser treats them as separators:
- // reject such files at validation rather than silently importing.
- const result=[],warnings=[],totals={revenue:0,expense:0};let seen=new Set();
+ const rows=parseCSV(text.replaceAll('\u0000',''),delim); // parser uses detected delimiter
+ // The CSV must represent the complete Orçamento 2027 sheet, including control totals.
+ const result=[],warnings=[],totals={revenue:0,expense:0},control={revenue:null,expense:null,result:null};let seen=new Set();
  rows.forEach((r,i)=>{if(r.length<19)return;
  const center=String(r[1]||'').trim().toUpperCase(),group=String(r[2]||'').trim().toUpperCase(),description=String(r[5]||'').trim();
  if(center!=='SPC BRASIL'||!description)return;
- if(group==='TOTAL RECEITAS'||group==='TOTAL DESPESAS'||group==='RESULTADO DO CENTRO'||group==='CENTRO DE CUSTO')return;
+ if(group==='TOTAL RECEITAS'||group==='TOTAL DESPESAS'||group==='RESULTADO DO CENTRO'){const k=group==='TOTAL RECEITAS'?'revenue':group==='TOTAL DESPESAS'?'expense':'result';try{control[k]=numeric(r[18])}catch(e){warnings.push('Linha '+(i+1)+': subtotal inválido')}return;}if(group==='CENTRO DE CUSTO')return;
  const category=group==='RECEITAS'?'revenue':group==='DESPESAS'?'expense':null;
  if(!category){warnings.push('Linha '+(i+1)+': grupo não reconhecido ('+group+')');return}
  let months;try{months=r.slice(6,18).map(numeric)}catch(e){warnings.push('Linha '+(i+1)+': '+e.message);return}
- const sourceKey='OBZ2027:SPC:'+String(i+1);
+ const sourceKey='OBZ2027:SPC:'+String(i+1); // row index stable only for complete-sheet export
  if(seen.has(sourceKey))throw Error('Identificador duplicado');seen.add(sourceKey);
  const item={source_key:sourceKey,category,description,account_code:String(r[4]||''),months};
  const total=months.reduce((a,b)=>a+b,0);totals[category]+=total;
@@ -53,6 +51,10 @@ function make(text){
  result.push(item);
  });
  if(!result.length)throw Error('Nenhuma rubrica SPC Brasil reconhecida. Exporte A:S da aba Orçamento 2027.');
+ if(control.revenue===null||control.expense===null||control.result===null)throw Error('CSV sem as três linhas de controle (total receitas, total despesas, resultado). Exporte a aba inteira, não um recorte.');
+ const cents=n=>Math.round(n*100);const actual={revenue:totals.revenue,expense:totals.expense,result:totals.revenue-totals.expense};
+ for(const k of Object.keys(control)){if(Math.abs(cents(actual[k])-cents(control[k]))>2)throw Error('Conciliação bloqueada em '+k+': rubricas '+actual[k].toFixed(2)+' versus subtotal '+control[k].toFixed(2));}
+ if(warnings.length)throw Error('Importação bloqueada por '+warnings.length+' divergência(s): '+warnings.slice(0,5).join(' | '));
  return {result,warnings,totals,delim};
 }
 file.addEventListener('change',async()=>{report.textContent='';if(!file.files?.length)return;
