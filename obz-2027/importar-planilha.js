@@ -6,13 +6,13 @@
 'use strict';
 const file=document.getElementById('csvFile'),report=document.getElementById('csvReport'),json=document.getElementById('json');
 if(!file||!report||!json)return;
-function parseCSV(text){
+function parseCSV(text,delimiter){
  const rows=[];let row=[],cell='',quoted=false;
  text=text.replace(/^\uFEFF/,'');
  for(let i=0;i<text.length;i++){const c=text[i];
  if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++}else if(c==='"')quoted=false;else cell+=c}
  else if(c==='"')quoted=true;
- else if(c===';'||c===','){row.push(cell);cell=''}
+ else if(c===delimiter){row.push(cell);cell=''}
  else if(c==='\n'||c==='\r'){if(c==='\r'&&text[i+1]==='\n')i++;row.push(cell);if(row.some(x=>x.trim()))rows.push(row);row=[];cell=''}
  else cell+=c;
  }
@@ -33,7 +33,7 @@ function make(text){
  const lines=text.split(/\r?\n/).filter(x=>x.trim()),semi=(lines[0]?.match(/;/g)||[]).length,comma=(lines[0]?.match(/,/g)||[]).length;
  // A full Google Sheet CSV has at least 19 columns; choose separator from first row.
  const delim=semi>comma?';':',';
- const rows=parseCSV(text.replaceAll('\u0000','')); // parser supports both delimiters
+ const rows=parseCSV(text.replaceAll('\u0000',''),delim); // parser supports both delimiters
  // If source uses decimal comma and semicolon, parser already splits semicolons.
  // If comma-delimited source includes semicolons within quoted values, parser treats them as separators:
  // reject such files at validation rather than silently importing.
