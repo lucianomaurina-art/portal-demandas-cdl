@@ -68,13 +68,24 @@ function batchStage(items){
 }
 function batchTitle(items){return items[0].batchTitle||items[0].title}
 function batchSummary(items){return items.length+' '+(items.length===1?'item':'itens')+' · Necessidade mais próxima '+dateLabel(items.filter(r=>!['done','denied'].includes(r.status)).map(r=>r.need).sort()[0]||items.map(r=>r.need).sort()[0])}
+function boardStage(items){
+ const actual=batchStage(items);
+ const position=db.boardPositions?.[batchId(items[0])];
+ return position?.from===actual&&lanes.some(([stage])=>stage===position.to)?position.to:actual;
+}
 function renderBoard(){
  const groups=batches();
- $('view').innerHTML=draftList()+'<div class="row spread"><h2>Acompanhamento</h2><label>Etapa <select id="filter"><option value="">Todas</option>'+lanes.map(([k,v])=>'<option value="'+k+'" '+(filter===k?'selected':'')+'>'+v+'</option>').join('')+'</select></label></div><p class="muted">Cada cartão representa uma solicitação. Quando os itens estão em etapas diferentes, o cartão mostra a primeira pendência do fluxo.</p><div class="board">'+lanes.filter(([stage])=>!filter||filter===stage).map(([stage,label])=>{
-  const cards=groups.filter(items=>batchStage(items)===stage);
-  return '<div class="lane" data-lane="'+stage+'"><h3>'+label+' · '+cards.length+'</h3>'+cards.map(items=>'<div class="card" draggable="true" data-drag-batch="'+batchId(items[0])+'"><small>'+protocol(batchId(items[0]))+'</small><h3>'+esc(batchTitle(items))+'</h3><p class="muted">'+esc(batchSummary(items))+'</p><button data-batch="'+batchId(items[0])+'">Abrir solicitação</button></div>').join('')+'</div>';
+ $('view').innerHTML=draftList()+'<div class="row spread"><h2>Acompanhamento</h2><label>Coluna <select id="filter"><option value="">Todas</option>'+lanes.map(([k,v])=>'<option value="'+k+'" '+(filter===k?'selected':'')+'>'+v+'</option>').join('')+'</select></label></div><p class="muted">Arraste os cartões entre as colunas. Se a posição for diferente da etapa do fluxo, o cartão mostra a etapa atual.</p><div class="board">'+lanes.filter(([stage])=>!filter||filter===stage).map(([stage,label])=>{
+  const cards=groups.filter(items=>boardStage(items)===stage);
+  return '<div class="lane" data-lane="'+stage+'"><h3>'+label+' · '+cards.length+'</h3>'+cards.map(items=>'<div class="card" draggable="true" data-drag-batch="'+batchId(items[0])+'"><small>'+protocol(batchId(items[0]))+'</small><h3>'+esc(batchTitle(items))+'</h3><p class="muted">'+esc(batchSummary(items))+'</p>'+
+   (stage!==batchStage(items)?'<p><small>Etapa do fluxo · '+esc(states[batchStage(items)])+'</small></p><button data-reset-position="'+batchId(items[0])+'">Voltar à etapa do fluxo</button> ':'')+
+   '<button data-batch="'+batchId(items[0])+'">Abrir solicitação</button></div>').join('')+'</div>';
  }).join('')+'</div>';
  wireBoardDrag();
+ document.querySelectorAll('[data-reset-position]').forEach(button=>button.onclick=()=>{
+  delete db.boardPositions[button.dataset.resetPosition];
+  save();
+ });
  wireDrafts();
  $('filter').onchange=e=>{filter=e.target.value;render()};
  document.querySelectorAll('[data-batch]').forEach(b=>b.onclick=()=>batchDetails(Number(b.dataset.batch)));
@@ -98,6 +109,9 @@ function wireBoardDrag(){
   if(dragged===undefined||!lane)return;
   e.preventDefault();
   e.dataTransfer.dropEffect='move';
+  const bounds=board.getBoundingClientRect();
+  if(e.clientX>bounds.right-40)board.scrollLeft+=18;
+  else if(e.clientX<bounds.left+40)board.scrollLeft-=18;
   board.querySelectorAll('[data-lane]').forEach(target=>target.classList.toggle('drop-target',target===lane));
  };
  board.ondragleave=e=>{
@@ -116,13 +130,21 @@ function wireBoardDrag(){
 }
 function moveBoardCard(items,target){
  const source=batchStage(items),id=batchId(items[0]);
- if(source===target)return;
+ if(boardStage(items)===target)return;
+ db.boardPositions??={};
+ if(source===target){
+  delete db.boardPositions[id];
+  save();
+  return;
+ }
  const current=items.filter(item=>item.status===source);
  if(source==='analysis'&&target==='quote'){
   for(const item of current){item.status='quote';item.returnToAnalysis=false;log(item,'Iniciou a cotação pelo Kanban.')}
   save();note(protocol(id)+' movida para Orçamento.');
   return;
  }
+ db.boardPositions[id]={from:source,to:target};
+ save();
  const action={
   'quote:review':'#submitBudgetReview',
   'fix:review':'#submitBudgetReview',
@@ -147,7 +169,7 @@ function moveBoardCard(items,target){
   $('form')?.querySelector('input')?.focus();
   return;
  }
- note('Movimentação indisponível para esta etapa ou perfil.');
+ note(protocol(id)+' reposicionada. Confira a etapa do fluxo no cartão.');
 }
 const activityLabel=activity=>esc(activity||'Não informada');
 const legacyPurchaseReason=rows=>[...new Set(rows.map(r=>r.purchaseReason).filter(Boolean))].join(' · ');
