@@ -1,0 +1,1064 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Compras · CDL Novo Hamburgo</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f6fa;color:#172740;font:15px system-ui,sans-serif}header{background:#10243d;color:white;padding:20px max(5%,calc((100% - 1160px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}header strong{letter-spacing:.06em}header label{color:#cbd7e6}main{max-width:1200px;margin:auto;padding:32px 20px}h1{font-size:clamp(28px,5vw,42px);margin:0;letter-spacing:-.05em}h2{margin-top:0}p{line-height:1.55}nav,.row,.actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}nav{margin:22px 0;border-bottom:1px solid #d7e1eb;padding-bottom:12px}button,select,input,textarea{font:inherit;border:1px solid #b9c9da;border-radius:8px;padding:9px 12px}button{background:white;color:#172740;cursor:pointer;font-weight:650}button:hover{border-color:#0059b0}button.primary,nav button[aria-current]{background:#0759a9;color:white;border-color:#0759a9}.muted,small{color:#485d75}.tag{display:inline-block;background:#e7effc;color:#154781;border-radius:20px;padding:5px 10px;font-size:13px;font-weight:650}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}.card,section{background:white;border:1px solid #dae4ee;border-radius:14px;padding:20px;margin-bottom:12px}.card h3{margin:9px 0}.spread{justify-content:space-between}label.field{display:grid;gap:5px;margin-bottom:12px;font-weight:550}input,textarea,select{min-width:0;background:white;color:#172740}textarea{min-height:70px}dialog{width:min(820px,95vw);max-height:90vh;border:1px solid #d0dae5;border-radius:16px;padding:22px;color:#172740}dialog::backdrop{background:#10243d88}table{width:100%;border-collapse:collapse}td,th{text-align:left;border-bottom:1px solid #e0e7ef;padding:9px}.scroll{overflow:auto}.alert{background:#fff0ce;color:#573a00;padding:10px;border-radius:8px}.ok{background:#e4f5ec;color:#14553a}.meta{margin:8px 0 14px}.actions{margin:12px 0}.info{margin:10px 0}summary{cursor:pointer;font-weight:650}ol,ul{padding-left:22px}li{margin:6px 0}footer{color:#485d75;font-size:13px;margin-top:18px}[hidden]{display:none!important}
+.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(240px,1fr);gap:12px;overflow:auto;padding-bottom:14px}.lane{background:#e7eef6;border-radius:12px;padding:12px;min-height:180px}.lane h3{font-size:15px;margin:0 0 12px}.lane .card{padding:12px}.lane .card button{width:100%;text-align:left}.itemsDialog{width:min(1500px,97vw)}.itemTable{min-width:1750px}.itemTable td{vertical-align:top}.itemTable input,.itemTable select,.itemTable textarea{width:100%;padding:8px}.itemTable textarea{min-height:42px;resize:vertical}.itemTable th:nth-child(1){width:18%}.itemTable th:nth-child(5),.itemTable th:nth-child(7){width:15%}.itemTable th:nth-child(8){width:14%}.itemTable input[type=number]{min-width:66px}
+@media print{header,main,dialog button{display:none!important}dialog[open]{position:static;width:100%;max-height:none;border:0}dialog::backdrop{background:white}.scroll{overflow:visible}}
+</style>
+<header><strong>CDL NOVO HAMBURGO</strong><label>Perfil de teste <select id="role"><option value="admin">Administrador · Luciano</option><option value="manager">Gestor</option><option value="user">Demandante · Colaborador</option></select></label></header>
+<main><div class="row spread"><div><h1>Solicitações de compras</h1><p class="muted">Portal de Demandas / Compras</p></div><button id="new" class="primary">+ Nova solicitação</button></div>
+<nav aria-label="Portal de Demandas e Compras" id="nav"><button data-tab="demands">Demandas</button><button data-tab="requests">Kanban de compras</button><button data-tab="orders">Ordens de compra</button><button data-tab="budget">Orçamento aprovado</button><button data-tab="vendors">Fornecedores</button><button data-tab="costs">Histórico de compras</button><button id="archiveTab" data-tab="archive" hidden>Inativos</button><button data-tab="design">Fluxo e regras</button></nav>
+<div id="notice" role="status"></div><div id="view"></div><footer>Protótipo com dados fictícios. As alterações ficam no navegador. Use somente dados de teste.</footer></main>
+<dialog id="modal"><div class="row spread"><h2 id="modalTitle"></h2><button id="close" aria-label="Fechar">Fechar</button></div><div id="body"></div></dialog>
+<script>
+const centers={Serviço:['SPC Brasil','Certificação Digital','Locação de Salas e Espaços','Eventos'],Apoio:['Financeiro','Marketing','Governança','Infraestrutura','TI']};
+const categories=['Materiais e suprimentos','Equipamentos e tecnologia','Serviços terceirizados','Eventos e comunicação'];
+const states={analysis:'Solicitação registrada',signature:'Aguardando assinatura',quote:'Em cotação',review:'Aguardando aprovação',fix:'Devolvida para ajustes',approved:'Aprovada',ordered:'Compra realizada',done:'Recebida',denied:'Reprovada'};
+const seed={vendors:[
+{id:1,name:'Sul Suprimentos (demo)',doc:'DEMO-001',contact:'',status:{[categories[0]]:'Validado'}},
+{id:2,name:'Ponto Escritório (demo)',doc:'DEMO-002',contact:'',status:{[categories[0]]:'Validado'}},
+{id:3,name:'Vale Soluções (demo)',doc:'DEMO-003',contact:'',status:{[categories[2]]:'Pendente'}}],
+requests:[{id:1,title:'Reposição de material de escritório',owner:'user',center:'Financeiro',requester:'Colaborador de demonstração',registeredBy:'Colaborador',activity:'Rotina administrativa',purchaseReason:'Repor os kits de escritório para a equipe.',category:categories[0],qty:10,unit:'kit',need:'2026-11-25',reason:'Reposição para uso interno.',status:'review',budgetId:'2026-05-01',estimate:'480',minimum:3,picked:1,choice:'Menor custo total e prazo compatível.',exception:'',quotes:[{vendor:1,price:480,days:3,method:'Boleto',payment:'30 dias',evidence:'Orçamento DEMO-01'},{vendor:2,price:520,days:2,method:'Pix',payment:'À vista',evidence:'Orçamento DEMO-02'},{vendor:3,price:550,days:5,method:'Boleto',payment:'15 dias',evidence:'Orçamento DEMO-03'}],log:['Colaborador · Encaminhou para aprovação.']}]};
+const key='cdl-compras-prototipo-v1';
+let db;try{db=JSON.parse(localStorage.getItem(key))||structuredClone(seed)}catch{db=structuredClone(seed)}
+const $=id=>document.getElementById(id);
+const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cash=value=>Number(value).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const admin=()=>$('role').value==='admin';
+const manager=()=>$('role').value==='manager';
+const canDeleteVendor=()=>admin()||manager();
+const actor=()=>admin()?'Luciano':manager()?'Gestor':'Colaborador';
+const activeVendors=()=>db.vendors.filter(v=>!v.deleted);
+const vendor=id=>db.vendors.find(v=>v.id===Number(id));
+const validation=(id,category)=>{
+ const supplier=vendor(id);
+ if(supplier?.deleted)return 'Fornecedor excluído';
+ if(category)return supplier?.status[category]||'Sem cadastro na categoria';
+ return Object.values(supplier?.status||{}).includes('Validado')?'Validado':'Homologação pendente';
+};
+const required=r=>r.market?1:3;
+const visible=()=>db.requests.filter(r=>!r.inactive&&(admin()||r.owner===$('role').value));
+const nextId=list=>Math.max(0,...list.map(x=>x.id))+1;
+let tab='demands',filter='';
+const field=(label,html)=>'<label class="field">'+label+html+'</label>';
+const options=(items,selected)=>items.map(item=>'<option'+(item===selected?' selected':'')+'>'+esc(item)+'</option>').join('');
+function note(message){$('notice').innerHTML='<p class="alert ok">'+esc(message)+'</p>'}
+function save(){try{localStorage.setItem(key,JSON.stringify(db))}catch{note('As alterações estão disponíveis nesta sessão. O navegador bloqueou a gravação local.')}render()}
+function open(title,html,wide=false){$('modal').classList.toggle('itemsDialog',wide);$('modalTitle').textContent=title;$('body').innerHTML=html;if(!$('modal').open)$('modal').showModal()}
+function close(){$('modal').close()}
+$('close').onclick=close;
+$('role').onchange=()=>{close();filter='';render();note('Perfil de teste alterado.')};
+$('nav').onclick=e=>{if(e.target.dataset.tab){tab=e.target.dataset.tab;render()}};
+$('new').onclick=()=>batchForm();
+const batchId=r=>r.batch||r.id;
+const protocol=id=>'CP-'+String(id).padStart(4,'0');
+const code=r=>protocol(batchId(r))+(r.line?'/'+String(r.line).padStart(2,'0'):'');
+const lanes=[['analysis','Solicitação'],['quote','Orçamento'],['review','Análise e aprovação'],['signature','Assinatura da ordem'],['fix','Ajustes solicitados'],['approved','Compra a realizar'],['ordered','Follow-up de entrega'],['done','Concluídas'],['denied','Reprovadas']];
+function batches(){
+ const map=new Map();
+ for(const r of visible()){
+  const id=batchId(r);
+  if(!map.has(id))map.set(id,[]);
+  map.get(id).push(r);
+ }
+ return [...map.values()];
+}
+function batchStage(items){
+ return ['analysis','fix','quote','review','signature','approved','ordered','done','denied'].find(stage=>items.some(r=>r.status===stage));
+}
+function batchTitle(items){return items[0].batchTitle||items[0].title}
+function batchSummary(items){return items.length+' '+(items.length===1?'item':'itens')+' · Necessidade mais próxima '+dateLabel(items.filter(r=>!['done','denied'].includes(r.status)).map(r=>r.need).sort()[0]||items.map(r=>r.need).sort()[0])}
+function renderBoard(){
+ const groups=batches();
+ $('view').innerHTML=draftList()+'<div class="row spread"><h2>Acompanhamento</h2><label>Etapa <select id="filter"><option value="">Todas</option>'+lanes.map(([k,v])=>'<option value="'+k+'" '+(filter===k?'selected':'')+'>'+v+'</option>').join('')+'</select></label></div><p class="muted">Cada cartão representa uma solicitação. Quando os itens estão em etapas diferentes, o cartão mostra a primeira pendência do fluxo.</p><div class="board">'+lanes.filter(([stage])=>!filter||filter===stage).map(([stage,label])=>{
+  const cards=groups.filter(items=>batchStage(items)===stage);
+  return '<div class="lane"><h3>'+label+' · '+cards.length+'</h3>'+cards.map(items=>'<div class="card"><small>'+protocol(batchId(items[0]))+'</small><h3>'+esc(batchTitle(items))+'</h3><p class="muted">'+esc(batchSummary(items))+'</p><button data-batch="'+batchId(items[0])+'">Abrir solicitação</button></div>').join('')+'</div>';
+ }).join('')+'</div>';
+ wireDrafts();
+ $('filter').onchange=e=>{filter=e.target.value;render()};
+ document.querySelectorAll('[data-batch]').forEach(b=>b.onclick=()=>batchDetails(Number(b.dataset.batch)));
+}
+const activityLabel=activity=>esc(activity||'Não informada');
+const legacyPurchaseReason=rows=>[...new Set(rows.map(r=>r.purchaseReason).filter(Boolean))].join(' · ');
+const requestReason=id=>db.purchaseReasons?.[id]||legacyPurchaseReason(db.requests.filter(r=>batchId(r)===id));
+const reasonLine=reason=>'<p><strong>Motivo da necessidade</strong> · '+esc(reason||'Não informado')+'</p>';
+const registeredLine=name=>'<p><strong>Registrado por</strong> · '+esc(name||'Não informado')+'</p>';
+const requesterLine=name=>'<p><strong>Solicitante</strong> · '+esc(name||'Não informado')+'</p>';
+function batchDetails(id){
+ const items=batches().find(group=>batchId(group[0])===id);
+ if(!items)return;
+ const pending=items.filter(r=>r.status==='analysis');
+ const reviews=items.filter(r=>r.status==='review');
+ open(protocol(id)+' · '+batchTitle(items),registeredLine(items[0].registeredBy)+requesterLine(items[0].requester)+reasonLine(requestReason(id))+'<p>'+esc(batchSummary(items))+'</p><div class="scroll"><table><thead><tr><th>Item e quantidade</th><th>Centro</th><th>Ação ou atividade</th><th>Necessidade</th><th>Fornecedor</th><th>Etapa</th><th></th></tr></thead><tbody>'+items.map(r=>'<tr><td><strong>'+esc(r.title)+'</strong><br><small>'+esc(r.qty)+' '+esc(r.unit)+'</small></td><td>'+esc(r.center)+'</td><td>'+activityLabel(r.activity)+'</td><td>'+dateLabel(r.need)+'</td><td>'+esc(r.approval?.vendor||vendor(r.picked)?.name||vendor(r.preferred)?.name||'A definir no orçamento')+'</td><td><span class="tag">'+states[r.status]+'</span></td><td><button data-item="'+r.id+'">Abrir item</button></td></tr>').join('')+'</tbody></table></div>'+
+ (items[0].demandId?'<div class="actions"><button id="backDemand">Abrir demanda '+esc(items[0].demandId)+'</button></div>':'')+quoteComparison(items)+quoteReviewPanel(items)+quoteSubmissionPanel(items)+orderLinks(items)+inactiveButton('solicitação')+(admin()&&reviews.length?approvalPanel(items,reviews):'')+
+ (pending.length?'<form id="form" class="info">'+field('Observação para cotação (opcional)','<textarea name="reason"></textarea>')+'<button class="primary" value="quote">Iniciar cotação</button></form>':''));
+ document.querySelectorAll('[data-item]').forEach(b=>b.onclick=()=>details(items.find(r=>r.id===Number(b.dataset.item))));
+ if($('backDemand'))$('backDemand').onclick=()=>demandDetails(items[0].demandId);
+ wireOrders();
+ wireInactive('request',id);
+ wireQuoteSubmission(id);
+ document.querySelectorAll('[data-cotate-item]').forEach(b=>b.onclick=()=>{
+  const item=items.find(r=>r.id===Number(b.dataset.cotateItem));
+  if(item)quoteForm(item);
+ });
+ if(admin()&&reviews.length)wireApproval(items,reviews);
+ if(pending.length)$('form').onsubmit=e=>{
+  e.preventDefault();
+  const status=e.submitter?.value,reason=new FormData(e.target).get('reason').trim();
+  if(status!=='quote')return;
+  for(const r of pending.filter(item=>item.status==='analysis')){r.status=status;r.returnToAnalysis=status==='fix';log(r,states[status]+' · '+reason)}
+  save();batchDetails(id);
+ };
+}
+const purchaseUnits=['unidade','kit','pacote','caixa','fardo','par','dúzia','rolo','folha','frasco','garrafa','saco','bandeja','kg','g','L','mL','m','m²','hora','diária'];
+function unitSelect(selected=''){
+ const units=selected&&!purchaseUnits.includes(selected)?[...purchaseUnits,selected]:purchaseUnits;
+ return '<select name="unit" aria-label="Unidade" required><option value="">Selecione</option>'+options(units,selected)+'</select>';
+}
+function batchForm(draft){
+ if(draft&&!visibleDrafts().includes(draft))return;
+ const origin=draft?.demandId?demandById(draft.demandId):null;
+ open(draft?'Completar '+protocol(draft.id):'Nova solicitação de compras','<form id="form">'+
+ (origin?'<p>Demanda de origem · '+esc(origin.id+' · '+origin.title)+'</p>':'')+field('Título da solicitação','<input name="batchTitle" maxlength="120" placeholder="Ex. Materiais para o próximo evento" value="'+esc(draft?.title)+'" required>')+
+ field('Registrado por · perfil em uso','<input value="'+esc(actor())+'" readonly>')+
+ field('Nome de quem está solicitando','<input name="requester" maxlength="120" autocomplete="name" required>')+
+ field('Motivo da necessidade','<textarea name="purchaseReason" maxlength="600" required></textarea>')+
+ field('Tipo de aquisição','<select name="route" id="purchaseRoute">'+options(['Suprimentos e compras avulsas','Mercado e gêneros de consumo','Prestação de serviço com contrato'])+'</select>')+
+ '<p id="purchaseRouteInfo" class="muted">O valor estimado é opcional. Registre os valores na cotação.</p>'+
+ '<div class="scroll"><table class="itemTable"><thead><tr><th>Descrição do item</th><th>Qtd.</th><th>Unidade</th><th>Data necessária</th><th>Centro de serviço ou apoio</th><th>Ação ou atividade</th><th>Rubrica aprovada (opcional)</th><th>Total estimado opcional (R$)</th><th>Fornecedor homologado</th><th>Observação</th><th></th></tr></thead><tbody id="itemRows"></tbody></table></div>'+
+ '<div class="actions"><button type="button" id="addItem">+ Adicionar item</button><button type="submit" class="primary">Registrar solicitação</button></div><p id="batchError" role="alert"></p></form>',true);
+ const rows=$('itemRows');
+ function add(){
+  const row=rows.insertRow();
+  row.innerHTML='<td><textarea name="title" aria-label="Descrição do item" required maxlength="180"></textarea></td><td><input name="qty" aria-label="Quantidade" type="number" min="1" value="1" required></td><td>'+unitSelect()+'</td><td><input name="need" aria-label="Data necessária" type="date" required></td><td><select name="center" aria-label="Centro" required><option value="">Selecione</option>'+Object.entries(centers).map(([group,items])=>'<optgroup label="'+group+'">'+options(items)+'</optgroup>').join('')+'</select></td><td><input name="activity" aria-label="Ação ou atividade" maxlength="160" required></td><td><select name="budgetId" aria-label="Rubrica aprovada (opcional)"></select></td><td><input name="estimate" aria-label="Total estimado opcional" type="number" min="0.01" step="0.01"></td><td><select name="preferred" aria-label="Fornecedor homologado"></select></td><td><textarea name="reason" aria-label="Observação"></textarea></td><td><button type="button" aria-label="Remover item">×</button></td>';
+  const get=name=>row.querySelector('[name="'+name+'"]');
+  const updateSupplier=()=>get('preferred').innerHTML=preferredOptions(budgetLine(get('budgetId').value)?.category,get('preferred').value);
+  const updateBudget=()=>{
+   get('budgetId').innerHTML=budgetOptions(get('center').value,get('need').value,get('budgetId').value);
+   updateSupplier();
+  };
+  get('budgetId').onchange=updateSupplier;
+  get('center').onchange=updateBudget;get('need').onchange=updateBudget;updateBudget();
+  row.querySelector('button').onclick=()=>{if(rows.rows.length>1)row.remove()};
+  get('title').focus();
+ }
+ $('addItem').onclick=add;add();
+ $('purchaseRoute').onchange=e=>{
+  const contract=e.target.value==='Prestação de serviço com contrato';
+  $('purchaseRouteInfo').textContent=contract?'Encaminhe a contratação ao fluxo de contratos. O respaldo é o contrato assinado.':e.target.value==='Mercado e gêneros de consumo'?'Compre em atacado. Verifique o desconto e as condições do cartão do atacado.':'O valor estimado é opcional. Registre os valores na cotação.';
+  $('batchError').textContent='';
+  $('form').querySelector('button[type="submit"]').disabled=contract;
+ };
+ submit(f=>{
+  const title=f.get('batchTitle').trim(),requester=f.get('requester').trim(),purchaseReason=f.get('purchaseReason').trim(),route=f.get('route');
+  if(route==='Prestação de serviço com contrato')return;
+  const items=[...rows.rows].map(row=>Object.fromEntries([...row.querySelectorAll('[name]')].map(input=>[input.name,input.value.trim()])));
+  for(const item of items)item.category=budgetLine(item.budgetId)?.category;
+  if(!title||!requester||!purchaseReason||items.some(r=>!r.title||!r.unit||!r.activity||(r.preferred&&validation(r.preferred,r.category)!=='Validado'))){$('batchError').textContent='Confira os campos e a homologação dos fornecedores selecionados.';return}
+  const issue=budgetCheck(items, r=>toCents(r.estimate),true);
+  if(issue){$('batchError').textContent=issue;return}
+  if(draft&&!visibleDrafts().includes(draft))return;
+  const firstId=nextPurchaseId(),id=draft?.id??firstId;
+  const records=items.map((data,i)=>{
+   const r={...data,id:firstId+i,batch:id,batchTitle:title,requester,registeredBy:actor(),demandId:draft?.demandId??null,line:i+1,owner:draft?.owner??$('role').value,status:'analysis',market:route==='Mercado e gêneros de consumo',minimum:route==='Mercado e gêneros de consumo'?1:3,quotes:[],log:[]};
+   log(r,r.budgetId?'Registrou para análise · Reserva '+cash(toCents(r.estimate)/100)+' · '+r.budgetId:'Registrou para análise sem vínculo com o OBZ.');return r;
+  });
+  if(draft)db.drafts=db.drafts.filter(d=>d!==draft);
+  (db.purchaseReasons??={})[id]=purchaseReason;
+  db.requests.unshift(...records);tab='requests';filter='';save();batchDetails(id);
+ });
+}
+function preferredOptions(category,selected){
+
+ return '<option value="">A definir no orçamento</option>'+db.vendors.filter(v=>validation(v.id,category)==='Validado').map(v=>'<option value="'+v.id+'" '+(String(v.id)===String(selected)?'selected':'')+'>'+esc(v.name)+'</option>').join('');
+}
+function render(){
+ $('archiveTab').hidden=!admin();
+ if(tab==='archive'&&!admin())tab='requests';
+ for(const b of $('nav').children)b.toggleAttribute('aria-current',b.dataset.tab===tab);
+ if(tab==='demands'){
+ renderDemands();
+ }else if(tab==='requests'){
+ renderBoard();
+ }else if(tab==='archive'){
+ renderArchive();
+ }else if(tab==='orders'){
+ renderOrders();
+ }else if(tab==='budget'){
+ renderBudget();
+ }else if(tab==='vendors'){
+ $('view').innerHTML='<div class="row spread"><h2>Cadastro e validação</h2><button id="newVendor" class="primary">+ Cadastrar fornecedor</button></div><div class="grid">'+activeVendors().map(v=>'<div class="card"><h3>'+esc(v.name)+'</h3><small>'+esc(v.doc)+' '+esc(v.contact)+'</small>'+Object.entries(v.status).map(([cat,status])=>'<p>'+esc(cat)+'<br><span class="tag">'+status+'</span></p>').join('')+'<button data-vendor="'+v.id+'">Abrir cadastro e histórico</button>'+'</div>').join('')+'</div>';
+ $('newVendor').onclick=()=>vendorForm();
+ document.querySelectorAll('[data-vendor]').forEach(b=>b.onclick=()=>vendorDetails(vendor(b.dataset.vendor)));
+ }else if(tab==='costs'){
+ renderCosts();
+ }else{
+ $('view').innerHTML=`<section><h2>Fluxo e regras</h2><ol>
+ <li><strong>Solicitação.</strong> Registre a necessidade. A rubrica do OBZ e o preço estimado são opcionais. Serviços que exigem contrato seguem pelo fluxo de contratos.</li>
+ <li><strong>Orçamento.</strong> Registre e anexe três cotações de fornecedores distintos, com valor total, prazo, referência e condições de pagamento. Para mercado, registre uma cotação em atacado e a conferência dos descontos com o cartão. Para pagamento com cartão, registre a autorização.</li>
+ <li><strong>Análise.</strong> Revise as cotações e a negociação, salve os fornecedores indicados e use Submeter solicitação orçada para análise. O gestor pode aprovar integral ou parcialmente, registrar ressalvas, devolver para ajuste ou reprovar. A aprovação revalida o saldo e gera ordens por fornecedor.</li>
+ <li><strong>Assinatura e compra.</strong> O gestor executivo assina a ordem antes de a equipe registrar a compra. A assinatura deste protótipo é simulada. O documento fiscal anexado ao item fica acessível na ordem.</li></ol>
+ <p><strong>Destino dos anexos na integração.</strong> <a href="https://drive.google.com/drive/folders/1OYkBpzPSk1MxEa0L9j3uEf53s9ysKZYU" target="_blank" rel="noopener noreferrer">fluxo de compras CDL NH</a>. Neste protótipo, os arquivos são gravados no navegador. O envio ao Drive depende da conexão do servidor do portal.</p>
+ <p><strong>Controles para a integração.</strong> Separar os papéis de solicitante, aprovador, recebimento e financeiro. Antes do pagamento, confrontar ordem, recebimento e nota ou cupom. Registrar divergências, cancelamentos e liberação de saldos com autorização e histórico.</p>
+ <p><strong>Integração futura.</strong> Reutilizar usuários, permissões e códigos dos centros do portal/OBZ. Estruturar solicitações, fornecedores, validações por categoria, cotações, decisões e histórico. No servidor, verificar perfil e autoria a cada ação e gravar decisão, mudança de etapa e histórico na mesma transação. Preservar a cotação e a regra aplicadas na aprovação. Em produção, armazenar arquivos fiscais com acesso restrito, gravar documentos e pagamentos como registros vinculados ao pedido e alertar Luciano quando houver pedido para decidir.</p></section>
+ `;
+ }
+}
+function submit(handler){$('form').onsubmit=e=>{e.preventDefault();handler(new FormData(e.target))}}
+function requestForm(r){
+ if(r&&(!visible().includes(r)||!['quote','fix'].includes(r.status)))return;
+ open(r?'Editar solicitação':'Nova solicitação','<form id="form">'+field('Item ou serviço','<input name="title" required maxlength="120" value="'+esc(r?.title)+'">')+'<div class="grid">'+field('Centro de serviço ou apoio','<select name="center" required><option value="">Selecione</option>'+Object.entries(centers).map(([group,items])=>'<optgroup label="'+group+'">'+options(items,r?.center)+'</optgroup>').join('')+'</select>')+field('Quantidade','<input name="qty" type="number" min="1" required value="'+(r?.qty||1)+'">')+field('Unidade',unitSelect(r?.unit))+field('Data necessária','<input name="need" type="date" required value="'+esc(r?.need)+'">')+'</div>'+field('Fornecedor homologado','<select name="preferred" id="editPreferred">'+preferredOptions(budgetLine(r?.budgetId)?.category,r?.preferred)+'</select>')+field('Ação ou atividade','<input name="activity" maxlength="160" required value="'+esc(r?.activity)+'">')+
+ field('Observação e especificações','<textarea name="reason">'+esc(r?.reason)+'</textarea>')+budgetFields(r)+quoteValueSummary(r,false)+'<p id="editBudgetError" role="alert"></p><button class="primary">Salvar alterações</button></form>');
+ wireBudgetFields(r);
+ submit(f=>{const data=Object.fromEntries(f),current=r||{id:nextId(db.requests),owner:$('role').value,status:'quote',quotes:[],log:[]};
+ if(!data.activity.trim()){$('editBudgetError').textContent='Informe a ação ou atividade.';return}
+ data.activity=data.activity.trim();
+ data.category=budgetLine(data.budgetId)?.category;
+ if(data.preferred&&validation(data.preferred,data.category)!=='Validado'){$('editBudgetError').textContent='Selecione um fornecedor homologado para a rubrica.';return}
+ const issue=budgetCheck([{...data,id:r?.id}],item=>toCents(item.estimate),true);
+ if(issue){$('editBudgetError').textContent=issue;return}
+ if(r&&['category','title','qty','unit','need'].some(k=>String(r[k])!==String(data[k]))&&r.quotes.length){
+ if(!confirm('Alterar a especificação, o prazo ou a categoria limpa as cotações atuais. Continuar?'))return;
+ current.quotes=[];current.picked=null;current.choice='';current.exception='';log(current,'Reabriu a cotação após alterar o pedido.');
+ }
+ if(!r)current.minimum=3;
+ Object.assign(current,data);if(!r)db.requests.unshift(current);log(current,r?'Atualizou a solicitação.':'Registrou a solicitação.');tab='requests';save();details(current)});
+}
+function log(r,message){r.log.unshift(new Date().toLocaleString('pt-BR')+' · '+actor()+' · '+message)}
+const supplierFields=[
+ ['name','Razão social','text',true],['tradeName','Nome fantasia','text'],['doc','CNPJ ou identificação de teste','text',true],
+ ['contact','Responsável comercial','text',true],['email','E-mail','email'],['phone','Telefone ou WhatsApp','tel'],
+ ['address','Endereço','text'],['city','Cidade e UF','text']
+];
+function vendorForm(back,existing){
+ if(existing?.deleted)return;
+ open(existing?'Editar fornecedor':'Cadastrar fornecedor','<form id="form"><div class="grid">'+supplierFields.map(([name,label,type,required])=>
+ field(label,'<input name="'+name+'" type="'+type+'" maxlength="180" value="'+esc(existing?.[name])+'" '+(required?'required':'')+'>')).join('')+'</div>'+
+ field('Observações comerciais','<textarea name="notes" maxlength="1000">'+esc(existing?.notes)+'</textarea>')+
+ '<fieldset><legend>Categorias de fornecimento</legend><div class="grid">'+categories.map(cat=>'<label><input type="checkbox" name="categories" value="'+esc(cat)+'" '+((existing?Object.hasOwn(existing.status,cat):back?.category===cat)?'checked':'')+'> '+esc(cat)+'</label>').join('')+'</div></fieldset>'+
+ '<p id="error" role="alert"></p><div class="actions"><button class="primary">'+(existing?'Salvar cadastro':'Cadastrar para validação')+'</button></div></form>');
+ submit(f=>{
+ if(existing?.deleted)return;
+ const data=Object.fromEntries([...supplierFields.map(([k])=>k),'notes'].map(k=>[k,String(f.get(k)||'').trim()]));
+ const normalizeDoc=value=>value.replace(/[.\/\s-]/g,'').toUpperCase();
+ const doc=normalizeDoc(data.doc);
+ const selected=[...new Set(f.getAll('categories'))].filter(cat=>categories.includes(cat));
+ if(!data.name||!data.contact||!doc||!selected.length){$('error').textContent='Informe a razão social, a identificação, o responsável e pelo menos uma categoria.';return}
+ if(activeVendors().some(v=>v!==existing&&normalizeDoc(v.doc)===doc)){$('error').textContent='Já existe um fornecedor com essa identificação.';return}
+ const status=Object.fromEntries(selected.map(cat=>[cat,existing?.status[cat]||'Pendente']));
+ const record=existing||{id:nextId(db.vendors),reviews:[]};
+ Object.assign(record,data,{status});
+ if(!existing)db.vendors.push(record);
+ save();if(back)details(back);else vendorDetails(record);
+ note(existing?'Cadastro atualizado.':'Fornecedor cadastrado para validação.');
+ });
+}
+function vendorOrders(v){
+ const rows=db.requests.filter(r=>admin()||(!r.inactive&&r.owner===$('role').value));
+ return (db.orders||[]).filter(o=>o.vendorId===v.id&&rows.some(r=>r.orderId===o.id)&&(admin()||!o.inactive)).slice().sort((a,b)=>b.id-a.id);
+}
+function vendorDetails(v){
+ if(!v||v.deleted)return;
+ const orders=vendorOrders(v),active=visible();
+ open(v.name,'<div class="grid">'+supplierFields.slice(1).map(([name,label])=>'<p><strong>'+label+'</strong><br>'+esc(v[name]||'—')+'</p>').join('')+'</div>'+
+ (v.notes?'<p>'+esc(v.notes)+'</p>':'')+
+ '<h3>Categorias e homologação</h3><ul>'+Object.entries(v.status).map(([cat,status])=>'<li>'+esc(cat)+' · <span class="tag">'+esc(status)+'</span></li>').join('')+'</ul>'+
+ '<div class="actions"><button id="editVendor">Editar cadastro</button>'+(admin()?'<button id="reviewVendor">Avaliar por categoria</button>':'')+(canDeleteVendor()?'<button id="deleteVendor" style="color:#9a2424">Excluir fornecedor</button>':'')+'</div>'+
+ '<h3>Histórico de compras e ordens</h3>'+
+ (orders.length?'<div class="scroll"><table><thead><tr><th>Ordem</th><th>Solicitação</th><th>Data da aprovação</th><th>Itens</th><th>Valor aprovado</th><th>Situação</th><th></th></tr></thead><tbody>'+
+ orders.map(o=>{
+ const rows=db.requests.filter(r=>r.orderId===o.id);
+ const status=o.inactive?'Inativa':Array.from(new Set(rows.map(orderStatus))).join(' · ');
+ const canOpen=o.inactive?admin():active.some(r=>r.orderId===o.id);
+ return '<tr><td>'+orderCode(o.id)+'</td><td>'+protocol(o.batch)+'</td><td>'+esc(o.date)+'</td><td>'+o.items.map(i=>esc(i.title+' · '+i.qty+' '+i.unit)).join('<br>')+'</td><td>'+cash(o.total/100)+'</td><td>'+esc(status)+'</td><td>'+(canOpen?'<button data-supplier-order="'+o.id+'">Abrir ordem</button>':'')+'</td></tr>';
+ }).join('')+'</tbody></table></div>':'<p class="muted">Nenhuma ordem gerada para este fornecedor.</p>'),true);
+ $('editVendor').onclick=()=>vendorForm(null,v);
+ if(admin())$('reviewVendor').onclick=()=>validateForm(v);
+ if(canDeleteVendor())$('deleteVendor').onclick=()=>deleteVendorForm(v);
+ document.querySelectorAll('[data-supplier-order]').forEach(b=>b.onclick=()=>{
+  const o=orders.find(x=>x.id===Number(b.dataset.supplierOrder));
+  if(o.inactive)archiveDetails(o.inactive.kind+':'+o.inactive.id);else orderDetails(o.id);
+ });
+}
+function deleteVendorForm(v){
+ if(!canDeleteVendor()||!activeVendors().includes(v))return;
+ open('Excluir fornecedor · '+v.name,'<p>O fornecedor sairá do cadastro ativo e das novas cotações. Os registros de compras anteriores continuarão disponíveis.</p>'+
+ '<form id="form">'+field('Motivo da exclusão','<textarea name="reason" maxlength="400" required></textarea>')+
+ '<p id="deleteVendorError" role="alert"></p><div class="actions"><button class="primary">Confirmar exclusão</button><button id="cancelVendorDelete" type="button">Voltar</button></div></form>');
+ $('cancelVendorDelete').onclick=()=>vendorDetails(v);
+ submit(f=>{
+  const reason=f.get('reason').trim();
+  if(!canDeleteVendor()||v.deleted||!reason)return;
+  v.deleted={reason,actor:actor(),date:new Date().toLocaleString('pt-BR')};
+  try{localStorage.setItem(key,JSON.stringify(db))}catch{
+   delete v.deleted;$('deleteVendorError').textContent='Não foi possível salvar a exclusão.';return;
+  }
+  close();tab='vendors';render();note('Fornecedor excluído do cadastro ativo.');
+ });
+}
+function validateForm(v,back){
+ if(!admin()||v.deleted)return;
+ open('Avaliar fornecedor','<p><strong>'+esc(v.name)+'</strong></p><form id="form">'+field('Categoria','<select name="category">'+options(Object.keys(v.status),back?.category||Object.keys(v.status)[0])+'</select>')+field('Resultado','<select name="status">'+options(['Validado','Pendente','Reprovado'])+'</select>')+field('Parecer e referência da conferência','<textarea name="reason" required></textarea>')+'<button class="primary">Salvar validação</button></form>'+ (v.reviews?.length?'<h3>Histórico de validações</h3><ul>'+v.reviews.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>':''));
+ submit(f=>{if(!admin()||v.deleted||!f.get('reason').trim()||!Object.hasOwn(v.status,f.get('category')))return;v.status[f.get('category')]=f.get('status');(v.reviews??=[]).unshift(new Date().toLocaleString('pt-BR')+' · '+actor()+' · '+f.get('category')+' · '+f.get('status')+' · '+f.get('reason').trim());save();back?details(back):vendorDetails(v);note('Validação registrada.')});
+}
+function editable(r){return visible().includes(r)&&['quote','fix'].includes(r.status)}
+function comparableQuotes(r){
+ return r.quotes.filter(q=>vendor(q.vendor)&&!vendor(q.vendor).deleted&&validation(q.vendor,r.category)!=='Reprovado'&&
+  Number.isSafeInteger(toCents(q.price))&&toCents(q.price)>0&&(!r.market||q.wholesale));
+}
+function cheapestQuote(r){
+ return comparableQuotes(r).sort((a,b)=>toCents(a.price)-toCents(b.price)||Number(a.days)-Number(b.days)||a.vendor-b.vendor)[0];
+}
+function quoteComparison(items){
+ const pending=items.filter(r=>['analysis','quote','fix','review'].includes(r.status));
+ if(!pending.some(r=>r.quotes.length))return '';
+ const lines=pending.map(r=>({r,quote:cheapestQuote(r)}));
+ const baseline=lines.reduce((sum,{quote})=>sum+(quote?toCents(quote.price):0),0);
+ const suppliers=new Set(pending.flatMap(r=>comparableQuotes(r).map(q=>q.vendor)));
+ const complete=[...suppliers].map(id=>{
+  const quotes=pending.map(r=>comparableQuotes(r).find(q=>q.vendor===id));
+  return {id,quotes,total:quotes.reduce((sum,q)=>sum+(q?toCents(q.price):0),0)};
+ }).filter(s=>s.quotes.every(Boolean)).sort((a,b)=>a.total-b.total);
+ const label=(id,r)=>esc(vendor(id).name)+(validation(id,r.category)==='Validado'?'':' · homologação pendente');
+ return '<section><h3>Comparação de preços</h3><p class="muted">Valores finais com desconto e frete informado. Confira prazo, pagamento e eventual alteração do frete antes de decidir.</p>'+
+ '<h4>Menor custo por item</h4><ul>'+lines.map(({r,quote})=>'<li>'+esc(r.title)+' · '+(quote?label(quote.vendor,r)+' · '+cash(quote.price):'Sem cotação comparável')+'</li>').join('')+'</ul>'+
+ '<p><strong>'+(lines.every(l=>l.quote)?'Total comprando pelo menor preço de cada item':'Subtotal dos itens cotados')+' · '+cash(baseline/100)+'</strong></p>'+
+ '<h4>Fechar com um fornecedor</h4>'+
+ (complete.length?'<div class="scroll"><table><thead><tr><th>Fornecedor</th><th>Total cotado</th><th>Desconto adicional para igualar</th><th>Valor-alvo</th></tr></thead><tbody>'+
+ complete.map(({id,total})=>'<tr><td>'+esc(vendor(id).name)+(pending.every(r=>validation(id,r.category)==='Validado')?'':' · homologação pendente')+'</td><td>'+cash(total/100)+'</td><td>'+cash(Math.max(0,total-baseline)/100)+'</td><td>'+cash(baseline/100)+'</td></tr>').join('')+'</tbody></table></div>'
+ :'<p>Nenhum fornecedor cotou todos os itens pendentes. Peça cotação dos itens faltantes para comparar o fechamento em um só fornecedor.</p>')+'</section>';
+}
+
+function quoteSubmissionItems(items){
+ return items.filter(r=>['analysis','quote','fix'].includes(r.status));
+}
+function quoteReadiness(r){
+ if(r.status==='analysis')return 'Inicie a cotação.';
+ if(r.returnToAnalysis)return 'Reabra a cotação após os ajustes.';
+ const quotes=comparableQuotes(r);
+ if(new Set(quotes.map(q=>q.vendor)).size<required(r))return 'Complete '+required(r)+' cotação(ões) comparáveis.';
+ if(new Set(quotes.filter(hasQuoteAttachment).map(q=>q.vendor)).size<required(r))return 'Anexe os arquivos de '+required(r)+' cotação(ões) de fornecedores distintos.';
+ const chosen=quotes.find(q=>q.vendor===r.picked);
+ if(!chosen||!r.choice?.trim())return 'Salve o fornecedor indicado e a justificativa.';
+ if(!hasQuoteAttachment(chosen))return 'Anexe o orçamento do fornecedor indicado.';
+ if(chosen.method?.startsWith('Cartão')&&!chosen.authorization?.trim())return 'Registre a autorização para pagamento com cartão.';
+ return '';
+}
+function quoteSubmissionPanel(items){
+ const pending=quoteSubmissionItems(items);
+ if(!pending.some(r=>r.status!=='analysis'))return '';
+ const issues=pending.map(r=>({r,issue:quoteReadiness(r)})).filter(x=>x.issue);
+ return '<section><h3>Submissão para análise</h3>'+
+ (issues.length?'<ul>'+issues.map(({r,issue})=>'<li>'+esc(r.title)+' · '+esc(issue)+'</li>').join('')+'</ul>':'<p>Os itens pendentes têm cotações anexadas e fornecedor indicado.</p>')+
+ '<form id="submitBudgetReview"><label><input type="checkbox" name="confirmed" required> Confirmei a revisão das cotações e concluí a negociação.</label>'+
+ field('Resultado da negociação (opcional)','<textarea name="negotiation" maxlength="600"></textarea>')+
+ '<div class="actions"><button class="primary" '+(issues.length?'disabled':'')+'>Submeter solicitação orçada para análise</button></div><p id="budgetReviewError" role="alert"></p></form></section>';
+}
+function wireQuoteSubmission(id){
+ const form=$('submitBudgetReview');
+ if(!form)return;
+ form.onsubmit=e=>{
+  e.preventDefault();
+  const f=new FormData(e.target),group=batches().find(items=>batchId(items[0])===id);
+  if(!group||!f.has('confirmed'))return;
+  const pending=quoteSubmissionItems(group);
+  if(!pending.length)return;
+  const error=message=>{$('budgetReviewError').textContent=message};
+  for(const r of pending){
+   const issue=quoteReadiness(r);
+   if(issue){error(r.title+' · '+issue);return}
+  }
+  const issue=budgetCheck(pending,r=>toCents(selectedQuote(r).price));
+  if(issue){error(issue);return}
+  const negotiation=f.get('negotiation').trim();
+  const before=pending.map(r=>r.status);
+  for(const r of pending){
+   r.status='review';
+   log(r,'Submeteu a solicitação orçada para análise após revisão e negociação.'+(negotiation?' · '+negotiation:''));
+  }
+  try{localStorage.setItem(key,JSON.stringify(db));}catch{
+   pending.forEach((r,i)=>{r.status=before[i];r.log.shift();});
+   error('Não foi possível salvar a submissão. Tente novamente.');return;
+  }
+  render();batchDetails(id);note(protocol(id)+' submetida para análise.');
+ };
+}
+
+function quoteMoney(gross,discount){
+ const total=toCents(gross),off=toCents(discount);
+ return Number.isSafeInteger(total)&&Number.isSafeInteger(off)&&total>0&&off>=0&&off<total?total-off:null;
+}
+function quoteForm(r,q){
+ if(!editable(r))return;
+ const vendors=activeVendors().filter(v=>v.id===q?.vendor||!r.quotes.some(x=>x.vendor===v.id));
+ open('Registrar cotação','<form id="form">'+field('Fornecedor','<select name="vendor" required><option value="">Selecione</option>'+vendors.map(v=>'<option value="'+v.id+'" '+(v.id===(q?.vendor||Number(r.preferred))?'selected':'')+'>'+esc(v.name)+'</option>').join('')+'</select>')+'<div class="grid">'+field('Valor bruto com frete (R$)','<input name="gross" id="quoteGross" type="number" min="0.01" step="0.01" required value="'+esc(q?.gross??q?.price)+'">')+
+ field('Desconto (R$)','<input name="discount" id="quoteDiscount" type="number" min="0" step="0.01" value="'+esc(q?.discount??0)+'">')+
+ field('Valor final (R$)','<output id="quoteFinal" for="quoteGross quoteDiscount"></output>')+field('Prazo de entrega (dias)','<input name="days" type="number" min="0" required value="'+esc(q?.days)+'">')+'</div>'+field('Forma de pagamento','<select name="method" id="quoteMethod" required><option value="">Selecione</option>'+options(['Cartão de crédito','Cartão do atacado','Boleto','Pix'],q?.method)+'</select>')+
+ field('Condição de pagamento','<input name="payment" required value="'+esc(q?.payment)+'" placeholder="Ex. à vista, vencimento ou número de parcelas">')+
+ field('Autorização para pagamento com cartão','<input name="authorization" id="quoteAuthorization" value="'+esc(q?.authorization)+'" placeholder="Referência da autorização">')+
+ (r.market?field('Conferência da compra em atacado','<select name="wholesale" required><option value="">Selecione</option>'+options(['Atacado · desconto com cartão conferido','Atacado · cartão indisponível ou sem desconto'],q?.wholesale)+'</select>'):'')+field('Referência do orçamento','<input name="evidence" required value="'+esc(q?.evidence)+'" placeholder="Número da proposta ou referência do comprovante">')+field('Anexar orçamento do fornecedor (PDF, JPG, PNG · até 2 MB)','<input name="quoteFile" type="file" accept=".pdf,.jpg,.jpeg,.png">')+
+ (q?.attachment?'<p>Arquivo atual · '+esc(q.attachment.name)+'</p>':'')+
+ '<p id="quoteError" role="alert"></p><button id="saveQuote" class="primary">Salvar cotação</button></form>');
+ const toggleCard=()=>{$('quoteAuthorization').required=$('quoteMethod').value.startsWith('Cartão')};
+ $('quoteMethod').onchange=toggleCard;toggleCard();
+ const showFinal=()=>{
+  const cents=quoteMoney($('quoteGross').value,$('quoteDiscount').value);
+  $('quoteFinal').textContent=cents===null?'—':cash(cents/100);
+ };
+ $('quoteGross').oninput=showFinal;$('quoteDiscount').oninput=showFinal;showFinal();
+ const form=$('form');
+ submit(async f=>{
+  if(!editable(r))return;
+  const data=Object.fromEntries(f),file=data.quoteFile;
+  delete data.quoteFile;
+  data.vendor=Number(data.vendor);
+  const final=quoteMoney(data.gross,data.discount);
+  const error=message=>{$('quoteError').textContent=message};
+  if(final===null){error('Informe valor bruto positivo e desconto menor que o valor bruto.');return}
+  if(!activeVendors().includes(vendor(data.vendor))||r.quotes.some(x=>x!==q&&x.vendor===data.vendor))return;
+  if(data.method?.startsWith('Cartão')&&!data.authorization?.trim())return;
+  if(file?.name&&(!file.size||file.size>2_000_000||!/[.](pdf|jpe?g|png)$/i.test(file.name))){error('Selecione um PDF, JPG ou PNG de até 2 MB.');return}
+  if(file?.name){
+   $('saveQuote').disabled=true;
+   try{
+    const content=await new Promise((resolve,reject)=>{
+     const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);
+    });
+    data.attachment={name:file.name,data:content};
+   }catch{
+    if($('form')===form){$('saveQuote').disabled=false;error('Não foi possível ler o anexo.');}
+    return;
+   }
+  }
+  if($('form')!==form||!$('modal').open||!editable(r))return;
+  if(!activeVendors().includes(vendor(data.vendor))||r.quotes.some(x=>x!==q&&x.vendor===data.vendor)){ $('saveQuote').disabled=false;return; }
+  data.price=final/100;data.gross=Number(data.gross);data.discount=Number(data.discount);
+  const previous=r.quotes;
+  r.quotes=q?previous.map(x=>x===q?{...x,...data}:x):[...previous,data];
+  log(r,'Registrou cotação de '+vendor(data.vendor).name+'.');
+  try{localStorage.setItem(key,JSON.stringify(db));}catch{
+   r.quotes=previous;r.log.shift();$('saveQuote').disabled=false;error('Não foi possível salvar. Verifique o espaço disponível no navegador.');return;
+  }
+  render();details(r);
+ });
+
+}
+function details(r){
+ if(!visible().includes(r))return;
+ const analysis=r.status==='analysis',edit=editable(r),review=admin()&&r.status==='review',picked=r.quotes.find(q=>q.vendor===r.picked);
+ const cheapest=cheapestQuote(r);
+ const approval=r.approval?'<p class="alert ok">Aprovação registrada · '+esc(r.approval.vendor)+' · '+cash(r.approval.price)+' · '+esc(r.approval.reason)+(r.approval.caveat?' · Ressalva '+esc(r.approval.caveat):'')+'</p>':'';
+ open(code(r)+' · '+r.title,registeredLine(r.registeredBy)+requesterLine(r.requester)+reasonLine(requestReason(batchId(r)))+'<p><strong>Ação ou atividade</strong> · '+activityLabel(r.activity)+'</p><p class="meta"><span class="tag">'+states[r.status]+'</span> · '+esc(r.center)+' · '+esc(r.category)+'</p><p>'+esc(r.qty)+' '+esc(r.unit)+' · Data necessária '+esc(r.need.split('-').reverse().join('/'))+'<br>'+esc(r.reason)+'</p><p class="muted">Fornecedor homologado indicado na abertura · '+esc(vendor(r.preferred)?.name||'A definir no orçamento')+'</p>'+approval+
+ '<button id="backBatch">Voltar à solicitação</button>'+orderLinks([r])+budgetInfo(r)+quoteValueSummary(r)+
+ (analysis?'<form id="form" class="info">'+field('Observação para cotação (opcional)','<textarea name="reason"></textarea>')+'<div class="actions"><button class="primary" value="quote">Iniciar cotação</button></div></form>':'')+
+ '<h3>Cotações ('+r.quotes.length+' de '+required(r)+' exigidas)</h3><div class="scroll"><table><thead><tr><th>Fornecedor</th><th>Bruto</th><th>Desconto</th><th>Final</th><th>Prazo e pagamento</th><th>Comprovante</th><th>Validação na categoria</th></tr></thead><tbody>'+r.quotes.map(q=>'<tr><td>'+esc(vendor(q.vendor).name)+(q.vendor===r.picked?' · Indicado':'')+'</td><td>'+cash(q.gross??q.price)+'</td><td>'+cash(q.discount??0)+'</td><td>'+cash(q.price)+(q===cheapest?'<br><small>Menor custo</small>':'')+'</td><td>'+esc(q.days)+' d · '+esc(paymentLabel(q))+(q.wholesale?'<br><small>'+esc(q.wholesale)+'</small>':'')+'</td><td>'+esc(q.evidence)+'<br>'+quoteAttachmentLink(q)+'</td><td>'+esc(validation(q.vendor,r.category))+(admin()&&(edit||review)?' <button data-validate="'+q.vendor+'">Avaliar</button>':'')+(edit&&!r.returnToAnalysis?' <button data-quote="'+q.vendor+'">Editar cotação</button>':'')+'</td></tr>').join('')+'</tbody></table></div>'+
+ (edit?'<div class="actions"><button id="editRequest">Editar item</button>'+(!r.returnToAnalysis?'<button id="addVendor">Cadastrar fornecedor</button><button id="addQuote">Adicionar cotação</button>':'')+'</div>':'')+
+ (edit&&r.status==='fix'&&r.returnToAnalysis?'<div class="actions"><button class="primary" id="retryAnalysis">Voltar à cotação</button></div>':'')+
+ (edit&&!r.returnToAnalysis&&r.quotes.length?'<form id="form">'+field('Fornecedor indicado','<select name="picked" required>'+r.quotes.map(q=>'<option value="'+q.vendor+'" '+(q.vendor===(r.picked||cheapest?.vendor)?'selected':'')+'>'+esc(vendor(q.vendor).name)+'</option>').join('')+'</select>')+field('Justificativa da escolha','<textarea name="choice" required>'+esc(r.choice)+'</textarea>')+'<button class="primary">Salvar fornecedor indicado</button><p id="quoteSubmitError" role="alert"></p></form>':'')+
+ (picked&&!edit?'<p><strong>Indicação.</strong> '+esc(vendor(picked.vendor).name)+' · '+esc(r.choice)+'</p>':'')+
+ (review?'<form id="form">'+(picked&&validation(picked.vendor,r.category)!=='Validado'?'<p class="alert">Aprovação bloqueada até validar o fornecedor indicado nesta categoria.</p>':'')+field('Parecer da decisão','<textarea name="decision" required></textarea>')+field('Ressalvas (opcional)','<textarea name="caveat"></textarea>')+'<div class="actions"><button class="primary" value="approved">Aprovar</button><button value="fix">Devolver para ajustes</button><button value="denied">Reprovar</button></div><p id="error" role="alert"></p></form>':'')+
+ (r.status==='ordered'?deliveryPanel(r):'')+
+ (['approved','ordered'].includes(r.status)?'<form id="form">'+field(r.status==='approved'?'Referência da compra realizada':'Referência do recebimento','<input name="ref" required>')+'<button class="primary">'+(r.status==='approved'?'Registrar compra':'Confirmar recebimento')+'</button></form>':'')+
+ (fiscalAllowed(r)?fiscalPanel(r):'')+
+ '<details class="info"><summary>Histórico</summary><ul>'+r.log.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></details>');
+ $('backBatch').onclick=()=>batchDetails(batchId(r));
+ wireOrders();
+ if($('linkBudget'))$('linkBudget').onclick=()=>linkLegacyBudget(r);
+ wireFiscal(r);
+ if(analysis)$('form').onsubmit=e=>{
+  e.preventDefault();
+  const status=e.submitter?.value,reason=new FormData(e.target).get('reason').trim();
+  if(r.status!=='analysis'||status!=='quote')return;
+  r.status=status;r.returnToAnalysis=status==='fix';log(r,states[status]+' · '+reason);save();details(r);
+ };
+ if($('retryAnalysis'))$('retryAnalysis').onclick=()=>{
+  if(r.status!=='fix'||!r.returnToAnalysis)return;
+  r.status='quote';r.returnToAnalysis=false;log(r,'Reabriu a cotação.');save();details(r);
+ };
+ if(r.status==='ordered')$('deliveryUpdate').onclick=()=>deliveryForm(r);
+ document.querySelectorAll('[data-validate]').forEach(b=>b.onclick=()=>validateForm(vendor(b.dataset.validate),r));
+ document.querySelectorAll('[data-quote]').forEach(b=>b.onclick=()=>quoteForm(r,r.quotes.find(q=>q.vendor===Number(b.dataset.quote))));
+ if(edit){$('editRequest').onclick=()=>requestForm(r);if(!r.returnToAnalysis){$('addVendor').onclick=()=>vendorForm(r);$('addQuote').onclick=()=>quoteForm(r);}
+ if($('form'))submit(f=>{if(!editable(r)||!f.get('choice').trim())return;
+ const quote=r.quotes.find(q=>q.vendor===Number(f.get('picked')));
+ if(!quote)return;
+ if(vendor(quote.vendor)?.deleted){$('quoteSubmitError').textContent='Selecione uma cotação de fornecedor ativo.';return}
+ if(r.market&&!quote.wholesale){$('quoteSubmitError').textContent='Confira a compra em atacado e a condição do cartão.';return}
+ r.picked=quote.vendor;r.choice=f.get('choice').trim();
+ log(r,'Salvou indicação de '+vendor(quote.vendor).name+' para a revisão do orçamento.');
+ save();details(r);note('Fornecedor indicado. Submeta a compra pelo detalhe da solicitação após a revisão.');});
+ }
+ if(review)$('form').onsubmit=e=>{e.preventDefault();if(!admin()||r.status!=='review')return;
+ const f=new FormData(e.target),decision=e.submitter?.value,reason=f.get('decision').trim();
+ if(!reason||!['approved','fix','denied'].includes(decision))return;
+ if(decision==='approved'){
+  approveItems([r],reason,() => details(r),'error',f.get('caveat')?.trim());
+  return;
+ }
+ r.status=decision;log(r,states[decision]+' · '+reason);save();details(r)};
+ if(['approved','ordered'].includes(r.status))submit(f=>{if(!visible().includes(r)||!f.get('ref').trim()||!['approved','ordered'].includes(r.status))return;const order=ordersFor([r])[0];if(r.status==='approved'&&order?.requiresSignature&&!order.signature)return;const ref=f.get('ref').trim();if(r.status==='approved')r.purchaseRef=ref;else r.receiptRef=ref;r.status=r.status==='approved'?'ordered':'done';log(r,states[r.status]+' · '+ref);save();details(r)});
+}
+
+function deliveryPanel(r){
+ const last=r.delivery?.[0];
+ return '<section><h3>Follow-up de entrega</h3>'+
+ (r.purchaseRef?'<p>Pedido ao fornecedor · '+esc(r.purchaseRef)+'</p>':'')+
+ (last?'<p>Previsão · '+dateLabel(last.expected)+' · '+esc(last.status)+'</p><p>'+esc(last.note)+'</p>':'<p class="muted">Aguardando atualização da entrega.</p>')+
+ '<button id="deliveryUpdate">Registrar atualização de entrega</button></section>';
+}
+function deliveryForm(r){
+ if(!visible().includes(r)||r.status!=='ordered')return;
+ const last=r.delivery?.[0];
+ open('Atualizar entrega','<form id="form">'+field('Previsão de entrega','<input name="expected" type="date" required value="'+esc(last?.expected||r.need)+'">')+
+ field('Situação','<select name="status">'+options(['Aguardando confirmação','Confirmada pelo fornecedor','Em transporte','Atrasada','Entrega parcial'],last?.status)+'</select>')+
+ field('Observação, rastreio ou quantidade entregue','<textarea name="note"></textarea>')+
+ '<div class="actions"><button class="primary">Salvar atualização</button>'+fiscalBack()+'</div></form>');
+ $('fiscalBack').onclick=()=>details(r);
+ submit(f=>{
+  if(!visible().includes(r)||r.status!=='ordered')return;
+  const data=Object.fromEntries(f);
+  (r.delivery??=[]).unshift(data);
+  log(r,data.status+' · Previsão '+dateLabel(data.expected)+(data.note?' · '+data.note:''));
+  save();details(r);
+ });
+}
+const fiscalAllowed=r=>visible().includes(r)&&['ordered','done'].includes(r.status);
+const documentsOf=r=>r.fiscal||[];
+const paid=d=>(d.payments||[]).reduce((sum,p)=>sum+p.cents,0);
+const fiscalTotal=r=>documentsOf(r).reduce((sum,d)=>sum+d.cents,0);
+const fiscalQty=r=>documentsOf(r).reduce((sum,d)=>sum+d.qty,0);
+const dateLabel=date=>date.split('-').reverse().join('/');
+const norm=text=>String(text).trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ');
+const groupKey=r=>JSON.stringify([r.title,r.category,r.unit].map(norm));
+let costCenter='',costSearch='';
+function fiscalPanel(r){
+ const docs=documentsOf(r);
+ const total=fiscalTotal(r),payments=docs.reduce((sum,d)=>sum+paid(d),0);
+ return '<section><div class="row spread"><h3>Documentos fiscais e pagamentos</h3><button id="addFiscal">+ Anexar NF ou cupom</button></div>'+
+ '<p>Valor fiscal <strong>'+cash(total/100)+'</strong> · Pago <strong>'+cash(payments/100)+'</strong> · Saldo dos documentos <strong>'+cash((total-payments)/100)+'</strong></p>'+
+ '<p class="muted">'+fiscalQty(r)+' de '+esc(r.qty)+' '+esc(r.unit)+' com documento fiscal</p>'+
+ docs.map((d,i)=>'<div class="card"><strong>'+esc(d.type)+' '+esc(d.number)+'</strong> · '+dateLabel(d.date)+'<p>'+d.qty+' '+esc(r.unit)+' · '+cash(d.cents/100)+' · '+(paid(d)===d.cents?'Pago':paid(d)>0?'Pago parcialmente':'A pagar')+'</p><div class="actions"><button data-file="'+i+'">Baixar '+esc(d.name)+'</button>'+
+ (admin()&&paid(d)<d.cents?'<button data-pay="'+i+'">Registrar pagamento</button>':'')+'</div>'+
+ (d.payments.length?'<ul>'+d.payments.map(pay=>'<li>'+dateLabel(pay.date)+' · '+cash(pay.cents/100)+' · '+esc(pay.method)+' · '+esc(pay.ref)+'</li>').join('')+'</ul>':'')+'</div>').join('')+
+ (!docs.length?'<p class="muted">Nenhum documento fiscal registrado.</p>':'')+'</section>';
+}
+function wireFiscal(r){
+ if(!fiscalAllowed(r))return;
+ $('addFiscal').onclick=()=>fiscalForm(r);
+ document.querySelectorAll('[data-file]').forEach(b=>b.onclick=()=>{
+ const d=documentsOf(r)[Number(b.dataset.file)];
+ const a=document.createElement('a');a.href=d.data;a.download=d.name;a.click();
+ });
+ document.querySelectorAll('[data-pay]').forEach(b=>b.onclick=()=>paymentForm(r,documentsOf(r)[Number(b.dataset.pay)]));
+}
+function fiscalBack(){return '<button type="button" id="fiscalBack">Voltar ao pedido</button>'}
+function fiscalError(message){$('fiscalError').textContent=message}
+function commitFiscal(r,message,rollback){
+ log(r,message);
+ try{localStorage.setItem(key,JSON.stringify(db))}catch{
+ r.log.shift();rollback();fiscalError('O navegador não conseguiu salvar. Libere espaço ou escolha um arquivo menor.');return false;
+ }
+ render();details(r);note(message);return true;
+}
+function fiscalForm(r){
+ if(!fiscalAllowed(r))return;
+ open('Anexar documento fiscal','<form id="form"><div class="grid">'+field('Tipo','<select name="type">'+options(['Nota fiscal','Cupom fiscal'])+'</select>')+
+ field('Número ou chave de acesso','<input name="number" maxlength="100" required>')+
+ field('Data de emissão','<input name="date" type="date" required>')+
+ field('Quantidade coberta ('+esc(r.unit)+')','<input name="qty" type="number" min="1" max="'+Math.max(0,Number(r.qty)-fiscalQty(r))+'" required>')+
+ field('Valor fiscal desta compra (R$)','<input name="value" type="number" min="0.01" step="0.01" required>')+'</div>'+
+ field('Arquivo de teste (PDF, XML, JPG, PNG · até 2 MB)','<input type="file" name="file" accept=".pdf,.xml,.jpg,.jpeg,.png" required>')+
+ '<p class="muted">Informe apenas a quantidade e o valor do item deste pedido quando o documento incluir outros itens.</p><p id="fiscalError" role="alert"></p><div class="actions"><button class="primary" id="fiscalSave">Salvar documento</button>'+fiscalBack()+'</div></form>');
+ $('fiscalBack').onclick=()=>details(r);
+ const form=$('form');
+ if(fiscalQty(r)>=Number(r.qty)){$('fiscalSave').disabled=true;fiscalError('Toda a quantidade do pedido já está coberta por documentos fiscais.')}
+ form.onsubmit=e=>{
+ e.preventDefault();
+ if(!fiscalAllowed(r))return;
+ const f=new FormData(form),file=f.get('file'),number=f.get('number').trim(),qty=Number(f.get('qty')),cents=Math.round(Number(f.get('value'))*100);
+ if(!number||!Number.isInteger(qty)||qty<1||qty+fiscalQty(r)>Number(r.qty)||!Number.isSafeInteger(cents)||cents<1){fiscalError('Confira a identificação, a quantidade disponível e o valor fiscal.');return}
+ if(!file?.size||file.size>2_000_000||!/[.](pdf|xml|jpe?g|png)$/i.test(file.name)){fiscalError('Selecione um arquivo permitido de até 2 MB.');return}
+ const docs=r.fiscal??=[];
+ const duplicate=()=>docs.some(d=>d.type===f.get('type')&&norm(d.number)===norm(number));
+ if(duplicate()){fiscalError('Este documento já está vinculado a este pedido.');return}
+ const saveButton=$('fiscalSave');
+ saveButton.disabled=true;
+ const reader=new FileReader();
+ reader.onerror=()=>{if($('form')!==form)return;saveButton.disabled=false;fiscalError('Não foi possível ler o arquivo selecionado.')};
+ reader.onload=()=>{
+ if($('form')!==form||!$('modal').open||!fiscalAllowed(r))return;
+ if(duplicate()||qty+fiscalQty(r)>Number(r.qty)){saveButton.disabled=false;fiscalError('Confira os documentos já cadastrados para este pedido.');return}
+ docs.push({type:f.get('type'),number,date:f.get('date'),qty,cents,name:file.name,data:reader.result,payments:[]});
+ if(!commitFiscal(r,'Documento fiscal '+number+' anexado.',()=>docs.pop()))saveButton.disabled=false;
+ };
+ reader.readAsDataURL(file);
+ };
+}
+function paymentForm(r,d){
+ if(!admin()||!fiscalAllowed(r)||paid(d)>=d.cents)return;
+ const balance=d.cents-paid(d);
+ open('Registrar pagamento','<p>'+esc(d.type)+' '+esc(d.number)+' · Saldo '+cash(balance/100)+'</p><form id="form"><div class="grid">'+
+ field('Data do pagamento','<input name="date" type="date" required>')+field('Valor pago (R$)','<input name="value" type="number" min="0.01" step="0.01" max="'+balance/100+'" required>')+
+ field('Forma de pagamento','<select name="method">'+options(['Pix','Boleto','Cartão','Transferência','Dinheiro','Outra'])+'</select>')+
+ field('Referência do pagamento','<input name="ref" required placeholder="Ex. ID da transação ou parcela">')+'</div><p id="fiscalError" role="alert"></p><div class="actions"><button class="primary">Salvar pagamento</button>'+fiscalBack()+'</div></form>');
+ $('fiscalBack').onclick=()=>details(r);
+ submit(f=>{
+ if(!admin()||!fiscalAllowed(r))return;
+ const cents=Math.round(Number(f.get('value'))*100),ref=f.get('ref').trim();
+ if(!ref||!Number.isSafeInteger(cents)||cents<=0||cents>d.cents-paid(d)){fiscalError('Confira a referência e informe um valor dentro do saldo.');return}
+ if(d.payments.some(p=>norm(p.ref)===norm(ref))){fiscalError('Esta referência já está registrada neste documento.');return}
+ d.payments.push({date:f.get('date'),cents,method:f.get('method'),ref});
+ commitFiscal(r,'Pagamento de '+cash(cents/100)+' registrado no documento '+d.number+'.',()=>d.payments.pop());
+ });
+}
+function renderCosts(){
+ $('view').innerHTML='<section><h2>Histórico de compras</h2><p class="muted">Compare compras com o mesmo nome, categoria e unidade. O custo médio é o total fiscal dividido pela quantidade documentada.</p><div class="grid">'+field('Buscar item','<input id="costSearch" placeholder="Nome do item" value="'+esc(costSearch)+'">')+
+ field('Centro','<select id="costCenter"><option value="">Todos os centros</option>'+options(Object.values(centers).flat(),costCenter)+'</select>')+'</div><div id="costResults"></div></section>';
+ $('costSearch').oninput=e=>{costSearch=e.target.value;costRows()};
+ $('costCenter').onchange=e=>{costCenter=e.target.value;costRows()};
+ costRows();
+}
+function costRows(){
+ const records=db.requests.filter(r=>admin()||(!r.inactive&&r.owner===$('role').value)).filter(r=>fiscalQty(r)>0&&(!costCenter||r.center===costCenter)&&norm(r.title).includes(norm(costSearch)));
+ const groups=Map.groupBy?Map.groupBy(records,groupKey):records.reduce((map,r)=>{const key=groupKey(r);if(!map.has(key))map.set(key,[]);map.get(key).push(r);return map},new Map());
+ $('costResults').innerHTML=groups.size?[...groups.values()].map(rows=>{
+ const first=rows[0];
+ const total=rows.reduce((sum,r)=>sum+fiscalTotal(r),0),qty=rows.reduce((sum,r)=>sum+fiscalQty(r),0);
+ return '<div class="card"><div class="row spread"><h3>'+esc(first.title)+'</h3><span class="tag">'+cash(total/qty/100)+' por '+esc(first.unit)+'</span></div>'+
+ '<p class="muted">'+esc(first.category)+' · '+rows.length+' compra(s) · '+qty+' '+esc(first.unit)+' documentada(s)</p>'+
+ '<div class="scroll"><table><thead><tr><th>Compra e centro</th><th>Fornecedor</th><th>Custo por unidade</th><th>Valor fiscal</th><th>Pago</th><th>Saldo</th><th></th></tr></thead><tbody>'+
+ rows.map(r=>{
+ const total=fiscalTotal(r),payments=documentsOf(r).reduce((sum,d)=>sum+paid(d),0);
+ return '<tr><td>'+code(r)+' · '+esc(r.center)+'<br><small>'+fiscalQty(r)+' de '+esc(r.qty)+' '+esc(r.unit)+'</small></td><td>'+esc(r.approval?.vendor||vendor(r.picked)?.name||'')+'</td><td>'+cash(total/fiscalQty(r)/100)+'</td><td>'+cash(total/100)+'</td><td>'+cash(payments/100)+'</td><td>'+cash((total-payments)/100)+'</td><td><button data-cost="'+r.id+'">Abrir</button></td></tr>';
+ }).join('')+'</tbody></table></div></div>';
+ }).join(''):'<p>Nenhuma compra com documento fiscal para os filtros selecionados. Após registrar uma compra, anexe uma nota ou cupom no pedido.</p>';
+ document.querySelectorAll('[data-cost]').forEach(b=>b.onclick=()=>{
+  const r=records.find(r=>r.id===Number(b.dataset.cost));
+  if(r.inactive)archiveDetails(r.inactive.kind+':'+r.inactive.id);else details(r);
+ });
+}
+
+
+const orderCode=id=>'OC-'+String(id).padStart(4,'0');
+const orderStatus=r=>r.status==='approved'?'A emitir ao fornecedor':states[r.status];
+function ordersFor(items){
+ const ids=new Set(items.map(r=>r.orderId));
+ return (db.orders||[]).filter(o=>!o.inactive&&ids.has(o.id));
+}
+function orderLinks(items){
+ const orders=ordersFor(items);
+ return orders.length?'<div class="actions">'+orders.map(o=>'<button type="button" data-order="'+o.id+'">'+orderCode(o.id)+' · '+esc(o.supplier)+'</button>').join('')+'</div>':'';
+}
+function wireOrders(){
+ document.querySelectorAll('[data-order]').forEach(button=>button.onclick=()=>orderDetails(Number(button.dataset.order)));
+}
+function renderOrders(){
+ const orders=ordersFor(visible());
+ $('view').innerHTML='<section><h2>Ordens de compra</h2><div class="scroll"><table><thead><tr><th>Ordem</th><th>Solicitação</th><th>Fornecedor</th><th>Itens</th><th>Total aprovado</th><th></th></tr></thead><tbody>'+
+ orders.map(o=>'<tr><td>'+orderCode(o.id)+'</td><td>'+protocol(o.batch)+'</td><td>'+esc(o.supplier)+'</td><td>'+o.items.length+'</td><td>'+cash(o.total/100)+'</td><td><button data-order="'+o.id+'">Abrir ordem</button></td></tr>').join('')+
+ '</tbody></table></div>'+(orders.length?'':'<p>As ordens aparecem aqui assim que os itens são aprovados.</p>')+'</section>';
+ wireOrders();
+}
+function orderDetails(id){
+ const o=ordersFor(visible()).find(order=>order.id===id);
+ if(!o)return;
+ const items=visible();
+ open(orderCode(id)+' · '+o.supplier,registeredLine(o.registeredBy)+requesterLine(o.requester)+reasonLine(o.purchaseReason||legacyPurchaseReason(o.items))+'<p>Solicitação '+protocol(o.batch)+' · Aprovada em '+esc(o.date)+' por '+esc(o.actor)+'</p><p>Parecer · '+esc(o.reason)+'</p>'+(o.caveat?'<p>Ressalva · '+esc(o.caveat)+'</p>':'')+'<p><strong>Total aprovado '+cash(o.total/100)+'</strong></p>'+
+ '<div class="scroll"><table><thead><tr><th>Item e quantidade</th><th>Centro / rubrica</th><th>Ação ou atividade</th><th>Necessidade</th><th>Prazo e pagamento</th><th>Valor</th><th>Etapa</th><th></th></tr></thead><tbody>'+
+ o.items.map(line=>{
+ const r=items.find(item=>item.id===line.id);
+ return '<tr><td>'+esc(line.title)+' · '+esc(line.qty)+' '+esc(line.unit)+'</td><td>'+esc(line.center)+(line.budgetId?'<br><small>'+esc(line.budgetId)+'</small>':'')+'</td><td>'+activityLabel(line.activity)+'</td><td>'+dateLabel(line.need)+'</td><td>'+esc(line.days)+' d · '+esc(line.payment)+(line.wholesale?'<br><small>'+esc(line.wholesale)+'</small>':'')+'</td><td>'+cash(line.cents/100)+'</td><td>'+esc(r?orderStatus(r):'')+'</td><td>'+(r?'<button data-order-item="'+r.id+'">Abrir item</button>':'')+'</td></tr>';
+ }).join('')+'</tbody></table></div>'+
+ '<p>'+ (o.signature?'Assinatura registrada em simulação · '+esc(o.signature.actor)+' · '+esc(o.signature.date):o.requiresSignature?'Aguardando assinatura digital do gestor executivo.':'Ordem de versão anterior do protótipo.')+'</p>'+
+ '<h3>Documentos fiscais da ordem</h3>'+orderFiscal(items.filter(r=>r.orderId===id))+
+ '<div class="actions"><button id="orderPrint">Imprimir ordem</button>'+
+ (admin()&&!o.signature&&o.requiresSignature?'<button id="orderSign" class="primary">Simular assinatura do gestor</button>':'')+
+ '<button id="orderBatch">Voltar à solicitação</button>'+inactiveButton('ordem de compra')+'</div>',true);
+ wireInactive('order',id);
+ $('orderPrint').onclick=()=>window.print();
+ if($('orderSign'))$('orderSign').onclick=()=>signOrder(o);
+ document.querySelectorAll('[data-order-fiscal]').forEach(b=>b.onclick=()=>{
+  const [itemId,index]=b.dataset.orderFiscal.split(':').map(Number);
+  const doc=documentsOf(items.find(r=>r.id===itemId))[index];
+  downloadOrderFiscal(doc);
+ });
+ $('orderBatch').onclick=()=>batchDetails(o.batch);
+ document.querySelectorAll('[data-order-item]').forEach(b=>b.onclick=()=>details(items.find(r=>r.id===Number(b.dataset.orderItem))));
+}
+function orderFiscal(items){
+ const entries=items.flatMap(r=>documentsOf(r).map((d,index)=>'<li>'+esc(r.title)+' · '+esc(d.type+' '+d.number)+' <button data-order-fiscal="'+r.id+':'+index+'">Baixar '+esc(d.name)+'</button></li>'));
+ return entries.length?'<ul>'+entries.join('')+'</ul>':'<p class="muted">Os documentos anexados aos itens comprados aparecem aqui.</p>';
+}
+function downloadOrderFiscal(doc){
+ const link=document.createElement('a');link.href=doc.data;link.download=doc.name;link.click();
+}
+function signOrder(o){
+ if(!admin()||o.inactive||o.signature||!o.requiresSignature)return;
+ const rows=visible().filter(r=>r.orderId===o.id);
+ if(!rows.length||rows.some(r=>r.status!=='signature'))return;
+ o.signature={actor:actor(),date:new Date().toLocaleString('pt-BR'),simulated:true};
+ for(const r of rows){r.status='approved';log(r,'Assinatura simulada do gestor executivo · '+orderCode(o.id));}
+ save();orderDetails(o.id);
+}
+const selectedQuote=r=>r.quotes.find(q=>q.vendor===r.picked);
+function hasQuoteAttachment(q){
+ return Boolean(q.attachment?.name&&/^data:[^,]*;base64,[A-Za-z0-9+/=]+$/.test(q.attachment.data));
+}
+function quoteAttachmentLink(q){
+ if(!hasQuoteAttachment(q))return '<small>Sem anexo</small>';
+ return '<a href="'+esc(q.attachment.data)+'" download="'+esc(q.attachment.name)+'">Baixar '+esc(q.attachment.name)+'</a>';
+}
+function quoteValueSummary(r,includeEstimate=true){
+ if(!r)return '';
+ const final=r.approval?.price??selectedQuote(r)?.price;
+ const estimate=r.estimate!==undefined&&r.estimate!==null&&String(r.estimate).trim()!==''?cash(r.estimate):'Não informado';
+ return '<div class="grid">'+(includeEstimate?'<p><strong>Valor estimado da solicitação</strong><br>'+estimate+'</p>':'')+
+ '<p><strong>Valor final '+(r.approval?'aprovado':'negociado')+'</strong><br>'+(final!=null?cash(final):'Aguardando indicação de fornecedor')+'</p></div>';
+}
+function quoteReviewPanel(items){
+ const rows=items.filter(r=>['quote','fix','review'].includes(r.status));
+ if(!rows.length)return '';
+ return '<section><h3>Valores e comprovantes por item</h3>'+rows.map(r=>{
+  const attached=new Set(comparableQuotes(r).filter(hasQuoteAttachment).map(q=>q.vendor)).size;
+  return '<div class="card"><h4>'+esc(r.title)+' · '+esc(r.qty)+' '+esc(r.unit)+'</h4>'+quoteValueSummary(r)+
+  '<p>'+r.quotes.length+' cotação(ões) registrada(s) · <strong>'+attached+' de '+required(r)+' anexos exigidos</strong></p>'+
+  (r.choice?'<p><strong>Justificativa da escolha</strong> · '+esc(r.choice)+'</p>':'')+
+  (r.quotes.length?'<div class="scroll"><table><thead><tr><th>Fornecedor</th><th>Valor bruto</th><th>Desconto</th><th>Valor final</th><th>Orçamento anexado</th></tr></thead><tbody>'+
+  r.quotes.map(q=>'<tr><td>'+esc(vendor(q.vendor)?.name||'Fornecedor')+(q.vendor===r.picked?' · Indicado':'')+'</td><td>'+cash(q.gross??q.price)+'</td><td>'+cash(q.discount??0)+'</td><td>'+cash(q.price)+'</td><td>'+quoteAttachmentLink(q)+'</td></tr>').join('')+'</tbody></table></div>':'')+
+  (editable(r)&&!r.returnToAnalysis?'<div class="actions"><button data-cotate-item="'+r.id+'">Registrar cotação e anexar orçamento</button></div>':'')+'</div>';
+ }).join('')+'</section>';
+}
+function paymentLabel(q){
+ return [q.method,q.payment,q.authorization?'Autorização '+q.authorization:''].filter(Boolean).join(' · ');
+}
+function approvalIssue(r){
+ if(r.status!=='review'||r.orderId)return 'O item precisa estar aguardando aprovação.';
+
+ const quote=selectedQuote(r);
+ if(quote?.method?.startsWith('Cartão')&&!quote.authorization?.trim())return 'Registre a autorização para compra com cartão.';
+ if(!quote||validation(quote.vendor,r.category)!=='Validado')return 'Valide o fornecedor indicado para esta categoria.';
+ if(r.market&&!quote.wholesale)return 'Registre a cotação de atacado e a conferência do cartão.';
+ if(r.quotes.length<required(r))return 'Complete as '+required(r)+' cotação(ões) na etapa de orçamento.';
+ return '';
+}
+function approvalPanel(items,reviews){
+ const entire=items.every(r=>r.status==='review'||r.approval);
+ return '<section><h3>Aprovação e ordem de compra</h3><p class="muted">Selecione um ou mais itens ou aprove a solicitação integralmente. Cada fornecedor terá sua própria ordem para os itens aprovados nesta decisão.</p>'+
+ '<form id="batchApproval">'+reviews.map(r=>{
+ const quote=selectedQuote(r),issue=approvalIssue(r);
+ return '<p><label><input type="checkbox" name="line" value="'+r.id+'" '+(issue?'disabled':'')+'> '+esc(r.title)+' · '+esc(vendor(quote?.vendor)?.name||'Fornecedor pendente')+' · '+(quote?cash(quote.price):'Valor pendente')+'</label>'+
+ (issue?'<br><small>'+esc(issue)+'</small>':'')+'</p>';
+ }).join('')+field('Parecer da aprovação','<textarea name="reason" required></textarea>')+field('Ressalvas para os itens selecionados (opcional)','<textarea name="caveat"></textarea>')+
+ '<div class="actions"><button class="primary" value="selected">Aprovar itens selecionados</button><button value="all" '+(entire?'':'disabled')+'>Aprovar solicitação integral</button><button value="reject">Reprovar itens em análise</button></div>'+
+ (entire?'':'<p class="muted">A aprovação integral fica disponível quando todos os itens estiverem em aprovação ou já aprovados.</p>')+'<p id="batchApprovalError" role="alert"></p></form></section>';
+}
+function wireApproval(items,reviews){
+ $('batchApproval').onsubmit=e=>{
+ e.preventDefault();
+ const f=new FormData(e.target),mode=e.submitter?.value;
+ if(!admin()||!['all','selected','reject'].includes(mode))return;
+ if(mode==='reject'){
+  const reason=f.get('reason').trim();
+  if(!reason||!confirm('Reprovar todos os itens que ainda estão em análise?'))return;
+  for(const r of reviews.filter(item=>item.status==='review')){r.status='denied';log(r,'Reprovado · '+reason);}
+  save();batchDetails(batchId(items[0]));return;
+ }
+ if(mode==='all'&&!items.every(r=>r.status==='review'||r.approval))return;
+ const chosen=mode==='all'?reviews:reviews.filter(r=>f.getAll('line').includes(String(r.id)));
+ approveItems(chosen,f.get('reason').trim(),()=>batchDetails(batchId(items[0])),'batchApprovalError',f.get('caveat')?.trim());
+ };
+}
+function approveItems(items,reason,reopen,errorId,caveat=''){
+ if(!admin())return;
+ const error=message=>{$(errorId).textContent=message};
+ if(!items.length||!reason){error('Selecione pelo menos um item e registre o parecer.');return}
+ for(const r of items){
+  const issue=approvalIssue(r);
+  if(issue){error(r.title+' · '+issue);return}
+ }
+ const issue=budgetCheck(items,r=>toCents(selectedQuote(r).price));
+ if(issue){error(issue);return}
+ const groups=new Map();
+ for(const r of items){
+  const id=selectedQuote(r).vendor;
+  if(!groups.has(id))groups.set(id,[]);
+  groups.get(id).push(r);
+ }
+ const orders=db.orders??=[];
+ const firstId=nextId(orders);
+ const previous=items.map(r=>({...r,log:[...r.log]}));
+ let index=0;
+ for(const [vendorId,rows] of groups){
+  const id=firstId+index++;
+  const supplier=vendor(vendorId).name;
+  const lines=rows.map(r=>{
+   const quote=selectedQuote(r);
+   r.approval={...quote,vendor:supplier,reason,caveat,minimum:required(r),quoteCount:r.quotes.length,exception:r.exception};
+   r.status='signature';r.orderId=id;
+   log(r,'Aprovado · '+orderCode(id)+' · '+reason);
+   return {id:r.id,title:r.title,qty:r.qty,unit:r.unit,center:r.center,activity:r.activity,need:r.need,budgetId:r.budgetId,cents:Math.round(quote.price*100),days:quote.days,payment:paymentLabel(quote),wholesale:quote.wholesale};
+  });
+  orders.unshift({id,batch:batchId(rows[0]),requester:rows[0].requester,registeredBy:rows[0].registeredBy,purchaseReason:requestReason(batchId(rows[0])),supplier,vendorId,actor:actor(),date:new Date().toLocaleDateString('pt-BR'),reason,caveat,requiresSignature:true,items:lines,total:lines.reduce((sum,line)=>sum+line.cents,0)});
+ }
+ try{localStorage.setItem(key,JSON.stringify(db))}catch{
+  orders.splice(0,index);
+  items.forEach((r,i)=>{delete r.orderId;delete r.approval;Object.assign(r,previous[i])});
+  error('O navegador não conseguiu salvar a decisão. Libere espaço e tente novamente.');return;
+ }
+ render();reopen();note('Ordens geradas · '+orders.slice(0,index).map(o=>orderCode(o.id)).reverse().join(', ')+'.');
+}
+
+
+const rubricNames=['Materiais de consumo','Equipamentos e tecnologia','Serviços contratados','Eventos e comunicação'];
+const demoBudget=[2026,2027].flatMap(year=>Object.values(centers).flat().flatMap((center,i)=>rubricNames.map((name,j)=>({
+ id:year+'-'+String(i+1).padStart(2,'0')+'-'+String(j+1).padStart(2,'0'),year,center,name,category:categories[j],approved:[250000,500000,1000000,350000][j]
+}))));
+const budgetLine=id=>demoBudget.find(line=>line.id===id);
+const toCents=value=>Math.round(Number(value)*100);
+function budgetUse(r){
+ if(r.status==='denied'||(r.inactive&&!['ordered','done'].includes(r.status)))return {reserved:0,committed:0,actual:0};
+ if(!r.approval)return {reserved:toCents(r.status==='review'?(selectedQuote(r)?.price||r.estimate||0):(r.estimate||0)),committed:0,actual:0};
+ const actual=fiscalTotal(r);
+ const remaining=Math.max(0,Number(r.qty)-fiscalQty(r));
+ return {reserved:0,committed:Math.round(toCents(r.approval.price)*remaining/Number(r.qty)),actual};
+}
+function budgetTotals(id,excluded=new Set()){
+ const totals={reserved:0,committed:0,actual:0};
+ for(const r of db.requests){
+  if(r.budgetId!==id||excluded.has(r.id))continue;
+  const use=budgetUse(r);
+  for(const k of Object.keys(totals))totals[k]+=use[k];
+ }
+ return {...totals,available:budgetLine(id).approved-totals.reserved-totals.committed-totals.actual};
+}
+function budgetCheck(items,amount,optional=false){
+ const excluded=new Set(items.map(r=>r.id).filter(id=>id!==undefined)),demand=new Map();
+ for(const r of items){
+  const line=budgetLine(r.budgetId),cents=amount(r);
+  if(!Number.isSafeInteger(cents)||cents<0||(!optional&&cents===0))return r.title+' · Informe um valor total válido.';
+  if(!r.budgetId)continue;
+  if(!line||line.center!==r.center||String(line.year)!==r.need.slice(0,4))return r.title+' · Selecione uma rubrica aprovada do centro e exercício da data de necessidade.';
+  demand.set(line.id,(demand.get(line.id)||0)+cents);
+ }
+ for(const [id,cents] of demand){
+  const available=budgetTotals(id,excluded).available;
+  if(cents>0&&cents>available)return id+' · Saldo disponível '+cash(available/100)+' para '+cash(cents/100)+' solicitados. Revise o valor ou o enquadramento orçamentário.';
+ }
+ return '';
+}
+function budgetOptions(center,need,selected,exclude){
+ return '<option value="">'+(center&&need?'Sem vínculo com o OBZ':'Sem vínculo com o OBZ · informe centro e data para vincular')+'</option>'+demoBudget.filter(l=>l.center===center&&String(l.year)===need?.slice(0,4)).map(l=>'<option value="'+l.id+'" '+(l.id===selected?'selected':'')+'>'+esc(l.name)+' · '+cash(budgetTotals(l.id,new Set([exclude])).available/100)+'</option>').join('');
+}
+function budgetFields(r){
+ return '<div class="grid">'+field('Rubrica do orçamento aprovado (opcional)','<select name="budgetId">'+budgetOptions(r?.center,r?.need,r?.budgetId,r?.id)+'</select>')+
+ field('Valor estimado da solicitação (R$)','<input name="estimate" type="number" min="0.01" step="0.01" value="'+esc(r?.estimate)+'">')+'</div>';
+}
+function wireBudgetFields(r){
+ const fields=$('form').elements;
+ if(!fields.center||!fields.need)return;
+ const updateSupplier=()=>fields.preferred.innerHTML=preferredOptions(budgetLine(fields.budgetId.value)?.category,fields.preferred.value);
+ const update=()=>{
+  fields.budgetId.innerHTML=budgetOptions(fields.center.value,fields.need.value,fields.budgetId.value,r?.id);
+  updateSupplier();
+ };
+ fields.budgetId.onchange=updateSupplier;
+ fields.center.onchange=update;fields.need.onchange=update;
+}
+function budgetInfo(r){
+ const l=budgetLine(r.budgetId);
+ if(!l)return '<p class="alert">Item sem vínculo com o OBZ.</p>'+(!r.approval&&r.status!=='denied'?'<button id="linkBudget">Vincular ao orçamento</button>':'');
+ const u=budgetUse(r);
+ return '<section><h3>Vinculação orçamentária</h3><p>'+esc(l.id+' · '+l.name)+' · '+esc(l.center)+'</p><p>Reserva do item '+cash(u.reserved/100)+' · Comprometido '+cash(u.committed/100)+' · Realizado fiscal '+cash(u.actual/100)+' · Saldo da rubrica '+cash(budgetTotals(l.id).available/100)+'</p></section>';
+}
+function linkLegacyBudget(r){
+ if(!visible().includes(r)||r.approval||r.status==='denied')return;
+ open('Vincular ao orçamento aprovado','<p>'+esc(r.center)+' · '+dateLabel(r.need)+'</p><form id="form">'+budgetFields(r)+'<div class="actions"><button class="primary">Vincular e reservar</button>'+fiscalBack()+'</div><p id="budgetError" role="alert"></p></form>');
+ $('fiscalBack').onclick=()=>details(r);
+ submit(f=>{
+  if(r.budgetId||r.approval||r.status==='denied')return;
+  if(!f.get('budgetId')){$('budgetError').textContent='Selecione uma rubrica para vincular.';return}
+  const data={budgetId:f.get('budgetId'),estimate:f.get('estimate')},issue=budgetCheck([{...r,...data}],item=>toCents(item.estimate));
+  if(issue){$('budgetError').textContent=issue;return}
+  const category=budgetLine(data.budgetId).category;
+  if(category!==r.category){
+   r.status='quote';r.picked=null;r.choice='';r.quotes=[];r.returnToAnalysis=false;
+   log(r,'Reabriu a cotação após mudar o enquadramento da rubrica.');
+  }
+  if(r.preferred&&validation(r.preferred,category)!=='Validado')r.preferred='';
+  Object.assign(r,data,{category});log(r,'Vinculou a reserva orçamentária · '+r.budgetId);save();details(r);
+ });
+}
+let budgetYear='2026',budgetCenter='';
+function renderBudget(){
+ const lines=demoBudget.filter(l=>String(l.year)===budgetYear&&(!budgetCenter||l.center===budgetCenter));
+ $('view').innerHTML='<section><h2>Orçamento aprovado</h2><p class="muted">Base demonstrativa. O saldo disponível desconta reservas, ordens ainda sem cobertura fiscal e o realizado fiscal. Pagamentos são acompanhados separadamente.</p><div class="grid">'+
+ field('Exercício','<select id="budgetYear">'+options(['2026','2027'],budgetYear)+'</select>')+
+ field('Centro','<select id="budgetCenter"><option value="">Todos</option>'+options(Object.values(centers).flat(),budgetCenter)+'</select>')+'</div>'+
+ '<div class="scroll"><table><thead><tr><th>Rubrica</th><th>Centro</th><th>Aprovado</th><th>Reservado</th><th>Comprometido</th><th>Realizado fiscal</th><th>Disponível</th></tr></thead><tbody>'+
+ lines.map(l=>{const t=budgetTotals(l.id);return '<tr><td>'+esc(l.id+' · '+l.name)+'</td><td>'+esc(l.center)+'</td>'+[l.approved,t.reserved,t.committed,t.actual,t.available].map(v=>'<td>'+cash(v/100)+'</td>').join('')+'</tr>'}).join('')+'</tbody></table></div></section>';
+ $('budgetYear').onchange=e=>{budgetYear=e.target.value;renderBudget()};
+ $('budgetCenter').onchange=e=>{budgetCenter=e.target.value;renderBudget()};
+}
+
+
+db.demands??=[
+ {id:'D-0101',title:'Reposição de materiais para integração',description:'Preparar kits e materiais de apoio para a próxima integração.',decision:'pending'},
+ {id:'D-0102',title:'Atualização da estrutura do evento',description:'Revisar o material de apoio e os equipamentos do evento.',decision:'yes'}
+];
+db.drafts??=[];
+const demandById=id=>db.demands.find(d=>d.id===id);
+const visibleDrafts=()=>db.drafts.filter(d=>!d.inactive&&(admin()||d.owner===$('role').value));
+const nextPurchaseId=()=>nextId([...db.requests,...db.drafts]);
+const demandStates={pending:'A avaliar',no:'Sem compra',yes:'Envolve compra'};
+function linkedPurchases(id){
+ const drafts=visibleDrafts().filter(d=>d.demandId===id);
+ const groups=batches().filter(items=>items[0].demandId===id);
+ return {drafts,groups};
+}
+function demandStatus(d){
+ const {drafts,groups}=linkedPurchases(d.id);
+ const count=drafts.length+groups.length;
+ if(count)return count===1?'1 compra vinculada':count+' compras vinculadas';
+ return d.decision==='yes'?'Compra necessária · Solicitação ainda não aberta':demandStates[d.decision];
+}
+function renderDemands(){
+ $('view').innerHTML='<section><div class="row spread"><h2>Demandas internas</h2><button id="newDraft">Criar compra independente</button></div>'+
+ '<p class="muted">Demandas fictícias para testar a integração com Compras.</p><div class="grid">'+db.demands.map(d=>'<article class="card"><small>'+esc(d.id)+'</small><h3>'+esc(d.title)+'</h3><p>'+esc(demandStatus(d))+'</p><button data-demand="'+esc(d.id)+'">Abrir demanda</button></article>').join('')+'</div></section>';
+ $('newDraft').onclick=()=>draftForm();
+ document.querySelectorAll('[data-demand]').forEach(b=>b.onclick=()=>demandDetails(b.dataset.demand));
+}
+function demandDetails(id){
+ const d=demandById(id);
+ if(!d)return;
+ const {drafts,groups}=linkedPurchases(id);
+ const available=visibleDrafts().filter(p=>!p.demandId);
+ open(d.id+' · '+d.title,'<p>'+esc(d.description)+'</p>'+
+ '<form id="form">'+field('Envolve compra?','<select name="decision">'+Object.entries(demandStates).map(([k,v])=>'<option value="'+k+'" '+(k===d.decision?'selected':'')+'>'+v+'</option>').join('')+'</select>')+
+ '<button type="submit">Salvar indicação</button></form>'+
+ '<section class="info"><h3>Compras vinculadas</h3><p>'+esc(demandStatus(d))+'</p>'+
+ drafts.map(draft=>'<p><button data-draft="'+draft.id+'">'+protocol(draft.id)+' · '+esc(draft.title)+'</button> <span class="tag">Rascunho</span></p>').join('')+
+ groups.map(items=>'<p><button data-demand-purchase="'+batchId(items[0])+'">'+protocol(batchId(items[0]))+' · '+esc(batchTitle(items))+'</button> <span class="tag">'+esc(states[batchStage(items)])+'</span></p>').join('')+
+ (d.decision==='yes'?'<div class="actions"><button id="newLinkedDraft" class="primary">Criar solicitação de compra</button></div>'+
+ (available.length?field('Rascunho sem demanda','<select id="availableDraft"><option value="">Selecione</option>'+available.map(p=>'<option value="'+p.id+'">'+protocol(p.id)+' · '+esc(p.title)+'</option>').join('')+'</select>')+
+ '<button id="linkDraft">Vincular solicitação existente</button>':'<p class="muted">Nenhum rascunho independente disponível para vincular.</p>'):'')+'</section>');
+ submit(f=>{const decision=f.get('decision');if(!Object.hasOwn(demandStates,decision))return;
+ d.decision=decision;d.decidedAt=new Date().toLocaleString('pt-BR');d.decidedBy=actor();save();demandDetails(id)});
+ if($('newLinkedDraft'))$('newLinkedDraft').onclick=()=>draftForm(d);
+ if($('linkDraft'))$('linkDraft').onclick=()=>{
+  const draft=visibleDrafts().find(p=>p.id===Number($('availableDraft').value)&&!p.demandId);
+  if(!draft||d.decision!=='yes')return;
+  draft.demandId=id;save();demandDetails(id);note(protocol(draft.id)+' vinculada a '+id+'.');
+ };
+ wireDrafts();
+ document.querySelectorAll('[data-demand-purchase]').forEach(b=>b.onclick=()=>batchDetails(Number(b.dataset.demandPurchase)));
+}
+function draftForm(demand){
+ if(demand&&demand.decision!=='yes')return;
+ open('Nova solicitação interna de compra','<p>'+esc(demand?'Demanda de origem · '+demand.id:'Compra independente')+'</p><form id="form">'+
+ field('Título da compra','<input name="title" required maxlength="120" value="'+esc(demand?.title)+'">')+
+ '<button class="primary">Salvar rascunho</button></form>');
+ submit(f=>{
+  const title=f.get('title').trim();
+  if(!title||(demand&&demand.decision!=='yes'))return;
+  const draft={id:nextPurchaseId(),title,owner:$('role').value,demandId:demand?.id??null};
+  db.drafts.push(draft);save();
+  if(demand)demandDetails(demand.id);else draftDetails(draft);
+  note(protocol(draft.id)+' criada como rascunho.');
+ });
+}
+function draftList(){
+ const drafts=visibleDrafts();
+ if(!drafts.length)return '';
+ return '<section><h2>Rascunhos</h2><div class="actions">'+drafts.map(p=>'<button data-draft="'+p.id+'">'+protocol(p.id)+' · '+esc(p.title)+'</button>').join('')+'</div></section>';
+}
+function wireDrafts(){
+ document.querySelectorAll('[data-draft]').forEach(b=>b.onclick=()=>{
+  const draft=visibleDrafts().find(p=>p.id===Number(b.dataset.draft));
+  if(draft)draftDetails(draft);
+ });
+}
+function draftDetails(draft){
+ open(protocol(draft.id)+' · '+draft.title,'<p><span class="tag">Rascunho</span> · '+esc(draft.demandId||'Compra independente')+'</p>'+
+ '<button id="draftItems" class="primary">Adicionar itens e rubricas</button>'+
+ (draft.demandId?' <button id="draftDemand">Voltar à demanda</button>':'')+inactiveButton('solicitação'));
+ wireInactive('draft',draft.id);
+ $('draftItems').onclick=()=>batchForm(draft);
+ if($('draftDemand'))$('draftDemand').onclick=()=>demandDetails(draft.demandId);
+}
+
+
+function inactiveButton(label){
+ return admin()?'<button type="button" id="inactivate" style="color:#9a2424">Inativar '+label+'</button>':'';
+}
+function wireInactive(kind,id){
+ if(admin()&&$('inactivate'))$('inactivate').onclick=()=>inactivateForm(kind,id);
+}
+function inactivationTargets(kind,id){
+ if(kind==='draft')return db.drafts.filter(d=>d.id===id&&!d.inactive);
+ const rows=db.requests.filter(r=>!r.inactive&&(kind==='order'?r.orderId===id:batchId(r)===id));
+ const orders=(db.orders||[]).filter(o=>!o.inactive&&(kind==='order'?o.id===id:o.batch===id));
+ return [...rows,...orders];
+}
+function inactivateForm(kind,id){
+ if(!admin()||!inactivationTargets(kind,id).length)return;
+ const order=kind==='order';
+ const label=order?'ordem de compra':'solicitação';
+ const reopen=()=>order?orderDetails(id):kind==='draft'?draftDetails(db.drafts.find(d=>d.id===id)):batchDetails(id);
+ open('Inativar '+label+' · '+(order?orderCode(id):protocol(id)),
+ '<p>'+(order?'A ordem e os itens desta ordem saem do fluxo ativo. Os demais itens da solicitação seguem normalmente.':'A solicitação e suas ordens saem do fluxo ativo.')+'</p>'+
+ '<p class="muted">O histórico será preservado. Reservas e compromissos de compras ainda não realizadas são liberados. Valores de compras já realizadas permanecem no orçamento.</p>'+
+ '<form id="form">'+field('Motivo da inativação','<textarea name="reason" maxlength="400" required></textarea>')+
+ '<p id="inactiveError" role="alert"></p><div class="actions"><button class="primary">Confirmar inativação</button><button id="cancelInactive" type="button">Voltar</button></div></form>');
+ $('cancelInactive').onclick=reopen;
+ submit(f=>{
+  const reason=f.get('reason').trim();
+  if(!admin()||!reason)return;
+  const targets=inactivationTargets(kind,id);
+  if(!targets.length)return;
+  const event={kind,id,reason,actor:actor(),date:new Date().toLocaleString('pt-BR')};
+  for(const target of targets)target.inactive=event;
+  try{localStorage.setItem(key,JSON.stringify(db))}catch{
+   for(const target of targets)delete target.inactive;
+   $('inactiveError').textContent='Não foi possível salvar a inativação. Tente novamente.';return;
+  }
+  close();tab='archive';render();note((order?orderCode(id):protocol(id))+' inativada.');
+ });
+}
+function archivedEntries(){
+ const entries=new Map();
+ for(const row of [...db.drafts,...db.requests,...(db.orders||[])]){
+  const event=row.inactive;
+  if(!event)continue;
+  const key=event.kind+':'+event.id;
+  if(!entries.has(key))entries.set(key,{event,rows:[]});
+  entries.get(key).rows.push(row);
+ }
+ return entries;
+}
+function renderArchive(){
+ if(!admin())return;
+ const entries=archivedEntries();
+ $('view').innerHTML='<section><h2>Solicitações e ordens inativas</h2>'+
+ ([...entries].map(([key,{event}])=>'<div class="card"><strong>'+(event.kind==='order'?orderCode(event.id):protocol(event.id))+'</strong> · '+esc(event.date)+
+ '<p>'+esc(event.reason)+' · '+esc(event.actor)+'</p><button data-inactive="'+key+'">Consultar histórico</button></div>').join('')||'<p>Nenhum registro inativo.</p>')+'</section>';
+ document.querySelectorAll('[data-inactive]').forEach(b=>b.onclick=()=>archiveDetails(b.dataset.inactive));
+}
+function archiveDetails(key){
+ if(!admin())return;
+ const record=archivedEntries().get(key);
+ if(!record)return;
+ const {event,rows}=record,items=rows.filter(r=>Array.isArray(r.log)),orders=rows.filter(r=>Array.isArray(r.items));
+ open((event.kind==='order'?orderCode(event.id):protocol(event.id))+' · Inativa',
+ '<p><strong>'+esc(event.reason)+'</strong> · '+esc(event.actor)+' · '+esc(event.date)+'</p>'+
+ rows.filter(r=>!r.log&&!r.items).map(r=>'<p>'+esc(r.title)+'</p>').join('')+
+ orders.map(o=>'<p>'+orderCode(o.id)+' · '+esc(o.supplier)+' · '+cash(o.total/100)+'</p>').join('')+
+ items.map(r=>'<details><summary>'+esc(r.title)+' · '+esc(states[r.status])+'</summary><ul>'+r.log.map(entry=>'<li>'+esc(entry)+'</li>').join('')+'</ul></details>').join('')+
+ '<h3>Documentos fiscais</h3>'+orderFiscal(items));
+ document.querySelectorAll('[data-order-fiscal]').forEach(b=>b.onclick=()=>{
+  if(!admin())return;
+  const [id,index]=b.dataset.orderFiscal.split(':').map(Number);
+  downloadOrderFiscal(documentsOf(items.find(r=>r.id===id))[index]);
+ });
+}
+
+render();
+</script></html>

@@ -68,6 +68,10 @@
     </section>
 
     <section id="compras" class="view hidden">
+      <p id="purchasePrototypeStatus" role="status"></p>
+      <iframe id="purchasePrototypeFrame" title="Fluxo completo de compras CDL" hidden style="width:100%;min-height:78vh;border:0"></iframe>
+    </section>
+    <section id="compras-triagem" class="view hidden">
       <div class="section-head">
         <div><span class="eyebrow">Gestão interna · Homologação</span><h1>Compras e Contratações</h1><p>Piloto 2026 · registre solicitações e acompanhe a triagem interna.</p></div>
         <div class="head-actions"><button id="refreshPurchases" class="secondary">Atualizar</button><button id="newPurchaseFromModule" class="primary">Nova compra interna</button></div>
@@ -265,7 +269,7 @@
     <div class="modal-actions"><button id="submitPurchasePilot" type="button" class="primary hidden" disabled>Enviar para triagem</button><button id="purchaseSourceDemand" class="secondary" hidden>Abrir demanda de origem</button><button id="closePurchaseRecord" class="secondary">Fechar</button></div>
   </dialog>
   <script src="config.js"></script>
-  <script src="app.js?v=portal-compras-piloto-20261111"></script>
+  <script src="app.js?v=portal-compras-completo-20261111"></script>
   <script src="ideas.js?v=projeto-ideia-20260908-1"></script>
 </body>
 </html>

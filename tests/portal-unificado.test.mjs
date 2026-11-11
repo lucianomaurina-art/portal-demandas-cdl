@@ -43,9 +43,10 @@ test('Compras tem uma área autenticada no mesmo portal', () => {
   const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   assert.match(home, /purchases-entry portal-module" href="#\/compras"/);
   assert.match(html, /id="compras" class="view hidden"/);
-  assert.match(app, /'usuarios','compras'\]\.includes\(id\)/);
+  assert.match(app, /'usuarios','compras','compras-triagem'\]\.includes\(id\)/);
   assert.match(app, /if \(!session \|\| !profile\?\.active\)/);
-  assert.match(app, /from\('purchase_requests'\)\.select\(purchaseRecordFields\)/);
+  assert.match(html, /id="purchasePrototypeFrame"/);
+  assert.match(app, /if\(id==='compras'\)openPurchasePrototype\(\)/);
 });
 
 test('estilo novo limita-se à tela inicial e tem responsividade', () => {
