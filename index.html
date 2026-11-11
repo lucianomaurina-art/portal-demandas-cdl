@@ -69,7 +69,7 @@
 
     <section id="compras" class="view hidden">
       <div class="section-head">
-        <div><span class="eyebrow">Gestão interna · Homologação</span><h1>Compras e Contratações</h1><p>Consulte os rascunhos e suas demandas de origem.</p></div>
+        <div><span class="eyebrow">Gestão interna · Homologação</span><h1>Compras e Contratações</h1><p>Piloto 2026 · registre solicitações e acompanhe a triagem interna.</p></div>
         <div class="head-actions"><button id="refreshPurchases" class="secondary">Atualizar</button><button id="newPurchaseFromModule" class="primary">Nova compra interna</button></div>
       </div>
       <p id="purchaseModuleStatus" role="status"></p>
@@ -247,15 +247,25 @@
         <label>Unidade<select name="unit" required></select></label>
         <label>Data de necessidade<input name="needed_on" type="date" required></label>
         <label>Valor estimado total (R$)<input name="estimate" type="number" min="0" step="0.01"></label>
-        <label class="span-2">Centro e exercício<select name="publication" required></select></label>
-        <label class="span-2">Rubrica publicada<select name="rubric" required></select></label>
+        <label>Natureza<select name="nature" required><option value="material">Material ou suprimento</option><option value="service">Serviço</option></select></label>
+        <label id="pilotCenterField" class="span-2 hidden">Centro de serviço ou apoio<select name="pilot_center"></select></label>
+        <label id="publishedCenterField" class="span-2">Centro e exercício<select name="publication" required></select></label>
+        <label id="publishedRubricField" class="span-2">Rubrica publicada<select name="rubric" required></select></label>
         <div class="span-2"><button type="submit" class="primary" disabled>Adicionar item</button></div>
       </form>
     </section>
-    <div class="modal-actions"><button id="purchaseSourceDemand" class="secondary" hidden>Abrir demanda de origem</button><button id="closePurchaseRecord" class="secondary">Fechar</button></div>
+    <form id="purchaseTriageForm" class="hidden">
+      <label>Parecer da triagem<textarea name="decision_note" maxlength="600" required></textarea></label>
+      <div class="modal-actions">
+        <button type="submit" value="triaged" class="primary">Concluir triagem</button>
+        <button type="submit" value="returned" class="secondary">Devolver para ajuste</button>
+        <button type="submit" value="rejected" class="secondary">Rejeitar</button>
+      </div>
+    </form>
+    <div class="modal-actions"><button id="submitPurchasePilot" type="button" class="primary hidden" disabled>Enviar para triagem</button><button id="purchaseSourceDemand" class="secondary" hidden>Abrir demanda de origem</button><button id="closePurchaseRecord" class="secondary">Fechar</button></div>
   </dialog>
   <script src="config.js"></script>
-  <script src="app.js?v=portal-compras-20261111-2"></script>
+  <script src="app.js?v=portal-compras-piloto-20261111"></script>
   <script src="ideas.js?v=projeto-ideia-20260908-1"></script>
 </body>
 </html>

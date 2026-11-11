@@ -56,17 +56,21 @@ const linkPurchase = $('#linkPurchaseDraft');
 const purchaseDialog = $('#purchaseDraftDialog');
 const purchaseDraftForm = $('#purchaseDraftForm');
 const purchaseRecordDialog = $('#purchaseRecordDialog');
-const purchaseRecordFields = 'id,title,requester,purpose,registered_name,demand_id,demands(protocol)';
+const purchaseRecordFields = 'id,title,requester,purpose,registered_name,demand_id,created_by,status,decision_note,demands(protocol)';
 let purchaseModuleRequest = 0;
+const purchaseStages = {draft:'Rascunho',submitted:'Em triagem',triaged:'Triagem concluída',returned:'Devolvida para ajuste',rejected:'Rejeitada'};
+const editablePurchase = row => ['draft','returned'].includes(row.status) && (profile?.role==='admin' || row.created_by===session?.user.id);
+const purchasePilotYear = 2026;
 
 function openPurchaseRecord(row) {
   if (!session || !profile?.active) return;
   $('#purchaseRecordTitle').textContent = purchaseProtocol(row.id) + ' · ' + row.title;
-  $('#purchaseRecordContent').innerHTML = `<p><strong>Situação</strong> · Rascunho</p>
+  $('#purchaseRecordContent').innerHTML = `<p><strong>Situação</strong> · ${esc(purchaseStages[row.status])}</p>
     <p><strong>Registrado por</strong> · ${esc(row.registered_name || 'Não informado')}</p>
     <p><strong>Solicitante</strong> · ${esc(row.requester || 'Não informado')}</p>
     <p><strong>Motivo da necessidade</strong> · ${esc(row.purpose || 'Não informado')}</p>
-    <p><strong>Origem</strong> · ${esc(row.demands?.protocol || (row.demand_id ? 'Demanda vinculada' : 'Compra independente'))}</p>`;
+    <p><strong>Origem</strong> · ${esc(row.demands?.protocol || (row.demand_id ? 'Demanda vinculada' : 'Compra independente'))}</p>
+    ${row.decision_note ? '<p><strong>Parecer</strong> · '+esc(row.decision_note)+'</p>' : ''}`;
   $('#purchaseRecordStatus').textContent = '';
   const source = $('#purchaseSourceDemand');
   source.hidden = !row.demand_id;
@@ -80,7 +84,17 @@ function openPurchaseRecord(row) {
     if (location.hash === '#/plano') route(); else location.hash = '#/plano';
   };
   if (!purchaseRecordDialog.open) purchaseRecordDialog.showModal();
-  loadPurchaseItems(row.id);
+  const send = $('#submitPurchasePilot');
+  send.classList.toggle('hidden',!editablePurchase(row));
+  send.onclick = () => changePurchaseStatus(row,'submitted');
+  const triage = $('#purchaseTriageForm');
+  triage.reset();
+  triage.classList.toggle('hidden',!(profile.role==='admin'&&row.status==='submitted'));
+  triage.onsubmit = event => {
+    event.preventDefault();
+    changePurchaseStatus(row,event.submitter.value,triage.elements.decision_note.value.trim());
+  };
+  loadPurchaseItems(row);
 }
 
 async function loadPurchaseModule() {
@@ -102,9 +116,9 @@ async function loadPurchaseModule() {
   }
   create.disabled = false;
   loadPurchasePublicationControls();
-  status.textContent = data.length ? `${data.length} rascunho(s) exibido(s)` : 'Nenhuma solicitação cadastrada.';
+  status.textContent = data.length ? `${data.length} solicitação(ões) exibida(s)` : 'Nenhuma solicitação cadastrada.';
   rows.innerHTML = data.map(row => `<article class="entry-card"><div><strong>${purchaseProtocol(row.id)} · ${esc(row.title)}</strong>
-    <p>${esc(row.demands?.protocol || (row.demand_id ? 'Demanda vinculada' : 'Compra independente'))} · Rascunho</p>
+    <p>${esc(row.demands?.protocol || (row.demand_id ? 'Demanda vinculada' : 'Compra independente'))} · ${esc(purchaseStages[row.status])}</p>
     <button class="secondary" type="button" data-purchase-record="${row.id}">Abrir solicitação</button></div></article>`).join('');
   rows.querySelectorAll('[data-purchase-record]').forEach(button => {
     button.onclick = () => openPurchaseRecord(data.find(row => String(row.id) === button.dataset.purchaseRecord));
@@ -143,34 +157,85 @@ purchasePublishForm.onsubmit = async event => {
   $('#purchasePublishStatus').textContent = error?.message || 'Versão publicada para Compras.';
 };
 
-async function loadPurchaseItems(id) {
-  const context = {id,publications:[],rubricsRequest:0};
+async function changePurchaseStatus(row,status,note=null) {
+  if (!session || !profile?.active || purchaseItemContext?.row !== row) return;
+  if (status==='submitted' && !editablePurchase(row)) return;
+  if (status!=='submitted' && (profile.role!=='admin' || row.status!=='submitted' || !note)) return;
+  const context=purchaseItemContext;
+  if(context.moving)return;
+  context.moving=true;
+  const {data,error} = await db.from('purchase_requests').update({status,decision_note:note})
+    .eq('id',row.id).eq('status',row.status).select(purchaseRecordFields).maybeSingle();
+  context.moving=false;
+  if (purchaseItemContext!==context || !purchaseRecordDialog.open) return;
+  if (error || !data) { $('#purchaseRecordStatus').textContent=error?.message || 'A etapa mudou. Reabra a solicitação.'; return; }
+  openPurchaseRecord(data);
+  if (location.hash==='#/compras') loadPurchaseModule();
+  if (row.demand_id && $('#editForm').elements.id.value===row.demand_id) loadPurchaseLinks(row.demand_id,demandPurchaseRequest);
+}
+
+async function loadPurchaseItems(row) {
+  const context = {row,publications:[],centers:[],rubricsRequest:0};
   purchaseItemContext = context;
   const fields = purchaseItemForm.elements;
   const status = $('#purchaseRecordStatus'), list = $('#purchaseItemRows');
+  const editable = editablePurchase(row);
+  const send = $('#submitPurchasePilot');
+  send.disabled = true;
+  purchaseItemForm.classList.toggle('hidden',!editable);
   purchaseItemForm.reset();
   fields.unit.replaceChildren(new Option('Selecione',''), ...purchaseUnits.map(unit => new Option(unit,unit)));
   fields.publication.replaceChildren(new Option('Informe a data de necessidade',''));
   fields.rubric.replaceChildren(new Option('Selecione o centro',''));
   purchaseItemForm.querySelector('button').disabled = true;
   list.replaceChildren();
-  status.textContent = 'Carregando itens e rubricas publicadas…';
-  const [items,budget] = await Promise.all([
-    db.from('purchase_request_items').select('id,description,activity,quantity,unit,needed_on,estimated_amount,publication_id,purchase_budget_lines(description,account_code)').eq('request_id',id).order('id'),
-    db.from('purchase_current_budget_publications').select('id,center_code,center_name,fiscal_year').order('center_name')
+  status.textContent = 'Carregando itens…';
+  const [items,budget,centers] = await Promise.all([
+    db.from('purchase_request_items').select('id,description,activity,quantity,unit,needed_on,estimated_amount,nature,center_code,publication_id,purchase_cost_centers(name),purchase_budget_lines(description)').eq('request_id',row.id).order('id'),
+    db.from('purchase_current_budget_publications').select('id,center_code,center_name,fiscal_year').order('center_name'),
+    db.from('purchase_cost_centers').select('code,name').order('name')
   ]);
   if (purchaseItemContext !== context || !purchaseRecordDialog.open || !session) return;
-  if (items.error || budget.error) { status.textContent = 'Não foi possível consultar itens e rubricas em homologação.'; return; }
+  if (items.error || centers.error) { status.textContent = 'Não foi possível carregar itens e centros. Confira a migração do piloto.'; return; }
   list.innerHTML = items.data.map(item => `<li><strong>${esc(item.description)}</strong> · ${esc(item.quantity)} ${esc(item.unit)} · ${esc(item.activity)}<br>
-    ${esc(item.purchase_budget_lines?.description || 'Rubrica')} · Versão ${esc(item.publication_id)} · Estimativa ${esc(item.estimated_amount == null ? 'Não informada' : purchaseMoney(item.estimated_amount))}</li>`).join('');
-  context.publications = budget.data;
-  status.textContent = budget.data.length ? '' : 'Ainda não há rubricas publicadas pelo OBZ.';
+    ${item.nature==='service'?'Serviço':'Material'} · ${esc(item.center_code ? (item.purchase_cost_centers?.name||item.center_code)+' · Piloto 2026' : (item.purchase_budget_lines?.description||'Rubrica')+' · Versão '+item.publication_id)}
+    · Estimativa ${esc(item.estimated_amount == null ? 'Não informada' : purchaseMoney(item.estimated_amount))}
+    ${editable?'<button type="button" class="secondary" data-remove-purchase-item="'+item.id+'">Remover item</button>':''}</li>`).join('');
+  list.querySelectorAll('[data-remove-purchase-item]').forEach(button => {
+    button.onclick=async()=>{
+      if(purchaseItemContext!==context||!editablePurchase(row)||!confirm('Remover este item do rascunho?'))return;
+      button.disabled=true;
+      const {data,error}=await db.from('purchase_request_items').delete().eq('id',button.dataset.removePurchaseItem).eq('request_id',row.id).select('id').maybeSingle();
+      if(purchaseItemContext!==context||!purchaseRecordDialog.open)return;
+      if(error||!data){button.disabled=false;status.textContent=error?.message||'O item não pôde ser removido.';return;}
+      await loadPurchaseItems(row);
+    };
+  });
+  context.publications = budget.data || [];
+  context.centers = centers.data;
+  fields.pilot_center.replaceChildren(new Option('Selecione',''),...centers.data.map(c=>new Option(c.name,c.code)));
+  status.textContent = 'Itens de 2026 são classificados por centro, sem consumo do OBZ 2027.';
+  send.disabled = !editable || !items.data.length;
+  if(editable){
+    fields.needed_on.value = new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo'}).format(new Date());
+    fields.needed_on.onchange();
+  }
 }
 
 purchaseItemForm.elements.needed_on.onchange = () => {
-  const fields = purchaseItemForm.elements;
-  const year = Number(fields.needed_on.value.slice(0,4));
-  const options = (purchaseItemContext?.publications || []).filter(row => row.fiscal_year === year);
+  const fields = purchaseItemForm.elements,context=purchaseItemContext;
+  if(!context)return;
+  const year = Number(fields.needed_on.value.slice(0,4)),pilot=year===purchasePilotYear;
+  ++context.rubricsRequest;
+  $('#pilotCenterField').classList.toggle('hidden',!pilot);
+  $('#publishedCenterField').classList.toggle('hidden',pilot);
+  $('#publishedRubricField').classList.toggle('hidden',pilot);
+  fields.pilot_center.required=pilot;
+  fields.publication.required=fields.rubric.required=!pilot;
+  fields.pilot_center.disabled=!pilot;
+  fields.publication.disabled=fields.rubric.disabled=pilot;
+  if(pilot){purchaseItemForm.querySelector('button').disabled=!context.centers.length;return;}
+  const options = context.publications.filter(row => row.fiscal_year === year);
   fields.publication.replaceChildren(new Option(options.length?'Selecione':'Sem publicação para o exercício',''), ...options.map(row => new Option(`${row.center_code} · ${row.center_name} · ${row.fiscal_year}`,row.id)));
   fields.publication.onchange();
 };
@@ -193,19 +258,21 @@ purchaseItemForm.elements.publication.onchange = async () => {
 purchaseItemForm.onsubmit = async event => {
   event.preventDefault();
   const context = purchaseItemContext, button = purchaseItemForm.querySelector('button');
-  if (!context || !session || !profile?.active || button.disabled) return;
+  if (!context || !session || !profile?.active || !editablePurchase(context.row) || button.disabled) return;
   const fields = new FormData(purchaseItemForm);
   const description = fields.get('description').trim(), activity = fields.get('activity').trim();
   if (!description || !activity) return;
+  const needed_on=fields.get('needed_on'),pilot=Number(needed_on.slice(0,4))===purchasePilotYear;
   button.disabled = true;
   const {error} = await db.from('purchase_request_items').insert({
-    request_id:context.id,description,activity,quantity:fields.get('quantity'),unit:fields.get('unit'),
-    needed_on:fields.get('needed_on'),estimated_amount:fields.get('estimate') || null,
-    publication_id:fields.get('publication'),obz_line_id:fields.get('rubric')
+    request_id:context.row.id,description,activity,quantity:fields.get('quantity'),unit:fields.get('unit'),
+    needed_on,nature:fields.get('nature'),estimated_amount:fields.get('estimate') || null,
+    center_code:pilot?fields.get('pilot_center'):null,
+    publication_id:pilot?null:fields.get('publication'),obz_line_id:pilot?null:fields.get('rubric')
   });
   if (purchaseItemContext !== context || !purchaseRecordDialog.open || !session) return;
   if (error) { button.disabled = false; $('#purchaseRecordStatus').textContent = error.message; return; }
-  await loadPurchaseItems(context.id);
+  await loadPurchaseItems(context.row);
 };
 
 $('#refreshPurchases').onclick = loadPurchaseModule;
@@ -230,7 +297,7 @@ async function loadPurchaseLinks(demandId, request) {
     return;
   }
   purchaseList.innerHTML = links.data.map(row =>
-    `<li><strong>${purchaseProtocol(row.id)}</strong> · ${esc(row.title)} · Rascunho <button type="button" class="secondary" data-linked-purchase="${row.id}">Abrir solicitação</button></li>`
+    `<li><strong>${purchaseProtocol(row.id)}</strong> · ${esc(row.title)} · ${esc(purchaseStages[row.status])} <button type="button" class="secondary" data-linked-purchase="${row.id}">Abrir solicitação</button></li>`
   ).join('');
   purchaseList.querySelectorAll('[data-linked-purchase]').forEach(button => {
     button.onclick = () => openPurchaseRecord(links.data.find(row => String(row.id) === button.dataset.linkedPurchase));
