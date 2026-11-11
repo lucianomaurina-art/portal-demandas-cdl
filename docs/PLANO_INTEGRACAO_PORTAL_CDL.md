@@ -1,61 +1,70 @@
-# Portal Interno CDL — Integração progressiva dos módulos
+# Portal Interno CDL Novo Hamburgo — Integração dos módulos
+Atualizado em 11/11/2026.
 
-## Estado desta implementação (11/11/2026)
-- Branch de homologação: `feature/portal-unificado-home-2027`
-- Escopo: página inicial do repositório `portal-demandas-cdl`.
-- Não altera banco de dados, autenticação, roteamento nem as telas internas de Demandas e Ideias.
-- Mantém `#/nova` e `#/nova-ideia` exatamente como no portal existente.
-- Acrescenta acesso ao OBZ 2027 em homologação: `https://lucianomaurina-art.github.io/cdl-obz-2027-homologacao/`.
-- Exibe Compras e Contratações como *Em desenvolvimento* (sem link ativo).
-- A navegação para o OBZ abre outra aba. **Sessão única entre domínios NÃO está implementada**; cada módulo faz suas próprias verificações de acesso.
+## Estado atual verificado no repositório principal
 
-## Regras de evolução
-1. Preservar o portal em produção até que o usuário aprove a alteração.
-2. Trabalhar em branch específica, com pull request e revisão do diff.
-3. Manter rotas anteriores funcionando. Não duplicar tabelas ou usuários.
-4. Nenhuma alteração de RLS, permissões, fluxos de aprovação ou despesas orçamentárias será embutida numa mudança puramente visual.
-5. Compras só ganhará link após existir um endereço homologado e a equipe aprovar o módulo.
-6. Na futura integração de dados, vincular demandas, solicitações de compra, rubricas e compromissos através de identificadores imutáveis; separar previsão, reserva, comprometido e realizado.
-7. Integrar autenticação/domínios em atividade separada, com testes de sessão, logout, redirecionamentos, RLS e fluxos de acesso.
-8. Cada solicitação futura deverá indicar: módulo/tela, problema observado, comportamento esperado, impactos que devem ser preservados e critério de aceite.
-9. Tratar falhas de atualização com rollback, e controlar migrações de banco por etapas.
-10. Elaborar as skills do agente de manutenção **após** estabilização de Compras, conforme decisão da gestão.
+O portal central encontra-se em `lucianomaurina-art/portal-demandas-cdl`.
+A página inicial exibe os quatro módulos aprovados:
 
-## Critérios de aceite da primeira fase
-- [ ] Tela inicial exibe quatro cartões em desktop e mobile, sem sobreposição.
-- [ ] Demandas abre o cadastro atual e continua registrando solicitações.
-- [ ] Ideias abre o cadastro atual e continua registrando ideias.
-- [ ] OBZ abre numa nova aba e exige autenticação/autorizações próprias.
-- [ ] Compras exibe estado Em desenvolvimento e não conduz a uma rota incompleta.
-- [ ] Usuário consegue retornar à tela inicial pelo logo.
-- [ ] Topbar, rotas administrativas, dashboard, notificações e logout permanecem inalterados.
-- [ ] Publicação em produção somente após validação da gestão.
+| Módulo | Acesso na home | Persistência e autorização |
+| --- | --- | --- |
+| Demandas | `#/nova` | Formulários e fluxo existentes; Supabase |
+| Ideias e Inovação | `#/nova-ideia` | Formulários e fluxo existentes; Supabase |
+| Orçamento Base Zero 2027 | GitHub Pages de homologação do OBZ | Base OBZ no mesmo projeto Supabase; a sessão em domínio externo pode exigir novo login |
+| Compras e Contratações | `#/compras` | Entrada restrita à sessão interna; o Kanban incorporado continua sendo uma demonstração com dados no navegador |
 
-## Etapas posteriores — fora deste PR
-1. Concluir e homologar Compras e Contratações.
-2. Publicar o acesso de Compras no cartão correto.
-3. Estudar hospedagem comum sob `cdl-nh.com.br/portal` e sessão integrada; validar riscos de domínios diferentes.
-4. Integrar a criação de solicitações de compras a partir de demandas e vinculação de centros/rubricas do OBZ.
-5. Parametrizar e homologar alçadas, limites, reserva orçamentária e auditoria.
-6. Somente então criar skills restritas do agente de manutenção, com permissões mínimas e política de mudanças controladas.
+A área `#/compras-triagem` utiliza `purchase_requests`, `purchase_request_items` e `purchase_quote_documents` no Supabase para operações persistidas, além da função `compras-cotacao-drive` para envio autenticado de cotações. A existência de tabelas e função ativa **não substitui testes reais de ponta a ponta**.
 
-## Arquivos alterados
-- `index.html`: conteúdo do acesso inicial e referência ao CSS de módulos.
-- `portal-modules.css`: estilos isolados da tela inicial.
-- `docs/PLANO_INTEGRACAO_PORTAL_CDL.md`: este plano de interface e evolução futura.
+### Distinção obrigatória entre demonstração e operação integrada
 
-## Integração de Compras no PR 2
+O arquivo `compras/index.html` exibe um seletor de **perfil de teste** e guarda alterações em `localStorage`, de modo que decisões, fornecedores e ordens desse protótipo não constituem registros oficiais. A interface principal precisa deixar essa condição explícita. Não prometer autorização real, assinatura digital, sincronização com o Supabase ou recuperação multiusuário dentro do Kanban de demonstração.
 
-O PR 3 continua sendo a referência da página inicial. A versão integrada do PR 2
-abre Compras em `#/compras` para perfis internos ativos, na sessão do próprio
-Portal de Demandas. O OBZ continua com seu acesso de homologação.
+A operação real começa em `#/compras-triagem` e deve ser validada por perfis distintos, com arquivos de exemplo. Até confirmação da persistência de cada etapa, não se deve declarar o fluxo completo como concluído para uso oficial.
 
-O módulo lista rascunhos do banco, permite criar compras independentes e abre
-a demanda de origem. A partir do detalhe da demanda, o usuário pode registrar
-que ela envolve compra e criar ou vincular uma solicitação. O banco identifica
-quem registrou a compra, e o formulário coleta o solicitante e o motivo.
+## Limites e dependências
 
-A etapa seguinte é conectar itens e ordens à versão publicada do pacote OBZ,
-com autorização e saldo por rubrica. A integração de anexos com o Google Drive
-também depende de autorização no servidor. Antes da publicação, testar as
-migrações, os perfis autorizados e os fluxos existentes em homologação.
+- Os quatro cartões foram aprovados visualmente pela gestão.
+- A autenticação da **área interna do portal** usa o mesmo Supabase de Demandas/Ideias.
+- O OBZ é acessado por endereço externo do GitHub Pages; sessão única entre origens ainda não foi implantada.
+- A previsão orçamentária do OBZ 2027 não deve ser automaticamente considerada saldo disponível para compras.
+- Não alterar versões financeiras aprovadas nem as políticas de acesso sem migrações versionadas, revisão de segurança e testes por perfil.
+- Integração futura precisa registrar relação entre demanda, compra, centro/rubrica OBZ, reserva, comprometimento e realizado, sem dupla contabilização.
+
+## Critérios de homologação da página inicial
+
+- [x] Quatro cartões exibidos no código da home.
+- [x] Rotas existentes de Demandas e Ideias preservadas.
+- [x] Link do OBZ 2027 aponta para homologação.
+- [x] Compras utiliza a rota autenticada do mesmo portal.
+- [x] Área demonstrativa e área integrada claramente diferenciadas no código.
+- [x] CSS do novo portal restrito à página inicial.
+- [ ] Testar em navegador autenticado: desktop, celular, login, logout e carregamento dos quatro módulos.
+- [ ] Testar em navegador autenticado: usuário sem perfil ativo não acessa compras integradas.
+- [ ] Testar com dados fictícios: solicitação, itens, cotação/Drive, permissões, histórico e reabertura.
+- [ ] Validar a página `https://cdl-nh.com.br/portal/demandas-e-ideias` após atualização do site que incorpora o portal, se aplicável.
+
+## Governança de atualizações
+
+1. Toda alteração nasce em branch isolada, registrada em pull request.
+2. Não desfazer mudanças de outro módulo com merges de branches antigas.
+3. Exigir revisão do diff, testes automáticos e verificação do estado do banco antes do merge.
+4. Separar publicação visual, alterações de acesso e migrações financeiras.
+5. Atualizar a documentação e controlar as versões dos scripts servidos na página.
+6. Para regressões, voltar ao commit anterior sem excluir dados.
+7. Futuramente, construir skills do agente de manutenção com permissões mínimas e regras de aprovação explícitas.
+
+## Próxima evolução, fora da integração visual
+
+- Persistir o fluxo completo do Kanban de Compras no banco, com estados, fornecedores, seleção, ordens, recebimentos e documentos.
+- Vincular regras de alçada real e eventual assinatura de ordens.
+- Implementar integração transacional com orçamento publicado do OBZ.
+- Homologar o uso real de todas as permissões e interfaces.
+- Avaliar hospedagem na mesma origem para permitir navegação contínua e reduzir necessidade de login adicional no OBZ.
+
+## Arquivos relevantes
+
+- `index.html`: página inicial e seção de Compras.
+- `portal-modules.css`: estilos isolados da home.
+- `app.js`: roteamento e acesso autenticado às solicitações de Compras.
+- `compras/index.html`: protótipo de Kanban com dados locais.
+- `tests/portal-unificado.test.mjs`: regressões da home.
