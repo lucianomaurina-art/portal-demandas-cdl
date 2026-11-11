@@ -6,7 +6,7 @@
 </style>
 <header><strong>CDL NOVO HAMBURGO</strong><label>Perfil de teste <select id="role"><option value="admin">Administrador · Luciano</option><option value="manager">Gestor</option><option value="user">Demandante · Colaborador</option></select></label></header>
 <main><div class="row spread"><div><h1>Solicitações de compras</h1><p class="muted">Portal de Demandas / Compras</p></div><button id="new" class="primary">+ Nova solicitação</button></div>
-<nav aria-label="Portal de Demandas e Compras" id="nav"><button data-tab="demands">Demandas</button><button data-tab="requests">Kanban de compras</button><button data-tab="orders">Ordens de compra</button><button data-tab="budget">Orçamento aprovado</button><button data-tab="vendors">Fornecedores</button><button data-tab="costs">Histórico de compras</button><button id="archiveTab" data-tab="archive" hidden>Inativos</button><button data-tab="design">Fluxo e regras</button></nav>
+<nav aria-label="Portal de Demandas e Compras" id="nav"><button data-tab="demands">Demandas</button><button data-tab="requests">Kanban de compras</button><button data-tab="orders">Ordens de compra</button><button data-tab="budget">Orçamento aprovado</button><button data-tab="vendors">Fornecedores</button><button data-tab="costs">Histórico de compras</button><button id="archiveTab" data-tab="archive" hidden>Inativos</button><a href="https://drive.google.com/drive/folders/1OYkBpzPSk1MxEa0L9j3uEf53s9ysKZYU" target="_blank" rel="noopener noreferrer">Pasta de documentos</a><button data-tab="design">Fluxo e regras</button></nav>
 <div id="notice" role="status"></div><div id="view"></div><footer>Protótipo com dados fictícios. As alterações ficam no navegador. Use somente dados de teste.</footer></main>
 <dialog id="modal"><div class="row spread"><h2 id="modalTitle"></h2><button id="close" aria-label="Fechar">Fechar</button></div><div id="body"></div></dialog>
 <script>
@@ -197,7 +197,7 @@ function render(){
  <li><strong>Orçamento.</strong> Registre e anexe três cotações de fornecedores distintos, com valor total, prazo, referência e condições de pagamento. Para mercado, registre uma cotação em atacado e a conferência dos descontos com o cartão. Para pagamento com cartão, registre a autorização.</li>
  <li><strong>Análise.</strong> Revise as cotações e a negociação, salve os fornecedores indicados e use Submeter solicitação orçada para análise. O gestor pode aprovar integral ou parcialmente, registrar ressalvas, devolver para ajuste ou reprovar. A aprovação revalida o saldo e gera ordens por fornecedor.</li>
  <li><strong>Assinatura e compra.</strong> O gestor executivo assina a ordem antes de a equipe registrar a compra. A assinatura deste protótipo é simulada. O documento fiscal anexado ao item fica acessível na ordem.</li></ol>
- <p><strong>Destino dos anexos na integração.</strong> <a href="https://drive.google.com/drive/folders/1OYkBpzPSk1MxEa0L9j3uEf53s9ysKZYU" target="_blank" rel="noopener noreferrer">fluxo de compras CDL NH</a>. Neste protótipo, os arquivos são gravados no navegador. O envio ao Drive depende da conexão do servidor do portal.</p>
+ <p><strong>Documentos no Drive.</strong> ${folderLink('quotes','Cotações')} · ${folderLink('orders','Ordens assinadas')} · ${folderLink('fiscal','Notas e cupons')} · ${folderLink('contracts','Contratos e aditivos')}. Salve o arquivo no Drive e cole o link no formulário correspondente. Os vínculos desta versão ficam no navegador.</p>
  <p><strong>Controles para a integração.</strong> Separar os papéis de solicitante, aprovador, recebimento e financeiro. Antes do pagamento, confrontar ordem, recebimento e nota ou cupom. Registrar divergências, cancelamentos e liberação de saldos com autorização e histórico.</p>
  <p><strong>Integração futura.</strong> Reutilizar usuários, permissões e códigos dos centros do portal/OBZ. Estruturar solicitações, fornecedores, validações por categoria, cotações, decisões e histórico. No servidor, verificar perfil e autoria a cada ação e gravar decisão, mudança de etapa e histórico na mesma transação. Preservar a cotação e a regra aplicadas na aprovação. Em produção, armazenar arquivos fiscais com acesso restrito, gravar documentos e pagamentos como registros vinculados ao pedido e alertar Luciano quando houver pedido para decidir.</p></section>
  `;
@@ -387,6 +387,27 @@ function quoteMoney(gross,discount){
  const total=toCents(gross),off=toCents(discount);
  return Number.isSafeInteger(total)&&Number.isSafeInteger(off)&&total>0&&off>=0&&off<total?total-off:null;
 }
+const purchaseFolders={quotes:'https://drive.google.com/drive/folders/1Qs9JTXv8KXY3gcX1N0gsKvAIlnF13U3V',orders:'https://drive.google.com/drive/folders/1mx0XxInFjIVdBtVCCcE_WUCrpuRf4iqG',fiscal:'https://drive.google.com/drive/folders/1E1gCH2gN89E6Aea7s4z3S2o2GsZuJcc2',contracts:'https://drive.google.com/drive/folders/1GJ3HF9nIf5EaL8FcbjrB4ssehWuJUSKC'};
+function driveFileUrl(value){
+ try{
+  const url=new URL(String(value||'').trim());
+  if(url.protocol!=='https:'||url.username||url.password||url.port)return '';
+  const id='[A-Za-z0-9_-]+';
+  const drive=url.hostname==='drive.google.com'&&(new RegExp('^/file/d/'+id+'(?:/|$)').test(url.pathname)||
+    (url.pathname==='/open'&&new RegExp('^'+id+'$').test(url.searchParams.get('id')||'')));
+  const docs=url.hostname==='docs.google.com'&&new RegExp('^/(document|spreadsheets|presentation)/d/'+id+'(?:/|$)').test(url.pathname);
+  return drive||docs?url.href:'';
+ }catch{return ''}
+}
+const folderLink=(key,label)=>'<a href="'+esc(purchaseFolders[key])+'" target="_blank" rel="noopener noreferrer">'+label+'</a>';
+function driveDocumentLink(value,label){
+ const url=driveFileUrl(value);
+ return url?'<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+label+'</a>':'';
+}
+function driveDocumentField(key,label,value){
+ return '<p>'+folderLink(key,'Abrir pasta no Drive')+' · Salve o arquivo na pasta e cole o link dele abaixo.</p>'+
+ field(label,'<input name="driveUrl" type="url" placeholder="https://drive.google.com/file/d/…" value="'+esc(value)+'">');
+}
 function quoteForm(r,q){
  if(!editable(r))return;
  const vendors=activeVendors().filter(v=>v.id===q?.vendor||!r.quotes.some(x=>x.vendor===v.id));
@@ -395,7 +416,7 @@ function quoteForm(r,q){
  field('Valor final (R$)','<output id="quoteFinal" for="quoteGross quoteDiscount"></output>')+field('Prazo de entrega (dias)','<input name="days" type="number" min="0" required value="'+esc(q?.days)+'">')+'</div>'+field('Forma de pagamento','<select name="method" id="quoteMethod" required><option value="">Selecione</option>'+options(['Cartão de crédito','Cartão do atacado','Boleto','Pix'],q?.method)+'</select>')+
  field('Condição de pagamento','<input name="payment" required value="'+esc(q?.payment)+'" placeholder="Ex. à vista, vencimento ou número de parcelas">')+
  field('Autorização para pagamento com cartão','<input name="authorization" id="quoteAuthorization" value="'+esc(q?.authorization)+'" placeholder="Referência da autorização">')+
- (r.market?field('Conferência da compra em atacado','<select name="wholesale" required><option value="">Selecione</option>'+options(['Atacado · desconto com cartão conferido','Atacado · cartão indisponível ou sem desconto'],q?.wholesale)+'</select>'):'')+field('Referência do orçamento','<input name="evidence" required value="'+esc(q?.evidence)+'" placeholder="Número da proposta ou referência do comprovante">')+field('Anexar orçamento do fornecedor (PDF, JPG, PNG · até 2 MB)','<input name="quoteFile" type="file" accept=".pdf,.jpg,.jpeg,.png">')+
+ (r.market?field('Conferência da compra em atacado','<select name="wholesale" required><option value="">Selecione</option>'+options(['Atacado · desconto com cartão conferido','Atacado · cartão indisponível ou sem desconto'],q?.wholesale)+'</select>'):'')+field('Referência do orçamento','<input name="evidence" required value="'+esc(q?.evidence)+'" placeholder="Número da proposta ou referência do comprovante">')+driveDocumentField('quotes','Link do orçamento no Drive',q?.attachment?.url)+field('Anexar orçamento do fornecedor (PDF, JPG, PNG · até 2 MB)','<input name="quoteFile" type="file" accept=".pdf,.jpg,.jpeg,.png">')+
  (q?.attachment?'<p>Arquivo atual · '+esc(q.attachment.name)+'</p>':'')+
  '<p id="quoteError" role="alert"></p><button id="saveQuote" class="primary">Salvar cotação</button></form>');
  const toggleCard=()=>{$('quoteAuthorization').required=$('quoteMethod').value.startsWith('Cartão')};
@@ -410,14 +431,18 @@ function quoteForm(r,q){
   if(!editable(r))return;
   const data=Object.fromEntries(f),file=data.quoteFile;
   delete data.quoteFile;
+  const driveUrl=driveFileUrl(data.driveUrl),hasDriveInput=Boolean(data.driveUrl?.trim());
+  delete data.driveUrl;
   data.vendor=Number(data.vendor);
   const final=quoteMoney(data.gross,data.discount);
   const error=message=>{$('quoteError').textContent=message};
+  if(hasDriveInput&&!driveUrl){error('Cole o link de um arquivo do Google Drive.');return}
+  if(driveUrl)data.attachment={name:'Orçamento no Drive',url:driveUrl};
   if(final===null){error('Informe valor bruto positivo e desconto menor que o valor bruto.');return}
   if(!activeVendors().includes(vendor(data.vendor))||r.quotes.some(x=>x!==q&&x.vendor===data.vendor))return;
   if(data.method?.startsWith('Cartão')&&!data.authorization?.trim())return;
   if(file?.name&&(!file.size||file.size>2_000_000||!/[.](pdf|jpe?g|png)$/i.test(file.name))){error('Selecione um PDF, JPG ou PNG de até 2 MB.');return}
-  if(file?.name){
+  if(file?.name&&!driveUrl){
    $('saveQuote').disabled=true;
    try{
     const content=await new Promise((resolve,reject)=>{
@@ -546,7 +571,7 @@ function wireFiscal(r){
  $('addFiscal').onclick=()=>fiscalForm(r);
  document.querySelectorAll('[data-file]').forEach(b=>b.onclick=()=>{
  const d=documentsOf(r)[Number(b.dataset.file)];
- const a=document.createElement('a');a.href=d.data;a.download=d.name;a.click();
+ downloadOrderFiscal(d);
  });
  document.querySelectorAll('[data-pay]').forEach(b=>b.onclick=()=>paymentForm(r,documentsOf(r)[Number(b.dataset.pay)]));
 }
@@ -566,7 +591,7 @@ function fiscalForm(r){
  field('Data de emissão','<input name="date" type="date" required>')+
  field('Quantidade coberta ('+esc(r.unit)+')','<input name="qty" type="number" min="1" max="'+Math.max(0,Number(r.qty)-fiscalQty(r))+'" required>')+
  field('Valor fiscal desta compra (R$)','<input name="value" type="number" min="0.01" step="0.01" required>')+'</div>'+
- field('Arquivo de teste (PDF, XML, JPG, PNG · até 2 MB)','<input type="file" name="file" accept=".pdf,.xml,.jpg,.jpeg,.png" required>')+
+ driveDocumentField('fiscal','Link da nota ou cupom no Drive')+field('Arquivo local alternativo (PDF, XML, JPG, PNG · até 2 MB)','<input type="file" name="file" accept=".pdf,.xml,.jpg,.jpeg,.png">')+
  '<p class="muted">Informe apenas a quantidade e o valor do item deste pedido quando o documento incluir outros itens.</p><p id="fiscalError" role="alert"></p><div class="actions"><button class="primary" id="fiscalSave">Salvar documento</button>'+fiscalBack()+'</div></form>');
  $('fiscalBack').onclick=()=>details(r);
  const form=$('form');
@@ -576,11 +601,17 @@ function fiscalForm(r){
  if(!fiscalAllowed(r))return;
  const f=new FormData(form),file=f.get('file'),number=f.get('number').trim(),qty=Number(f.get('qty')),cents=Math.round(Number(f.get('value'))*100);
  if(!number||!Number.isInteger(qty)||qty<1||qty+fiscalQty(r)>Number(r.qty)||!Number.isSafeInteger(cents)||cents<1){fiscalError('Confira a identificação, a quantidade disponível e o valor fiscal.');return}
- if(!file?.size||file.size>2_000_000||!/[.](pdf|xml|jpe?g|png)$/i.test(file.name)){fiscalError('Selecione um arquivo permitido de até 2 MB.');return}
+ const link=driveFileUrl(f.get('driveUrl'));
+ if(f.get('driveUrl')?.trim()&&!link){fiscalError('Cole o link de um arquivo do Google Drive.');return}
+ if(!link&&(!file?.size||file.size>2_000_000||!/[.](pdf|xml|jpe?g|png)$/i.test(file.name))){fiscalError('Selecione um arquivo permitido de até 2 MB.');return}
  const docs=r.fiscal??=[];
  const duplicate=()=>docs.some(d=>d.type===f.get('type')&&norm(d.number)===norm(number));
  if(duplicate()){fiscalError('Este documento já está vinculado a este pedido.');return}
  const saveButton=$('fiscalSave');
+ if(link){
+  docs.push({type:f.get('type'),number,date:f.get('date'),qty,cents,name:'Documento fiscal no Drive',url:link,payments:[]});
+  commitFiscal(r,'Documento fiscal '+number+' vinculado.',()=>docs.pop());return;
+ }
  saveButton.disabled=true;
  const reader=new FileReader();
  reader.onerror=()=>{if($('form')!==form)return;saveButton.disabled=false;fiscalError('Não foi possível ler o arquivo selecionado.')};
@@ -669,6 +700,9 @@ function orderDetails(id){
  return '<tr><td>'+esc(line.title)+' · '+esc(line.qty)+' '+esc(line.unit)+'</td><td>'+esc(line.center)+(line.budgetId?'<br><small>'+esc(line.budgetId)+'</small>':'')+'</td><td>'+activityLabel(line.activity)+'</td><td>'+dateLabel(line.need)+'</td><td>'+esc(line.days)+' d · '+esc(line.payment)+(line.wholesale?'<br><small>'+esc(line.wholesale)+'</small>':'')+'</td><td>'+cash(line.cents/100)+'</td><td>'+esc(r?orderStatus(r):'')+'</td><td>'+(r?'<button data-order-item="'+r.id+'">Abrir item</button>':'')+'</td></tr>';
  }).join('')+'</tbody></table></div>'+
  '<p>'+ (o.signature?'Assinatura registrada em simulação · '+esc(o.signature.actor)+' · '+esc(o.signature.date):o.requiresSignature?'Aguardando assinatura digital do gestor executivo.':'Ordem de versão anterior do protótipo.')+'</p>'+
+ '<h3>Ordem assinada</h3><p>'+folderLink('orders','Abrir pasta de ordens assinadas')+
+ (o.signedDocumentUrl?' · '+driveDocumentLink(o.signedDocumentUrl,'Abrir ordem assinada no Drive'):'')+'</p>'+
+ (admin()?'<button id="attachSignedOrder">Vincular ordem assinada</button>':'')+
  '<h3>Documentos fiscais da ordem</h3>'+orderFiscal(items.filter(r=>r.orderId===id))+
  '<div class="actions"><button id="orderPrint">Imprimir ordem</button>'+
  (admin()&&!o.signature&&o.requiresSignature?'<button id="orderSign" class="primary">Simular assinatura do gestor</button>':'')+
@@ -676,6 +710,7 @@ function orderDetails(id){
  wireInactive('order',id);
  $('orderPrint').onclick=()=>window.print();
  if($('orderSign'))$('orderSign').onclick=()=>signOrder(o);
+ if($('attachSignedOrder'))$('attachSignedOrder').onclick=()=>signedOrderForm(o);
  document.querySelectorAll('[data-order-fiscal]').forEach(b=>b.onclick=()=>{
   const [itemId,index]=b.dataset.orderFiscal.split(':').map(Number);
   const doc=documentsOf(items.find(r=>r.id===itemId))[index];
@@ -689,7 +724,27 @@ function orderFiscal(items){
  return entries.length?'<ul>'+entries.join('')+'</ul>':'<p class="muted">Os documentos anexados aos itens comprados aparecem aqui.</p>';
 }
 function downloadOrderFiscal(doc){
- const link=document.createElement('a');link.href=doc.data;link.download=doc.name;link.click();
+ const link=document.createElement('a'),url=driveFileUrl(doc.url);
+ link.href=url||doc.data;
+ if(url){link.target='_blank';link.rel='noopener noreferrer';}else link.download=doc.name;
+ link.click();
+}
+function signedOrderForm(o){
+ if(!admin()||o.inactive||!ordersFor(visible()).includes(o))return;
+ open('Vincular ordem assinada · '+orderCode(o.id),'<form id="form">'+driveDocumentField('orders','Link da ordem assinada no Drive',o.signedDocumentUrl)+
+ '<p id="signedOrderError" role="alert"></p><div class="actions"><button class="primary">Salvar vínculo</button>'+fiscalBack()+'</div></form>');
+ $('fiscalBack').onclick=()=>orderDetails(o.id);
+ submit(f=>{
+  if(!admin()||o.inactive||!ordersFor(visible()).includes(o))return;
+  const url=driveFileUrl(f.get('driveUrl'));
+  if(!url){$('signedOrderError').textContent='Cole o link de um arquivo do Google Drive.';return;}
+  const previous=o.signedDocumentUrl;
+  o.signedDocumentUrl=url;
+  try{localStorage.setItem(key,JSON.stringify(db))}catch{
+   o.signedDocumentUrl=previous;$('signedOrderError').textContent='Não foi possível salvar o vínculo.';return;
+  }
+  orderDetails(o.id);
+ });
 }
 function signOrder(o){
  if(!admin()||o.inactive||o.signature||!o.requiresSignature)return;
@@ -701,9 +756,10 @@ function signOrder(o){
 }
 const selectedQuote=r=>r.quotes.find(q=>q.vendor===r.picked);
 function hasQuoteAttachment(q){
- return Boolean(q.attachment?.name&&/^data:[^,]*;base64,[A-Za-z0-9+/=]+$/.test(q.attachment.data));
+ return Boolean(driveFileUrl(q.attachment?.url)||(q.attachment?.name&&/^data:[^,]*;base64,[A-Za-z0-9+/=]+$/.test(q.attachment.data)));
 }
 function quoteAttachmentLink(q){
+ if(driveFileUrl(q.attachment?.url))return driveDocumentLink(q.attachment.url,'Abrir orçamento no Drive');
  if(!hasQuoteAttachment(q))return '<small>Sem anexo</small>';
  return '<a href="'+esc(q.attachment.data)+'" download="'+esc(q.attachment.name)+'">Baixar '+esc(q.attachment.name)+'</a>';
 }

@@ -107,7 +107,7 @@ function openPurchasePrototype() {
   }
   status.textContent = '';
   frame.hidden = false;
-  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261111-completo';
+  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261111-drive';
 }
 
 function closePurchasePrototype() {
