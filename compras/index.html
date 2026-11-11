@@ -659,7 +659,7 @@ function details(r){
  (review?'<form id="form">'+(picked&&validation(picked.vendor,r.category)!=='Validado'?'<p class="alert">Aprovação bloqueada até validar o fornecedor indicado nesta categoria.</p>':'')+field('Parecer da decisão','<textarea name="decision" required></textarea>')+field('Ressalvas (opcional)','<textarea name="caveat"></textarea>')+'<div class="actions"><button class="primary" value="approved">Aprovar</button><button value="fix">Devolver para ajustes</button><button value="denied">Reprovar</button></div><p id="error" role="alert"></p></form>':'')+
  (r.status==='ordered'?deliveryPanel(r):'')+
  (['approved','ordered'].includes(r.status)?'<form id="form">'+field(r.status==='approved'?'Referência da compra realizada':'Referência do recebimento','<input name="ref" required>')+'<button class="primary">'+(r.status==='approved'?'Registrar compra':'Confirmar recebimento')+'</button></form>':'')+
- (fiscalAllowed(r)?fiscalPanel(r):'')+
+ marketActualSummary(r)+(fiscalAllowed(r)?fiscalPanel(r):'')+
  '<details class="info"><summary>Histórico</summary><ul>'+r.log.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></details>');
  $('backBatch').onclick=()=>batchDetails(batchId(r));
  $('attachQuote').onclick=()=>quoteAttachmentForm(r);
@@ -667,6 +667,7 @@ function details(r){
  wireOrders();
  if($('linkBudget'))$('linkBudget').onclick=()=>linkLegacyBudget(r);
  wireFiscal(r);
+ if($('marketActual'))$('marketActual').onclick=()=>marketActualForm([r],()=>details(r));
  if(analysis)$('form').onsubmit=e=>{
   e.preventDefault();
   const status=e.submitter?.value,reason=new FormData(e.target).get('reason').trim();
@@ -733,6 +734,54 @@ const dateLabel=date=>date.split('-').reverse().join('/');
 const norm=text=>String(text).trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ');
 const groupKey=r=>JSON.stringify([r.title,r.category,r.unit].map(norm));
 let costCenter='',costSearch='';
+const marketActualAllowed=r=>r.market&&r.approval&&visible().includes(r)&&['approved','ordered','done'].includes(r.status);
+const realizedTotal=r=>r.marketActual?.cents??fiscalTotal(r);
+const realizedQty=r=>r.marketActual?.qty??fiscalQty(r);
+function marketActualSummary(r){
+ if(!marketActualAllowed(r))return '';
+ const actual=r.marketActual;
+ return '<section><h3>Compra de mercado</h3><p>Estimado '+(r.estimate?cash(Number(r.estimate)):'Não informado')+
+ ' · Aprovado '+cash(r.approval.price)+' · Realizado '+(actual?cash(actual.cents/100)+' · '+esc(actual.qty)+' '+esc(r.unit):'A lançar')+
+ '</p><button id="marketActual">'+(actual?'Editar valores da compra':'Lançar valores da compra')+'</button></section>';
+}
+function marketActualForm(items,back){
+ const eligible=items.filter(marketActualAllowed);
+ if(!eligible.length)return;
+ open('Lançar valores da compra de mercado','<form id="marketPurchase">'+
+ '<p>Informe o total efetivamente pago por item, com os descontos do mercado.</p>'+
+ '<div class="scroll"><table><thead><tr><th>Item</th><th>Estimado</th><th>Aprovado</th><th>Quantidade comprada</th><th>Total pago (R$)</th></tr></thead><tbody>'+
+ eligible.map(r=>'<tr><td>'+esc(r.title)+' · '+esc(r.unit)+'</td><td>'+(r.estimate?cash(Number(r.estimate)):'—')+'</td><td>'+cash(r.approval.price)+'</td>'+
+ '<td><input type="number" min="0.001" max="'+esc(r.qty)+'" step="0.001" name="qty-'+r.id+'" aria-label="Quantidade comprada de '+esc(r.title)+'" value="'+esc(r.marketActual?.qty??r.qty)+'" required></td>'+
+ '<td><input type="number" min="0.01" step="0.01" name="total-'+r.id+'" aria-label="Total pago por '+esc(r.title)+'" value="'+esc(r.marketActual?r.marketActual.cents/100:'')+'" required></td></tr>').join('')+
+ '</tbody></table></div>'+field('Data da compra','<input type="date" name="date" required value="'+esc(eligible[0].marketActual?.date||new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo'}).format(new Date()))+'">')+
+ field('Referência do cupom ou da compra','<input name="ref" maxlength="100" required value="'+esc(eligible[0].marketActual?.ref||eligible[0].purchaseRef||'')+'">')+
+ '<p id="marketPurchaseError" role="alert"></p><div class="actions"><button class="primary">Salvar valores da compra</button><button type="button" id="marketBack">Voltar</button></div></form>',true);
+ $('marketBack').onclick=back;
+ $('marketPurchase').onsubmit=e=>{
+  e.preventDefault();
+  const form=new FormData(e.currentTarget),date=form.get('date'),ref=form.get('ref').trim();
+  const error=message=>{$('marketPurchaseError').textContent=message};
+  if(!date||!ref)return error('Informe a data e a referência da compra.');
+  const changes=eligible.map(r=>({r,qty:Number(form.get('qty-'+r.id)),cents:toCents(form.get('total-'+r.id))}));
+  for(const {r,qty,cents} of changes){
+   const order=ordersFor([r])[0];
+   if(!marketActualAllowed(r)||(r.status==='approved'&&order?.requiresSignature&&!order.signature))return error('A ordem precisa estar liberada para registrar a compra.');
+   if(!Number.isFinite(qty)||qty<=0||qty>Number(r.qty)||!Number.isSafeInteger(cents)||cents<=0)return error('Confira a quantidade e o valor de '+r.title+'.');
+   if(qty<fiscalQty(r)||cents<fiscalTotal(r)||(qty===fiscalQty(r)&&cents!==fiscalTotal(r)))return error('Os valores de '+r.title+' precisam conferir com os documentos fiscais já registrados.');
+  }
+  const previous=changes.map(({r})=>({actual:r.marketActual,status:r.status,ref:r.purchaseRef}));
+  changes.forEach(({r,qty,cents})=>{
+   r.marketActual={qty,cents,date,ref};
+   if(r.status==='approved'){r.status='ordered';r.purchaseRef=ref;}
+   log(r,'Registrou compra de mercado · '+qty+' '+r.unit+' · '+cash(cents/100)+' · '+ref);
+  });
+  try{localStorage.setItem(key,JSON.stringify(db));}catch{
+   changes.forEach(({r},i)=>{r.marketActual=previous[i].actual;r.status=previous[i].status;r.purchaseRef=previous[i].ref;r.log.shift();});
+   return error('Não foi possível salvar os valores no navegador.');
+  }
+  render();back();note('Valores efetivos da compra registrados.');
+ };
+}
 function fiscalPanel(r){
  const docs=documentsOf(r);
  const total=fiscalTotal(r),payments=docs.reduce((sum,d)=>sum+paid(d),0);
@@ -767,7 +816,7 @@ function fiscalForm(r){
  open('Anexar documento fiscal','<form id="form"><div class="grid">'+field('Tipo','<select name="type">'+options(['Nota fiscal','Cupom fiscal'])+'</select>')+
  field('Número ou chave de acesso','<input name="number" maxlength="100" required>')+
  field('Data de emissão','<input name="date" type="date" required>')+
- field('Quantidade coberta ('+esc(r.unit)+')','<input name="qty" type="number" min="1" max="'+Math.max(0,Number(r.qty)-fiscalQty(r))+'" required>')+
+ field('Quantidade coberta ('+esc(r.unit)+')','<input name="qty" type="number" min="0.001" step="0.001" max="'+Math.max(0,(r.marketActual?.qty??Number(r.qty))-fiscalQty(r))+'" required>')+
  field('Valor fiscal desta compra (R$)','<input name="value" type="number" min="0.01" step="0.01" required>')+'</div>'+
  driveDocumentField('fiscal','Link da nota ou cupom no Drive')+field('Arquivo local alternativo (PDF, XML, JPG, PNG · até 2 MB)','<input type="file" name="file" accept=".pdf,.xml,.jpg,.jpeg,.png">')+
  '<p class="muted">Informe apenas a quantidade e o valor do item deste pedido quando o documento incluir outros itens.</p><p id="fiscalError" role="alert"></p><div class="actions"><button class="primary" id="fiscalSave">Salvar documento</button>'+fiscalBack()+'</div></form>');
@@ -778,10 +827,16 @@ function fiscalForm(r){
  e.preventDefault();
  if(!fiscalAllowed(r))return;
  const f=new FormData(form),file=f.get('file'),number=f.get('number').trim(),qty=Number(f.get('qty')),cents=Math.round(Number(f.get('value'))*100);
- if(!number||!Number.isInteger(qty)||qty<1||qty+fiscalQty(r)>Number(r.qty)||!Number.isSafeInteger(cents)||cents<1){fiscalError('Confira a identificação, a quantidade disponível e o valor fiscal.');return}
+ if(!number||!Number.isFinite(qty)||qty<=0||Math.round((qty+fiscalQty(r))*1000)/1000>Number(r.qty)||!Number.isSafeInteger(cents)||cents<1){fiscalError('Confira a identificação, a quantidade disponível e o valor fiscal.');return}
  const link=driveFileUrl(f.get('driveUrl'));
  if(f.get('driveUrl')?.trim()&&!link){fiscalError('Cole o link de um arquivo do Google Drive.');return}
  if(!link&&(!file?.size||file.size>2_000_000||!/[.](pdf|xml|jpe?g|png)$/i.test(file.name))){fiscalError('Selecione um arquivo permitido de até 2 MB.');return}
+ if(r.marketActual){
+  const covered=Math.round((qty+fiscalQty(r))*1000)/1000,total=cents+fiscalTotal(r);
+  if(covered>r.marketActual.qty||total>r.marketActual.cents||(covered===r.marketActual.qty&&total!==r.marketActual.cents)){
+   fiscalError('Confira o documento com a quantidade e o valor realizados da compra.');return;
+  }
+ }
  const docs=r.fiscal??=[];
  const duplicate=()=>docs.some(d=>d.type===f.get('type')&&norm(d.number)===norm(number));
  if(duplicate()){fiscalError('Este documento já está vinculado a este pedido.');return}
@@ -795,7 +850,7 @@ function fiscalForm(r){
  reader.onerror=()=>{if($('form')!==form)return;saveButton.disabled=false;fiscalError('Não foi possível ler o arquivo selecionado.')};
  reader.onload=()=>{
  if($('form')!==form||!$('modal').open||!fiscalAllowed(r))return;
- if(duplicate()||qty+fiscalQty(r)>Number(r.qty)){saveButton.disabled=false;fiscalError('Confira os documentos já cadastrados para este pedido.');return}
+ if(duplicate()||Math.round((qty+fiscalQty(r))*1000)/1000>Number(r.qty)){saveButton.disabled=false;fiscalError('Confira os documentos já cadastrados para este pedido.');return}
  docs.push({type:f.get('type'),number,date:f.get('date'),qty,cents,name:file.name,data:reader.result,payments:[]});
  if(!commitFiscal(r,'Documento fiscal '+number+' anexado.',()=>docs.pop()))saveButton.disabled=false;
  };
@@ -820,26 +875,26 @@ function paymentForm(r,d){
  });
 }
 function renderCosts(){
- $('view').innerHTML='<section><h2>Histórico de compras</h2><p class="muted">Compare compras com o mesmo nome, categoria e unidade. O custo médio é o total fiscal dividido pela quantidade documentada.</p><div class="grid">'+field('Buscar item','<input id="costSearch" placeholder="Nome do item" value="'+esc(costSearch)+'">')+
+ $('view').innerHTML='<section><h2>Histórico de compras</h2><p class="muted">Compare compras com o mesmo nome, categoria e unidade. O custo médio usa o valor realizado e a quantidade comprada ou documentada.</p><div class="grid">'+field('Buscar item','<input id="costSearch" placeholder="Nome do item" value="'+esc(costSearch)+'">')+
  field('Centro','<select id="costCenter"><option value="">Todos os centros</option>'+options(Object.values(centers).flat(),costCenter)+'</select>')+'</div><div id="costResults"></div></section>';
  $('costSearch').oninput=e=>{costSearch=e.target.value;costRows()};
  $('costCenter').onchange=e=>{costCenter=e.target.value;costRows()};
  costRows();
 }
 function costRows(){
- const records=db.requests.filter(r=>admin()||(!r.inactive&&r.owner===$('role').value)).filter(r=>fiscalQty(r)>0&&(!costCenter||r.center===costCenter)&&norm(r.title).includes(norm(costSearch)));
+ const records=db.requests.filter(r=>admin()||(!r.inactive&&r.owner===$('role').value)).filter(r=>realizedQty(r)>0&&(!costCenter||r.center===costCenter)&&norm(r.title).includes(norm(costSearch)));
  const groups=Map.groupBy?Map.groupBy(records,groupKey):records.reduce((map,r)=>{const key=groupKey(r);if(!map.has(key))map.set(key,[]);map.get(key).push(r);return map},new Map());
  $('costResults').innerHTML=groups.size?[...groups.values()].map(rows=>{
  const first=rows[0];
- const total=rows.reduce((sum,r)=>sum+fiscalTotal(r),0),qty=rows.reduce((sum,r)=>sum+fiscalQty(r),0);
+ const total=rows.reduce((sum,r)=>sum+realizedTotal(r),0),qty=rows.reduce((sum,r)=>sum+realizedQty(r),0);
  return '<div class="card"><div class="row spread"><h3>'+esc(first.title)+'</h3><span class="tag">'+cash(total/qty/100)+' por '+esc(first.unit)+'</span></div>'+
- '<p class="muted">'+esc(first.category)+' · '+rows.length+' compra(s) · '+qty+' '+esc(first.unit)+' documentada(s)</p>'+
- '<div class="scroll"><table><thead><tr><th>Compra e centro</th><th>Fornecedor</th><th>Custo por unidade</th><th>Valor fiscal</th><th>Pago</th><th>Saldo</th><th></th></tr></thead><tbody>'+
+ '<p class="muted">'+esc(first.category)+' · '+rows.length+' compra(s) · '+qty+' '+esc(first.unit)+' comprada(s)</p>'+
+ '<div class="scroll"><table><thead><tr><th>Compra e centro</th><th>Fornecedor</th><th>Custo por unidade</th><th>Valor realizado</th><th>Pago</th><th>Saldo</th><th></th></tr></thead><tbody>'+
  rows.map(r=>{
- const total=fiscalTotal(r),payments=documentsOf(r).reduce((sum,d)=>sum+paid(d),0);
- return '<tr><td>'+code(r)+' · '+esc(r.center)+'<br><small>'+fiscalQty(r)+' de '+esc(r.qty)+' '+esc(r.unit)+'</small></td><td>'+esc(r.approval?.vendor||vendor(r.picked)?.name||'')+'</td><td>'+cash(total/fiscalQty(r)/100)+'</td><td>'+cash(total/100)+'</td><td>'+cash(payments/100)+'</td><td>'+cash((total-payments)/100)+'</td><td><button data-cost="'+r.id+'">Abrir</button></td></tr>';
+ const total=realizedTotal(r),payments=documentsOf(r).reduce((sum,d)=>sum+paid(d),0);
+ return '<tr><td>'+code(r)+' · '+esc(r.center)+'<br><small>'+realizedQty(r)+' de '+esc(r.qty)+' '+esc(r.unit)+'</small></td><td>'+esc(r.approval?.vendor||vendor(r.picked)?.name||'')+'</td><td>'+cash(total/realizedQty(r)/100)+'</td><td>'+cash(total/100)+'</td><td>'+cash(payments/100)+'</td><td>'+cash((total-payments)/100)+'</td><td><button data-cost="'+r.id+'">Abrir</button></td></tr>';
  }).join('')+'</tbody></table></div></div>';
- }).join(''):'<p>Nenhuma compra com documento fiscal para os filtros selecionados. Após registrar uma compra, anexe uma nota ou cupom no pedido.</p>';
+ }).join(''):'<p>Nenhuma compra com valor realizado para os filtros selecionados.</p>';
  document.querySelectorAll('[data-cost]').forEach(b=>b.onclick=()=>{
   const r=records.find(r=>r.id===Number(b.dataset.cost));
   if(r.inactive)archiveDetails(r.inactive.kind+':'+r.inactive.id);else details(r);
@@ -871,6 +926,7 @@ function orderDetails(id){
  const o=ordersFor(visible()).find(order=>order.id===id);
  if(!o)return;
  const items=visible();
+ const orderItems=items.filter(r=>r.orderId===id);
  open(orderCode(id)+' · '+o.supplier,registeredLine(o.registeredBy)+requesterLine(o.requester)+reasonLine(o.purchaseReason||legacyPurchaseReason(o.items))+'<p>Solicitação '+protocol(o.batch)+' · Aprovada em '+esc(o.date)+' por '+esc(o.actor)+'</p><p>Parecer · '+esc(o.reason)+'</p>'+(o.caveat?'<p>Ressalva · '+esc(o.caveat)+'</p>':'')+'<p><strong>Total aprovado '+cash(o.total/100)+'</strong></p>'+
  '<div class="scroll"><table><thead><tr><th>Item e quantidade</th><th>Centro / rubrica</th><th>Ação ou atividade</th><th>Necessidade</th><th>Prazo e pagamento</th><th>Valor</th><th>Etapa</th><th></th></tr></thead><tbody>'+
  o.items.map(line=>{
@@ -882,11 +938,12 @@ function orderDetails(id){
  (o.signedDocumentUrl?' · '+driveDocumentLink(o.signedDocumentUrl,'Abrir ordem assinada no Drive'):'')+'</p>'+
  (admin()?'<button id="attachSignedOrder">Vincular ordem assinada</button>':'')+
  '<h3>Documentos fiscais da ordem</h3>'+orderFiscal(items.filter(r=>r.orderId===id))+
- '<div class="actions"><button id="orderPrint">Imprimir ordem</button>'+
+ '<div class="actions">'+(orderItems.some(marketActualAllowed)?'<button id="orderMarketActual" class="primary">Lançar valores da compra de mercado</button>':'')+'<button id="orderPrint">Imprimir ordem</button>'+
  (admin()&&!o.signature&&o.requiresSignature?'<button id="orderSign" class="primary">Simular assinatura do gestor</button>':'')+
  '<button id="orderBatch">Voltar à solicitação</button>'+inactiveButton('ordem de compra')+'</div>',true);
  wireInactive('order',id);
  $('orderPrint').onclick=()=>window.print();
+ if($('orderMarketActual'))$('orderMarketActual').onclick=()=>marketActualForm(orderItems,()=>orderDetails(id));
  if($('orderSign'))$('orderSign').onclick=()=>signOrder(o);
  if($('attachSignedOrder'))$('attachSignedOrder').onclick=()=>signedOrderForm(o);
  document.querySelectorAll('[data-order-fiscal]').forEach(b=>b.onclick=()=>{
@@ -1051,8 +1108,8 @@ const toCents=value=>Math.round(Number(value)*100);
 function budgetUse(r){
  if(r.status==='denied'||(r.inactive&&!['ordered','done'].includes(r.status)))return {reserved:0,committed:0,actual:0};
  if(!r.approval)return {reserved:toCents(r.status==='review'?(selectedQuote(r)?.price||r.estimate||0):(r.estimate||0)),committed:0,actual:0};
- const actual=fiscalTotal(r);
- const remaining=Math.max(0,Number(r.qty)-fiscalQty(r));
+ const actual=realizedTotal(r);
+ const remaining=Math.max(0,Number(r.qty)-realizedQty(r));
  return {reserved:0,committed:Math.round(toCents(r.approval.price)*remaining/Number(r.qty)),actual};
 }
 function budgetTotals(id,excluded=new Set()){
@@ -1101,7 +1158,7 @@ function budgetInfo(r){
  const l=budgetLine(r.budgetId);
  if(!l)return '<p class="alert">Item sem vínculo com o OBZ.</p>'+(!r.approval&&r.status!=='denied'?'<button id="linkBudget">Vincular ao orçamento</button>':'');
  const u=budgetUse(r);
- return '<section><h3>Vinculação orçamentária</h3><p>'+esc(l.id+' · '+l.name)+' · '+esc(l.center)+'</p><p>Reserva do item '+cash(u.reserved/100)+' · Comprometido '+cash(u.committed/100)+' · Realizado fiscal '+cash(u.actual/100)+' · Saldo da rubrica '+cash(budgetTotals(l.id).available/100)+'</p></section>';
+ return '<section><h3>Vinculação orçamentária</h3><p>'+esc(l.id+' · '+l.name)+' · '+esc(l.center)+'</p><p>Reserva do item '+cash(u.reserved/100)+' · Comprometido '+cash(u.committed/100)+' · Realizado '+cash(u.actual/100)+' · Saldo da rubrica '+cash(budgetTotals(l.id).available/100)+'</p></section>';
 }
 function linkLegacyBudget(r){
  if(!visible().includes(r)||r.approval||r.status==='denied')return;

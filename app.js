@@ -125,7 +125,7 @@ function openPurchasePrototype() {
   }
   status.textContent = '';
   frame.hidden = false;
-  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261111-kanban-drive';
+  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261111-mercado-realizado';
 }
 
 function closePurchasePrototype() {
