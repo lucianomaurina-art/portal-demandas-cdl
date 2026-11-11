@@ -503,6 +503,38 @@ function driveDocumentField(key,label,value){
  return '<p>'+folderLink(key,'Abrir pasta no Drive')+' · Salve o arquivo na pasta e cole o link dele abaixo.</p>'+
  field(label,'<input name="driveUrl" type="url" placeholder="https://drive.google.com/file/d/…" value="'+esc(value)+'">');
 }
+const portalUploadAvailable=()=>parent!==window&&typeof parent.sendKanbanQuoteToDrive==='function';
+async function storeQuoteFile(file,r,uploadId){
+ if(portalUploadAvailable()){
+  const url=driveFileUrl(await parent.sendKanbanQuoteToDrive(window,file,r.id,uploadId));
+  if(!url)throw new Error('O Drive não devolveu o link do arquivo.');
+  return {name:file.name,url};
+ }
+ const data=await new Promise((resolve,reject)=>{
+  const reader=new FileReader();reader.onload=()=>resolve(reader.result);
+  reader.onerror=()=>reject(new Error('Não foi possível ler o arquivo.'));
+  reader.readAsDataURL(file);
+ });
+ return {name:file.name,data};
+}
+function wireLocalQuoteUploads(r){
+ const holders=[...r.quotes,...(r.quoteDocuments||[])].filter(q=>q.attachment?.data&&!q.attachment.url);
+ document.querySelectorAll('[data-upload-local-quote]').forEach(button=>button.onclick=async()=>{
+  const holder=holders[Number(button.dataset.uploadLocalQuote)],attachment=holder.attachment;
+  button.disabled=true;
+  try{
+   if(!attachment.uploadId){
+    attachment.uploadId=crypto.randomUUID();
+    localStorage.setItem(key,JSON.stringify(db));
+   }
+   const blob=await (await fetch(attachment.data)).blob();
+   holder.attachment=await storeQuoteFile(new File([blob],attachment.name,{type:blob.type}),r,attachment.uploadId);
+   try{localStorage.setItem(key,JSON.stringify(db));}catch(error){holder.attachment=attachment;throw error;}
+   if(button.isConnected)details(r);
+   note('Orçamento enviado à pasta de cotações.');
+  }catch(error){button.disabled=false;note(error.message);}
+ });
+}
 function quoteForm(r,q){
  if(!editable(r))return;
  const vendors=activeVendors().filter(v=>v.id===q?.vendor||!r.quotes.some(x=>x.vendor===v.id));
@@ -522,6 +554,8 @@ function quoteForm(r,q){
  };
  $('quoteGross').oninput=showFinal;$('quoteDiscount').oninput=showFinal;showFinal();
  const form=$('form');
+ let uploadId=crypto.randomUUID();
+ form.elements.quoteFile.onchange=()=>{uploadId=crypto.randomUUID()};
  submit(async f=>{
   if(!editable(r))return;
   const data=Object.fromEntries(f),file=data.quoteFile;
@@ -540,12 +574,9 @@ function quoteForm(r,q){
   if(file?.name&&!driveUrl){
    $('saveQuote').disabled=true;
    try{
-    const content=await new Promise((resolve,reject)=>{
-     const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);
-    });
-    data.attachment={name:file.name,data:content};
-   }catch{
-    if($('form')===form){$('saveQuote').disabled=false;error('Não foi possível ler o anexo.');}
+    data.attachment=await storeQuoteFile(file,r,uploadId);
+   }catch(e){
+    if($('form')===form){$('saveQuote').disabled=false;error(e.message);}
     return;
    }
   }
@@ -568,9 +599,11 @@ function quoteAttachmentForm(r){
  field('Cotação vinculada','<select name="quote"><option value="">Documento complementar do item</option>'+r.quotes.map((q,i)=>'<option value="'+i+'">'+esc(vendor(q.vendor)?.name||'Fornecedor')+'</option>').join('')+'</select>')+
  driveDocumentField('quotes','Link do orçamento no Drive')+
  field('Arquivo (PDF, JPG ou PNG até 2 MB)','<input name="file" type="file" accept=".pdf,.jpg,.jpeg,.png">')+
- '<p class="muted">Arquivos selecionados neste Kanban ficam no navegador. Para compartilhar, informe o link do arquivo no Drive.</p>'+
+ '<p class="muted">'+(portalUploadAvailable()?'O arquivo será enviado à pasta de cotações do Drive.':'Nesta demonstração, arquivos ficam no navegador. Abra Compras pelo portal para enviar ao Drive.')+'</p>'+
  '<p id="attachmentError" role="alert"></p><button class="primary">Salvar anexo</button></form>');
  const form=$('form'),button=form.querySelector('button.primary');
+ let uploadId=crypto.randomUUID();
+ form.elements.file.onchange=()=>{uploadId=crypto.randomUUID()};
  submit(async f=>{
   const error=message=>{$('attachmentError').textContent=message};
   const file=f.get('file'),raw=f.get('driveUrl').trim(),url=driveFileUrl(raw);
@@ -583,12 +616,9 @@ function quoteAttachmentForm(r){
   let attachment={name:'Orçamento no Drive',url};
   if(file?.name){
    try{
-    const data=await new Promise((resolve,reject)=>{
-     const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);
-    });
-    attachment={name:file.name,data};
-   }catch{
-    if($('form')===form){button.disabled=false;error('Não foi possível ler o arquivo.');}
+    attachment=await storeQuoteFile(file,r,uploadId);
+   }catch(e){
+    if($('form')===form){button.disabled=false;error(e.message);}
     return;
    }
   }
@@ -612,13 +642,16 @@ function details(r){
  if(!visible().includes(r))return;
  const analysis=r.status==='analysis',edit=editable(r),review=admin()&&r.status==='review',picked=r.quotes.find(q=>q.vendor===r.picked);
  const cheapest=cheapestQuote(r);
+ const localAttachments=[...r.quotes,...(r.quoteDocuments||[])].filter(q=>q.attachment?.data&&!q.attachment.url);
+ const attachmentLink=q=>quoteAttachmentLink(q)+(portalUploadAvailable()&&localAttachments.includes(q)
+  ?' <button data-upload-local-quote="'+localAttachments.indexOf(q)+'">Enviar ao Drive</button>':'');
  const approval=r.approval?'<p class="alert ok">Aprovação registrada · '+esc(r.approval.vendor)+' · '+cash(r.approval.price)+' · '+esc(r.approval.reason)+(r.approval.caveat?' · Ressalva '+esc(r.approval.caveat):'')+'</p>':'';
  open(code(r)+' · '+r.title,registeredLine(r.registeredBy)+requesterLine(r.requester)+reasonLine(requestReason(batchId(r)))+'<p><strong>Ação ou atividade</strong> · '+activityLabel(r.activity)+'</p><p class="meta"><span class="tag">'+states[r.status]+'</span> · '+esc(r.center)+' · '+esc(r.category)+'</p><p>'+esc(r.qty)+' '+esc(r.unit)+' · Data necessária '+esc(r.need.split('-').reverse().join('/'))+'<br>'+esc(r.reason)+'</p><p class="muted">Fornecedor homologado indicado na abertura · '+esc(vendor(r.preferred)?.name||'A definir no orçamento')+'</p>'+approval+
  '<button id="backBatch">Voltar à solicitação</button>'+orderLinks([r])+budgetInfo(r)+quoteValueSummary(r)+
  (analysis?'<form id="form" class="info">'+field('Observação para cotação (opcional)','<textarea name="reason"></textarea>')+'<div class="actions"><button class="primary" value="quote">Iniciar cotação</button></div></form>':'')+
  '<div class="actions"><button id="attachQuote">Anexar orçamento</button></div>'+
- (r.quoteDocuments?.length?'<ul>'+r.quoteDocuments.map(doc=>'<li>'+(doc.supplier?esc(doc.supplier)+' · ':'')+quoteAttachmentLink(doc)+'</li>').join('')+'</ul>':'')+
- '<h3>Cotações ('+r.quotes.length+' de '+required(r)+' exigidas)</h3><div class="scroll"><table><thead><tr><th>Fornecedor</th><th>Bruto</th><th>Desconto</th><th>Final</th><th>Prazo e pagamento</th><th>Comprovante</th><th>Validação na categoria</th></tr></thead><tbody>'+r.quotes.map(q=>'<tr><td>'+esc(vendor(q.vendor).name)+(q.vendor===r.picked?' · Indicado':'')+'</td><td>'+cash(q.gross??q.price)+'</td><td>'+cash(q.discount??0)+'</td><td>'+cash(q.price)+(q===cheapest?'<br><small>Menor custo</small>':'')+'</td><td>'+esc(q.days)+' d · '+esc(paymentLabel(q))+(q.wholesale?'<br><small>'+esc(q.wholesale)+'</small>':'')+'</td><td>'+esc(q.evidence)+'<br>'+quoteAttachmentLink(q)+'</td><td>'+esc(validation(q.vendor,r.category))+(admin()&&(edit||review)?' <button data-validate="'+q.vendor+'">Avaliar</button>':'')+(edit&&!r.returnToAnalysis?' <button data-quote="'+q.vendor+'">Editar cotação</button>':'')+'</td></tr>').join('')+'</tbody></table></div>'+
+ (r.quoteDocuments?.length?'<ul>'+r.quoteDocuments.map(doc=>'<li>'+(doc.supplier?esc(doc.supplier)+' · ':'')+attachmentLink(doc)+'</li>').join('')+'</ul>':'')+
+ '<h3>Cotações ('+r.quotes.length+' de '+required(r)+' exigidas)</h3><div class="scroll"><table><thead><tr><th>Fornecedor</th><th>Bruto</th><th>Desconto</th><th>Final</th><th>Prazo e pagamento</th><th>Comprovante</th><th>Validação na categoria</th></tr></thead><tbody>'+r.quotes.map(q=>'<tr><td>'+esc(vendor(q.vendor).name)+(q.vendor===r.picked?' · Indicado':'')+'</td><td>'+cash(q.gross??q.price)+'</td><td>'+cash(q.discount??0)+'</td><td>'+cash(q.price)+(q===cheapest?'<br><small>Menor custo</small>':'')+'</td><td>'+esc(q.days)+' d · '+esc(paymentLabel(q))+(q.wholesale?'<br><small>'+esc(q.wholesale)+'</small>':'')+'</td><td>'+esc(q.evidence)+'<br>'+attachmentLink(q)+'</td><td>'+esc(validation(q.vendor,r.category))+(admin()&&(edit||review)?' <button data-validate="'+q.vendor+'">Avaliar</button>':'')+(edit&&!r.returnToAnalysis?' <button data-quote="'+q.vendor+'">Editar cotação</button>':'')+'</td></tr>').join('')+'</tbody></table></div>'+
  (edit?'<div class="actions"><button id="editRequest">Editar item</button>'+(!r.returnToAnalysis?'<button id="addVendor">Cadastrar fornecedor</button><button id="addQuote">Adicionar cotação</button>':'')+'</div>':'')+
  (edit&&r.status==='fix'&&r.returnToAnalysis?'<div class="actions"><button class="primary" id="retryAnalysis">Voltar à cotação</button></div>':'')+
  (edit&&!r.returnToAnalysis&&r.quotes.length?'<form id="form">'+field('Fornecedor indicado','<select name="picked" required>'+r.quotes.map(q=>'<option value="'+q.vendor+'" '+(q.vendor===(r.picked||cheapest?.vendor)?'selected':'')+'>'+esc(vendor(q.vendor).name)+'</option>').join('')+'</select>')+field('Justificativa da escolha','<textarea name="choice" required>'+esc(r.choice)+'</textarea>')+'<button class="primary">Salvar fornecedor indicado</button><p id="quoteSubmitError" role="alert"></p></form>':'')+
@@ -630,6 +663,7 @@ function details(r){
  '<details class="info"><summary>Histórico</summary><ul>'+r.log.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></details>');
  $('backBatch').onclick=()=>batchDetails(batchId(r));
  $('attachQuote').onclick=()=>quoteAttachmentForm(r);
+ wireLocalQuoteUploads(r);
  wireOrders();
  if($('linkBudget'))$('linkBudget').onclick=()=>linkLegacyBudget(r);
  wireFiscal(r);

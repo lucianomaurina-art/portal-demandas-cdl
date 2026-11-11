@@ -72,13 +72,14 @@ Deno.serve(async (request) => {
     }).formData();
     const uploadId = String(form.get("upload_id") || "");
     const itemId = String(form.get("item_id") || "");
+    const kanban = form.get("source") === "kanban";
     const supplier = String(form.get("supplier_name") || "").trim();
     const gross = Number(form.get("gross_cents"));
     const discount = Number(form.get("discount_cents") || 0);
     const file = form.get("file");
     if (!/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(uploadId) ||
-      !/^[1-9]\d{0,17}$/.test(itemId) || !supplier || supplier.length > 180 ||
-      !Number.isSafeInteger(gross) || !Number.isSafeInteger(discount) || discount < 0 || gross <= discount ||
+      !/^[1-9]\d{0,17}$/.test(itemId) || (!kanban && (!supplier || supplier.length > 180 ||
+      !Number.isSafeInteger(gross) || !Number.isSafeInteger(discount) || discount < 0 || gross <= discount)) ||
       !(file instanceof File) || !file.size || file.size > maxBytes) {
       return json(400, { error: "Confira item, fornecedor, valores e arquivo de até 2 MB." });
     }
@@ -88,27 +89,34 @@ Deno.serve(async (request) => {
     if (!mime || !signatureMatches(bytes, mime)) return json(400, { error: "Envie PDF, JPG ou PNG válido." });
     const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))]
       .map((value) => value.toString(16).padStart(2, "0")).join("");
-    const { data: item } = await userClient.from("purchase_request_items")
-      .select("id,purchase_requests(created_by,status)").eq("id", itemId).maybeSingle();
-    const parent = item?.purchase_requests as { created_by: string; status: string } | null | undefined;
-    if (!parent || (parent.created_by !== user.id && profile.role !== "admin")) {
-      return json(403, { error: "Você não pode anexar cotações a este item." });
+    let sharedStatus = "";
+    if (!kanban) {
+      const { data: item } = await userClient.from("purchase_request_items")
+        .select("id,purchase_requests(created_by,status)").eq("id", itemId).maybeSingle();
+      const parent = item?.purchase_requests as { created_by: string; status: string } | null | undefined;
+      if (!parent || (parent.created_by !== user.id && profile.role !== "admin")) {
+        return json(403, { error: "Você não pode anexar cotações a este item." });
+      }
+      sharedStatus = parent.status;
     }
     const client = createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
-    const lookup = () => client.from("purchase_quote_documents").select(columns).eq("upload_id", uploadId).maybeSingle();
+    const table = kanban ? "purchase_kanban_quote_uploads" : "purchase_quote_documents";
+    const select = kanban ? "upload_id,item_id,uploaded_by,file_name,file_sha256,drive_id,completed_at" : columns;
+    const lookup = () => client.from(table).select(select).eq("upload_id", uploadId).maybeSingle();
     let { data: record, error } = await lookup();
     if (error) return json(503, { error: "Não foi possível consultar a cotação." });
     const matches = () => record && String(record.item_id) === itemId && record.uploaded_by === user.id &&
-      record.supplier_name === supplier && Number(record.gross_cents) === gross &&
-      Number(record.discount_cents) === discount && record.file_name === fileName && record.file_sha256 === hash;
+      record.file_name === fileName && record.file_sha256 === hash &&
+      (kanban || (record.supplier_name === supplier && Number(record.gross_cents) === gross &&
+      Number(record.discount_cents) === discount));
     const result = () => json(200, {
       upload_id: uploadId,
       drive_url: "https://drive.google.com/file/d/" + record!.drive_id + "/view",
-      final_cents: gross - discount,
+      ...(kanban ? {} : { final_cents: gross - discount }),
     });
     if (record && !matches()) return json(409, { error: "O identificador já foi usado para outro arquivo ou valor." });
     if (record?.completed_at) return result();
-    if (!["draft", "returned"].includes(parent.status)) return json(409, { error: "A solicitação já foi enviada para triagem." });
+    if (!kanban && !["draft", "returned"].includes(sharedStatus)) return json(409, { error: "A solicitação já foi enviada para triagem." });
     const folder = Deno.env.get("PURCHASE_DRIVE_QUOTES_FOLDER_ID");
     const token = await googleToken();
     if (!folder || !token) return json(503, { error: "A conta do Google Drive ainda precisa ser autorizada." });
@@ -121,17 +129,18 @@ Deno.serve(async (request) => {
       if (typeof driveId !== "string" || !/^[A-Za-z0-9_-]+$/.test(driveId)) {
         return json(502, { error: "O Drive não devolveu um identificador válido." });
       }
-      const inserted = await client.from("purchase_quote_documents").insert({
-        upload_id: uploadId, item_id: itemId, uploaded_by: user.id, supplier_name: supplier,
-        gross_cents: gross, discount_cents: discount, file_name: fileName, file_sha256: hash, drive_id: driveId,
-      }).select(columns).single();
+      const inserted = await client.from(table).insert({
+        upload_id: uploadId, item_id: itemId, uploaded_by: user.id,
+        ...(kanban ? {} : { supplier_name: supplier, gross_cents: gross, discount_cents: discount }),
+        file_name: fileName, file_sha256: hash, drive_id: driveId,
+      }).select(select).single();
       record = inserted.data;
       if (inserted.error?.code === "23505") ({ data: record } = await lookup());
       if (!matches()) return json(409, { error: "O vínculo não pôde ser registrado. Atualize a solicitação e tente novamente." });
       if (record?.completed_at) return result();
     }
     const boundary = "cdl_" + crypto.randomUUID().replaceAll("-", "");
-    const metadata = JSON.stringify({ id: record!.drive_id, name: "Item-" + itemId + " - " + fileName, parents: [folder] });
+    const metadata = JSON.stringify({ id: record!.drive_id, name: (kanban ? "Kanban-Item-" : "Item-") + itemId + " - " + fileName, parents: [folder] });
     const multipart = new Blob([
       "--" + boundary + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + metadata + "\r\n",
       "--" + boundary + "\r\nContent-Type: " + mime + "\r\n\r\n", bytes, "\r\n--" + boundary + "--\r\n",
@@ -146,7 +155,7 @@ Deno.serve(async (request) => {
     if (remote.id !== record!.drive_id || remote.trashed || !remote.parents?.includes(folder)) {
       return json(502, { error: "O arquivo não está na pasta de Cotações." });
     }
-    const completed = await client.from("purchase_quote_documents")
+    const completed = await client.from(table)
       .update({ completed_at: new Date().toISOString() }).eq("upload_id", uploadId).is("completed_at", null);
     if (completed.error) return json(409, { error: "O arquivo está no Drive, mas a cotação ainda precisa ser vinculada." });
     return result();

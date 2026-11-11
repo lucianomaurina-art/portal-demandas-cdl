@@ -97,6 +97,24 @@ function openPurchaseRecord(row) {
   loadPurchaseItems(row);
 }
 
+window.sendKanbanQuoteToDrive = async (source, file, itemId, uploadId) => {
+  const frame = $('#purchasePrototypeFrame');
+  if (source !== frame.contentWindow || frame.hidden || !session || !profile?.active) {
+    throw new Error('Entre no Portal de Demandas para enviar ao Drive.');
+  }
+  const body = new FormData();
+  body.set('source', 'kanban');
+  body.set('file', file);
+  body.set('item_id', itemId);
+  body.set('upload_id', uploadId);
+  const {data,error} = await db.functions.invoke('compras-cotacao-drive', {body});
+  if (error) {
+    const detail = await error.context?.json?.().catch(() => null);
+    throw new Error(detail?.error || 'Não foi possível enviar ao Drive. Tente novamente.');
+  }
+  return data.drive_url;
+};
+
 function openPurchasePrototype() {
   const frame = $('#purchasePrototypeFrame');
   const status = $('#purchasePrototypeStatus');
@@ -107,7 +125,7 @@ function openPurchasePrototype() {
   }
   status.textContent = '';
   frame.hidden = false;
-  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261111-kanban-colunas';
+  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261111-kanban-drive';
 }
 
 function closePurchasePrototype() {
