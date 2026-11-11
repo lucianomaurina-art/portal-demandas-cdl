@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Portal de Demandas e Ideias | CDL Novo Hamburgo</title>
+  <title>Portal Interno CDL Novo Hamburgo | Demandas, Ideias, OBZ e Compras</title>
   <link rel="stylesheet" href="styles.css?v=logo-20260901-2">
   <link rel="stylesheet" href="operational.css?v=melhorias-20260905-1">
   <link rel="stylesheet" href="ideas.css?v=melhorias-20260905-1">
@@ -13,7 +13,7 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#/inicio"><span class="brand-logo-wrap" style="display:flex;align-items:center;width:230px;height:62px;padding:9px 13px;background:#fff;border-radius:12px;box-shadow:0 5px 15px rgba(0,0,0,.13)"><img class="brand-logo" src="logo-cdl.svg?v=2" alt="CDL Novo Hamburgo" width="2048" height="652" style="display:block;width:100%;height:100%;object-fit:contain"></span><small>Demandas e Ideias</small></a>
+    <a class="brand" href="#/inicio"><span class="brand-logo-wrap" style="display:flex;align-items:center;width:230px;height:62px;padding:9px 13px;background:#fff;border-radius:12px;box-shadow:0 5px 15px rgba(0,0,0,.13)"><img class="brand-logo" src="logo-cdl.svg?v=2" alt="CDL Novo Hamburgo" width="2048" height="652" style="display:block;width:100%;height:100%;object-fit:contain"></span><small>Portal Interno CDL</small></a>
     <nav id="nav"><a href="#/nova">Nova demanda</a><a href="#/nova-ideia">Cadastrar ideia</a><a class="admin-only" href="#/plano">Plano de ação</a><a class="admin-only" href="#/ideias">Banco de ideias</a><a class="admin-only" href="#/dashboard">Dashboard</a><a id="usersNav" class="admin-only hidden" href="#/usuarios">Usuários</a><div id="notificationCenter" class="notification-center admin-only hidden"><button id="notificationBell" class="notification-bell" type="button" aria-label="Notificações">🔔<span id="notificationBadge" class="notification-badge hidden">0</span></button><div id="notificationPanel" class="notification-panel hidden"><div class="notification-head"><strong>Notificações</strong><button id="markAllRead" type="button">Marcar todas como lidas</button></div><div id="notificationList" class="notification-list"></div><button id="soundToggle" class="sound-toggle" type="button">🔇 Ativar som</button></div></div><button id="authButton" class="ghost">Área administrativa</button></nav>
   </header>
 
@@ -68,8 +68,19 @@
     </section>
 
     <section id="compras" class="view hidden">
+      <div class="card" style="padding:20px 24px;margin-bottom:16px;border-left:4px solid #1e6596">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap">
+          <div style="flex:1;min-width:240px">
+            <span class="eyebrow">Compras e Contratações · Homologação</span>
+            <h1 style="font-size:23px;margin:8px 0">Kanban visual em demonstração</h1>
+            <p style="margin:0 0 10px;color:var(--muted)">O Kanban abaixo utiliza dados de teste e armazena alterações neste navegador. As etapas demonstrativas não são automaticamente gravadas no Supabase, mesmo quando o usuário está autenticado no portal.</p>
+            <p style="margin:0;color:var(--muted)">Para registrar e consultar solicitações reais persistidas no Supabase, abra a área de Compras integradas.</p>
+          </div>
+          <a class="primary" href="#/compras-triagem" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;flex-shrink:0">Abrir compras integradas →</a>
+        </div>
+      </div>
       <p id="purchasePrototypeStatus" role="status"></p>
-      <iframe id="purchasePrototypeFrame" title="Fluxo completo de compras CDL" hidden style="width:100%;min-height:78vh;border:0"></iframe>
+      <iframe id="purchasePrototypeFrame" title="Kanban de Compras em demonstração com dados locais" hidden style="width:100%;min-height:78vh;border:0"></iframe>
     </section>
     <section id="compras-triagem" class="view hidden">
       <div class="section-head">
