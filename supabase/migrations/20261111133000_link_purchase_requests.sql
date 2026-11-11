@@ -49,7 +49,7 @@ language plpgsql set search_path = ''
 as $$
 begin
   if tg_op = 'INSERT' then
-    select p.name into new.registered_name
+    select coalesce(nullif(btrim(p.name),''),nullif(btrim(p.email),''),'Usuário interno') into new.registered_name
     from public.profiles p where p.id = auth.uid() and p.active;
     if not found then
       raise exception 'É necessário um perfil interno ativo.' using errcode = '42501';

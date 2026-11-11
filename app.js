@@ -248,7 +248,7 @@ function openPurchaseDraft(demand) {
   if (!session || !profile?.active) return;
   purchaseDraftDemand = demand;
   purchaseDraftForm.reset();
-  purchaseDraftForm.elements.registered_by.value = profile.name || '';
+  purchaseDraftForm.elements.registered_by.value = profile.name?.trim() || session.user.email || 'Usuário interno';
   purchaseDraftForm.elements.title.value = demand?.expected_result?.trim().slice(0, 150) ?? '';
   $('#purchaseDraftOrigin').textContent = demand ? 'Demanda de origem ' + demand.protocol : 'Compra interna sem demanda de origem';
   $('#purchaseDraftStatus').textContent = '';
