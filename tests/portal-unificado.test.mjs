@@ -49,6 +49,16 @@ test('Compras tem uma área autenticada no mesmo portal', () => {
   assert.match(app, /if\(id==='compras'\)openPurchasePrototype\(\)/);
 });
 
+test('a entrada de Compras distingue simulação local e dados persistidos', () => {
+  assert.match(html, /Portal Interno CDL/);
+  assert.match(html, /id="compras" class="view hidden"/);
+  assert.match(html, /O Kanban abaixo utiliza dados de teste/);
+  assert.match(html, /não grava automaticamente as etapas simuladas no Supabase/);
+  assert.match(html, /href="#\/compras-triagem"/);
+  assert.match(html, /id="purchasePrototypeFrame"/);
+  assert.match(html, /id="compras-triagem" class="view hidden"/);
+});
+
 test('estilo novo limita-se à tela inicial e tem responsividade', () => {
   assert.match(html, /portal-modules\.css/);
   const rules = css.replace(/\/\*[\s\S]*?\*\//g, '');
