@@ -80,6 +80,7 @@ function openPurchaseRecord(row) {
     if (location.hash === '#/plano') route(); else location.hash = '#/plano';
   };
   if (!purchaseRecordDialog.open) purchaseRecordDialog.showModal();
+  loadPurchaseItems(row.id);
 }
 
 async function loadPurchaseModule() {
@@ -100,6 +101,7 @@ async function loadPurchaseModule() {
     return;
   }
   create.disabled = false;
+  loadPurchasePublicationControls();
   status.textContent = data.length ? `${data.length} rascunho(s) exibido(s)` : 'Nenhuma solicitação cadastrada.';
   rows.innerHTML = data.map(row => `<article class="entry-card"><div><strong>${purchaseProtocol(row.id)} · ${esc(row.title)}</strong>
     <p>${esc(row.demands?.protocol || (row.demand_id ? 'Demanda vinculada' : 'Compra independente'))} · Rascunho</p>
@@ -108,6 +110,104 @@ async function loadPurchaseModule() {
     button.onclick = () => openPurchaseRecord(data.find(row => String(row.id) === button.dataset.purchaseRecord));
   });
 }
+const purchaseItemForm = $('#purchaseItemForm');
+const purchasePublishForm = $('#purchasePublishForm');
+const purchaseUnits = ['unidade','kit','pacote','caixa','fardo','par','dúzia','rolo','folha','frasco','garrafa','saco','bandeja','kg','g','L','mL','m','m²','hora','diária'];
+const purchaseMoney = value => Number(value).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+let purchaseItemContext = null;
+
+async function loadPurchasePublicationControls() {
+  const panel = $('#purchasePublishPanel');
+  panel.classList.add('hidden');
+  if (!session || !profile?.active || profile.role !== 'admin') return;
+  const {data,error} = await db.from('obz_centers').select('id,code,name,fiscal_year').eq('status','approved').order('fiscal_year',{ascending:false}).order('code');
+  if (!session || !profile?.active || profile.role !== 'admin' || location.hash !== '#/compras') return;
+  panel.classList.remove('hidden');
+  const status = $('#purchasePublishStatus');
+  purchasePublishForm.elements.center.replaceChildren(new Option('Selecione',''));
+  purchasePublishForm.querySelector('button').disabled = Boolean(error || !data?.length);
+  if (error) { status.textContent = 'Não foi possível consultar os centros aprovados.'; return; }
+  for (const c of data) purchasePublishForm.elements.center.add(new Option(`${c.fiscal_year} · ${c.code} · ${c.name}`,c.id));
+  status.textContent = data.length ? 'A publicação registra uma cópia das rubricas aprovadas deste centro.' : 'Nenhum centro aprovado disponível.';
+}
+
+purchasePublishForm.onsubmit = async event => {
+  event.preventDefault();
+  if (!session || !profile?.active || profile.role !== 'admin') return;
+  const field = purchasePublishForm.elements.center;
+  if (!field.value || !confirm('Publicar as rubricas aprovadas deste centro para Compras?')) return;
+  const button = purchasePublishForm.querySelector('button');
+  button.disabled = true;
+  const {error} = await db.from('purchase_budget_publications').insert({center_id:field.value});
+  button.disabled = false;
+  $('#purchasePublishStatus').textContent = error?.message || 'Versão publicada para Compras.';
+};
+
+async function loadPurchaseItems(id) {
+  const context = {id,publications:[],rubricsRequest:0};
+  purchaseItemContext = context;
+  const fields = purchaseItemForm.elements;
+  const status = $('#purchaseRecordStatus'), list = $('#purchaseItemRows');
+  purchaseItemForm.reset();
+  fields.unit.replaceChildren(new Option('Selecione',''), ...purchaseUnits.map(unit => new Option(unit,unit)));
+  fields.publication.replaceChildren(new Option('Informe a data de necessidade',''));
+  fields.rubric.replaceChildren(new Option('Selecione o centro',''));
+  purchaseItemForm.querySelector('button').disabled = true;
+  list.replaceChildren();
+  status.textContent = 'Carregando itens e rubricas publicadas…';
+  const [items,budget] = await Promise.all([
+    db.from('purchase_request_items').select('id,description,activity,quantity,unit,needed_on,estimated_amount,publication_id,purchase_budget_lines(description,account_code)').eq('request_id',id).order('id'),
+    db.from('purchase_current_budget_publications').select('id,center_code,center_name,fiscal_year').order('center_name')
+  ]);
+  if (purchaseItemContext !== context || !purchaseRecordDialog.open || !session) return;
+  if (items.error || budget.error) { status.textContent = 'Não foi possível consultar itens e rubricas em homologação.'; return; }
+  list.innerHTML = items.data.map(item => `<li><strong>${esc(item.description)}</strong> · ${esc(item.quantity)} ${esc(item.unit)} · ${esc(item.activity)}<br>
+    ${esc(item.purchase_budget_lines?.description || 'Rubrica')} · Versão ${esc(item.publication_id)} · Estimativa ${esc(item.estimated_amount == null ? 'Não informada' : purchaseMoney(item.estimated_amount))}</li>`).join('');
+  context.publications = budget.data;
+  status.textContent = budget.data.length ? '' : 'Ainda não há rubricas publicadas pelo OBZ.';
+}
+
+purchaseItemForm.elements.needed_on.onchange = () => {
+  const fields = purchaseItemForm.elements;
+  const year = Number(fields.needed_on.value.slice(0,4));
+  const options = (purchaseItemContext?.publications || []).filter(row => row.fiscal_year === year);
+  fields.publication.replaceChildren(new Option(options.length?'Selecione':'Sem publicação para o exercício',''), ...options.map(row => new Option(`${row.center_code} · ${row.center_name} · ${row.fiscal_year}`,row.id)));
+  fields.publication.onchange();
+};
+purchaseItemForm.elements.publication.onchange = async () => {
+  const context = purchaseItemContext;
+  if (!context) return;
+  const request = ++context.rubricsRequest;
+  const fields = purchaseItemForm.elements;
+  const id = fields.publication.value;
+  fields.rubric.replaceChildren(new Option(id?'Carregando rubricas…':'Selecione o centro',''));
+  purchaseItemForm.querySelector('button').disabled = true;
+  if (!id) return;
+  const {data,error} = await db.from('purchase_budget_lines').select('obz_line_id,description,account_code,approved_amount').eq('publication_id',id).order('description');
+  if (purchaseItemContext !== context || request !== context.rubricsRequest || !purchaseRecordDialog.open || !session) return;
+  if (error) { fields.rubric.replaceChildren(new Option('Falha ao carregar rubricas','')); return; }
+  fields.rubric.replaceChildren(new Option('Selecione',''), ...data.map(row => new Option(`${row.account_code ? row.account_code+' · ' : ''}${row.description} · ${purchaseMoney(row.approved_amount)} aprovado`,row.obz_line_id)));
+  purchaseItemForm.querySelector('button').disabled = !data.length;
+};
+
+purchaseItemForm.onsubmit = async event => {
+  event.preventDefault();
+  const context = purchaseItemContext, button = purchaseItemForm.querySelector('button');
+  if (!context || !session || !profile?.active || button.disabled) return;
+  const fields = new FormData(purchaseItemForm);
+  const description = fields.get('description').trim(), activity = fields.get('activity').trim();
+  if (!description || !activity) return;
+  button.disabled = true;
+  const {error} = await db.from('purchase_request_items').insert({
+    request_id:context.id,description,activity,quantity:fields.get('quantity'),unit:fields.get('unit'),
+    needed_on:fields.get('needed_on'),estimated_amount:fields.get('estimate') || null,
+    publication_id:fields.get('publication'),obz_line_id:fields.get('rubric')
+  });
+  if (purchaseItemContext !== context || !purchaseRecordDialog.open || !session) return;
+  if (error) { button.disabled = false; $('#purchaseRecordStatus').textContent = error.message; return; }
+  await loadPurchaseItems(context.id);
+};
+
 $('#refreshPurchases').onclick = loadPurchaseModule;
 $('#newPurchaseFromModule').onclick = () => openPurchaseDraft(null);
 $('#closePurchaseRecord').onclick = () => purchaseRecordDialog.close();
