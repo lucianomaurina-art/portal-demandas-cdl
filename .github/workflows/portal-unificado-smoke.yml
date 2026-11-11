@@ -3,14 +3,19 @@ on:
   pull_request:
     paths:
       - 'index.html'
+      - 'app.js'
+      - 'compras/index.html'
       - 'portal-modules.css'
       - 'tests/portal-unificado.test.mjs'
       - '.github/workflows/portal-unificado-smoke.yml'
   push:
     branches:
-      - feature/portal-unificado-home-2027
+      - main
+      - feature/portal-integracao-final-compras-20261111
     paths:
       - 'index.html'
+      - 'app.js'
+      - 'compras/index.html'
       - 'portal-modules.css'
       - 'tests/portal-unificado.test.mjs'
       - '.github/workflows/portal-unificado-smoke.yml'
