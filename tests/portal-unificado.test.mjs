@@ -57,6 +57,8 @@ test('a entrada de Compras distingue simulação local e dados persistidos', () 
   assert.match(html, /href="#\/compras-triagem"/);
   assert.match(html, /id="purchasePrototypeFrame"/);
   assert.match(html, /id="compras-triagem" class="view hidden"/);
+  const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  assert.match(app, /if\(id==='compras'\|\|id==='compras-triagem'\)postLoginRoute='#\/'\+id/);
 });
 
 test('estilo novo limita-se à tela inicial e tem responsividade', () => {
