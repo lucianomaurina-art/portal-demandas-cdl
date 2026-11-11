@@ -49,8 +49,99 @@ let demandPurchaseRequest = 0;
 const purchaseDecision = $('#demandPurchaseDecision');
 const savePurchaseDecision = $('#saveDemandPurchaseDecision');
 const purchaseStatus = $('#demandPurchaseStatus');
+const purchaseActions = $('#demandPurchaseActions');
+const purchaseList = $('#linkedPurchaseDrafts');
+const unlinkedPurchase = $('#unlinkedPurchaseDraft');
+const linkPurchase = $('#linkPurchaseDraft');
+const purchaseDialog = $('#purchaseDraftDialog');
+const purchaseDraftForm = $('#purchaseDraftForm');
+let purchaseDraftDemand = null;
+let savedPurchaseDecision = 'pending';
+
+function purchaseProtocol(id) {
+  return 'CP-' + String(id).padStart(4, '0');
+}
+
+async function loadPurchaseLinks(demandId, request) {
+  const linked = db.from('purchase_requests').select('id,title').eq('demand_id', demandId).order('id');
+  const available = savedPurchaseDecision === 'yes'
+    ? db.from('purchase_requests').select('id,title').is('demand_id', null).order('id', {ascending:false}).limit(100)
+    : Promise.resolve({data: []});
+  const [links, drafts] = await Promise.all([linked, available]);
+  if (request !== demandPurchaseRequest || !session) return;
+  if (links.error || drafts.error) {
+    purchaseStatus.textContent = 'Não foi possível carregar as solicitações de compra.';
+    return;
+  }
+  purchaseList.innerHTML = links.data.map(row =>
+    `<li><strong>${purchaseProtocol(row.id)}</strong> · ${esc(row.title)} · Rascunho</li>`
+  ).join('');
+  if (links.data.length) {
+    purchaseStatus.textContent = links.data.length + ' solicitação(ões) de compra vinculada(s).';
+  }
+  unlinkedPurchase.innerHTML = '<option value="">Selecione um rascunho sem demanda</option>' +
+    drafts.data.map(row => `<option value="${row.id}">${purchaseProtocol(row.id)} · ${esc(row.title)}</option>`).join('');
+  linkPurchase.disabled = true;
+  purchaseActions.classList.toggle('hidden', savedPurchaseDecision !== 'yes');
+}
+
+function openPurchaseDraft(demand) {
+  if (!session || !profile?.active) return;
+  purchaseDraftDemand = demand;
+  purchaseDraftForm.reset();
+  purchaseDraftForm.elements.title.value = demand?.expected_result?.trim().slice(0, 150) ?? '';
+  $('#purchaseDraftOrigin').textContent = demand ? 'Demanda de origem ' + demand.protocol : 'Compra interna sem demanda de origem';
+  $('#purchaseDraftStatus').textContent = '';
+  purchaseDialog.showModal();
+}
+
+$('#newIndependentPurchase').onclick = () => openPurchaseDraft(null);
+$('#newLinkedPurchase').onclick = () => {
+  if (savedPurchaseDecision !== 'yes') return;
+  const demand = demands.find(row => row.id === $('#editForm').elements.id.value);
+  if (demand) openPurchaseDraft(demand);
+};
+$('#cancelPurchaseDraft').onclick = () => purchaseDialog.close();
+purchaseDialog.addEventListener('cancel', event => {
+  if (purchaseDraftForm.querySelector('[type=submit]').disabled) event.preventDefault();
+});
+purchaseDraftForm.onsubmit = async event => {
+  event.preventDefault();
+  const title = purchaseDraftForm.elements.title.value.trim();
+  if (!title || !session || !profile?.active) return;
+  const demandId = purchaseDraftDemand?.id;
+  const request = demandPurchaseRequest;
+  const submit = purchaseDraftForm.querySelector('[type=submit]');
+  const cancel = $('#cancelPurchaseDraft');
+  submit.disabled = cancel.disabled = true;
+  const result = await db.from('purchase_requests').insert({title, demand_id: demandId ?? null}).select('id').single();
+  submit.disabled = cancel.disabled = false;
+  if (result.error) {
+    $('#purchaseDraftStatus').textContent = 'Não foi possível salvar o rascunho. Confira a indicação de compra e tente novamente.';
+    return;
+  }
+  purchaseDialog.close();
+  toast(purchaseProtocol(result.data.id) + ' criada como rascunho.');
+  if (demandId && request === demandPurchaseRequest) await loadPurchaseLinks(demandId, request);
+};
+
+unlinkedPurchase.onchange = () => { linkPurchase.disabled = !unlinkedPurchase.value; };
+linkPurchase.onclick = async () => {
+  if (!session || !profile?.active || !unlinkedPurchase.value || savedPurchaseDecision !== 'yes') return;
+  const request = demandPurchaseRequest;
+  const demandId = $('#editForm').elements.id.value;
+  linkPurchase.disabled = unlinkedPurchase.disabled = true;
+  const result = await db.from('purchase_requests').update({demand_id: demandId})
+    .eq('id', unlinkedPurchase.value).is('demand_id', null).select('id').maybeSingle();
+  unlinkedPurchase.disabled = false;
+  if (request !== demandPurchaseRequest || !session) return;
+  await loadPurchaseLinks(demandId, request);
+  if (request !== demandPurchaseRequest || !session) return;
+  if (result.error || !result.data) purchaseStatus.textContent = 'O vínculo não foi salvo. Confira se a solicitação continua disponível.';
+};
 
 function showPurchaseDecision(decision) {
+  savedPurchaseDecision = decision;
   purchaseDecision.value = decision;
   purchaseStatus.textContent = {
     pending: 'Aguardando avaliação interna.',
@@ -65,6 +156,8 @@ async function loadDemandPurchaseDecision(demand) {
   $('#demandPurchase').classList.toggle('hidden', !internal);
   purchaseDecision.disabled = true;
   savePurchaseDecision.disabled = true;
+  purchaseList.replaceChildren();
+  purchaseActions.classList.add('hidden');
   if (!internal) return;
   purchaseStatus.textContent = 'Carregando indicação de compra…';
   const {data, error} = await db.from('demand_purchase_decisions')
@@ -78,6 +171,7 @@ async function loadDemandPurchaseDecision(demand) {
   showPurchaseDecision(data?.decision ?? 'pending');
   purchaseDecision.disabled = false;
   savePurchaseDecision.disabled = false;
+  await loadPurchaseLinks(demand.id, request);
 }
 
 savePurchaseDecision.onclick = async () => {
@@ -96,6 +190,8 @@ savePurchaseDecision.onclick = async () => {
     return;
   }
   showPurchaseDecision(decision);
+  purchaseActions.classList.add('hidden');
+  await loadPurchaseLinks(id, request);
 };
 
 function closeEdit(){demandPurchaseRequest++;$('#editModal').classList.add('hidden');document.body.style.overflow=''}
