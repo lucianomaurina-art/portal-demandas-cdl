@@ -1,0 +1,52 @@
+/* Portal Interno CDL — acesso unificado aos módulos (homologação).
+   Escopo estrito à tela inicial: não altera Demandas, Ideias, dashboard ou formulários. */
+#inicio .portal-hero{max-width:850px;margin:18px auto 30px;text-align:center}
+#inicio .portal-hero h1{font-size:clamp(30px,3.2vw,39px)}
+#inicio .portal-hero p{color:var(--muted);font-size:15px;line-height:1.65}
+#inicio .portal-modules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+#inicio .portal-module{
+  position:relative;display:flex;align-items:flex-start;gap:18px;min-width:0;min-height:236px;
+  padding:27px 25px;border-radius:20px;border:1px solid #d9e4ef;background:#fff;
+  color:var(--ink);text-decoration:none;box-shadow:0 16px 40px rgba(16,42,67,.085);
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease
+}
+#inicio a.portal-module:hover{transform:translateY(-3px);border-color:#aecce1;box-shadow:0 22px 46px rgba(16,42,67,.14)}
+#inicio a.portal-module:focus-visible{outline:3px solid #237bb9;outline-offset:4px}
+#inicio .portal-module .entry-icon{
+  display:grid;place-items:center;flex:0 0 56px;height:56px;width:56px;border-radius:16px;
+  font-size:26px;font-weight:900;line-height:1
+}
+#inicio .budget-entry .entry-icon{background:#eaf1fc;color:#225ea9}
+#inicio .purchases-entry .entry-icon{background:#f2f4f7;color:#697a8c}
+#inicio .portal-module-body{min-width:0;display:flex;flex-direction:column;align-items:flex-start;flex:1;min-height:179px}
+#inicio .portal-module-meta{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;width:100%}
+#inicio .portal-module-meta small{
+  color:#64788d;font-size:11px;font-weight:850;text-transform:uppercase;letter-spacing:.055em
+}
+#inicio .portal-status{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:800;letter-spacing:0;white-space:nowrap}
+#inicio .portal-status-active{background:#eef8e7;color:#437c14}
+#inicio .portal-status-testing{background:#e7f1fd;color:#1d619b}
+#inicio .portal-status-pending{background:#f2f4f7;color:#617286}
+#inicio .portal-module h2{font-size:22px;line-height:1.2;margin:13px 0 8px}
+#inicio .portal-module p{font-size:14px;line-height:1.55;margin:0 0 18px;color:#60758b}
+#inicio .portal-module strong{font-size:14px;margin-top:auto;color:var(--blue2);font-weight:800}
+#inicio .idea-entry strong{color:#4c8e18}
+#inicio .portal-pending-label{margin-top:auto;color:#78889a;font-weight:700;font-size:13px}
+#inicio .portal-module-pending{background:#fafbfc;border-style:dashed;box-shadow:none;cursor:default}
+#inicio .portal-module-note{margin:18px 6px 0;color:#687f92;text-align:center;font-size:12px;line-height:1.5}
+@media(max-width:880px){
+  #inicio .portal-modules{grid-template-columns:1fr;gap:14px}
+  #inicio .portal-module{min-height:190px;padding:23px}
+  #inicio .portal-module-body{min-height:140px}
+}
+@media(max-width:520px){
+  #inicio .portal-hero{margin:8px auto 24px}
+  #inicio .portal-module{gap:14px;padding:19px;min-height:0}
+  #inicio .portal-module .entry-icon{flex:0 0 46px;width:46px;height:46px;border-radius:13px;font-size:23px}
+  #inicio .portal-module-body{min-height:0}
+  #inicio .portal-module h2{font-size:19px;margin-top:11px}
+  #inicio .portal-module-meta{align-items:flex-start}
+  #inicio .portal-module-meta small{font-size:10px}
+  #inicio .portal-status{font-size:9px}
+  #inicio .portal-module p{font-size:13px}
+}

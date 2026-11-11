@@ -5,7 +5,7 @@ const NUCLEI=['CDL Mulher','CDL Jovem','CDL Innova','CDL Cultura','Caminhos de H
 const SECTORS=['Marketing e Comunicação','Comercial','Relacionamento e Atendimento','Financeiro e Administrativo','TI, CRM e Automação','Eventos','Gestão Executiva','Presidência e Conselho','Outro'];
 const PRIORITIES=['Urgente','Alta','Média','Baixa'];
 const STATUSES=['Não iniciado','Em andamento','Aguardando retorno','Concluído','Cancelado'];
-let session=null, demands=[], profile=null, assignmentUsers=[], publicAssignmentUsers=[], activeScope='all', viewMode='table',notificationTimer=null,notifications=[],soundEnabled=false;
+let postLoginRoute=null, pendingDemandOpen=null, session=null, demands=[], profile=null, assignmentUsers=[], publicAssignmentUsers=[], activeScope='all', viewMode='table',notificationTimer=null,notifications=[],soundEnabled=false;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function fillSelect(el,items,first='Selecione'){el.innerHTML=`<option value="">${first}</option>`+items.map(v=>`<option>${esc(v)}</option>`).join('')}
@@ -13,7 +13,7 @@ fillSelect($('[name=nucleus]'),NUCLEI);fillSelect($('[name=sector]'),SECTORS);fi
 fillSelect($('#filterStatus'),STATUSES,'Todos os status');fillSelect($('#filterNucleus'),NUCLEI,'Todos os núcleos');fillSelect($('#filterPriority'),PRIORITIES,'Todas as prioridades');
 fillSelect($('#filterSector'),SECTORS,'Todos os setores');
 fillSelect($('#editForm [name=nucleus]'),NUCLEI);fillSelect($('#editForm [name=sector]'),SECTORS);fillSelect($('#editForm [name=priority]'),PRIORITIES);fillSelect($('#editForm [name=status]'),STATUSES);
-function route(){const id=location.hash.replace('#/','')||'inicio';$$('.view').forEach(v=>v.classList.add('hidden'));if(!configured){$('#setup').classList.remove('hidden');return}const protectedView=['plano','ideias','dashboard','usuarios'].includes(id);if(protectedView&&!session){location.hash='#/login';return}if(id==='usuarios'&&profile?.role!=='admin'){location.hash='#/plano';return}$('#'+(document.getElementById(id)?id:'inicio')).classList.remove('hidden');if(id==='plano')loadWorkspace();if(id==='ideias'&&typeof loadIdeas==='function')loadIdeas();if(id==='dashboard')loadDemands(true);if(id==='usuarios')loadProfiles()}
+function route(){const id=location.hash.replace('#/','')||'inicio';$$('.view').forEach(v=>v.classList.add('hidden'));if(!configured){$('#setup').classList.remove('hidden');return}const protectedView=['plano','ideias','dashboard','usuarios','compras'].includes(id);if(protectedView&&!session){if(id==='compras')postLoginRoute='#/compras';location.hash='#/login';return}if(id==='usuarios'&&profile?.role!=='admin'){location.hash='#/plano';return}$('#'+(document.getElementById(id)?id:'inicio')).classList.remove('hidden');if(id==='plano')loadWorkspace().then(()=>{if(pendingDemandOpen&&location.hash==='#/plano'){const demandId=pendingDemandOpen;pendingDemandOpen=null;openEdit(demandId)}});if(id==='compras')loadPurchaseModule();if(id==='ideias'&&typeof loadIdeas==='function')loadIdeas();if(id==='dashboard')loadDemands(true);if(id==='usuarios')loadProfiles()}
 function setAuthUI(){$$('.admin-only').forEach(x=>x.classList.toggle('hidden',!session));$('#usersNav').classList.toggle('hidden',!session||profile?.role!=='admin');$('#notificationCenter').classList.toggle('hidden',!session);$('#authButton').textContent=session?'Sair':'Área administrativa'}
 window.addEventListener('hashchange',route);
 $('#authButton').onclick=async()=>{if(session){stopNotifications();await db.auth.signOut();session=null;setAuthUI();location.hash='#/inicio'}else location.hash='#/login'};
@@ -21,7 +21,7 @@ async function loadPublicAssignmentUsers(){const select=$('#demandForm [name=own
 function renderPublicAssignmentUsers(){const form=$('#demandForm'),sector=form.elements.sector.value,select=form.elements.owner_id,rows=publicAssignmentUsers.filter(x=>x.sector===sector);select.disabled=!sector||!rows.length;select.innerHTML=!sector?'<option value="">Selecione primeiro o setor de destino</option>':rows.length?'<option value="">Selecione o responsável</option>'+rows.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join(''):'<option value="">Nenhum usuário ativo cadastrado neste setor</option>'}
 $('#demandForm [name=sector]').addEventListener('change',renderPublicAssignmentUsers);
 $('#demandForm').onsubmit=async e=>{e.preventDefault();const btn=$('#sendButton'),msg=$('#formMessage'),f=Object.fromEntries(new FormData(e.currentTarget));if(!f.owner_id){msg.className='message error';msg.textContent='Selecione um responsável ativo do setor escolhido.';return}btn.disabled=true;msg.className='message';msg.textContent='Registrando...';const {data,error}=await db.rpc('submit_demand_with_assignee',{p_requester:f.requester,p_email:f.email||null,p_nucleus:f.nucleus,p_sector:f.sector,p_owner_id:f.owner_id,p_description:f.description,p_expected_result:f.expected_result,p_deadline:f.deadline,p_priority:f.priority,p_notes:f.notes||null});if(error){btn.disabled=false;msg.classList.add('error');msg.textContent='Não foi possível registrar. '+error.message;return}msg.textContent='Demanda registrada. Notificando o responsável...';const {error:notificationError}=await db.functions.invoke('notificar-nova-demanda',{body:{protocol:data}});let notificationReason='';if(notificationError?.context){try{const detail=await notificationError.context.json();notificationReason=detail?.error||''}catch(_e){}}btn.disabled=false;msg.classList.add('success');msg.textContent=notificationError?`Demanda registrada com sucesso. Protocolo ${data}. O e-mail não foi enviado${notificationReason?`: ${notificationReason}`:'.'}`:`Demanda registrada com sucesso. Protocolo ${data}. O responsável foi notificado por e-mail.`;if(notificationError)console.error('Falha ao notificar responsável:',notificationReason||notificationError);e.currentTarget.reset();$('[name=priority]').value='Média';renderPublicAssignmentUsers()};
-$('#loginForm').onsubmit=async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget)),msg=$('#loginMessage');msg.textContent='Entrando...';const {data,error}=await db.auth.signInWithPassword({email:f.email,password:f.password});if(error){msg.className='message error';msg.textContent='E-mail ou senha inválidos.';return}session=data.session;await loadProfile();setAuthUI();location.hash='#/plano'};
+$('#loginForm').onsubmit=async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget)),msg=$('#loginMessage');msg.textContent='Entrando...';const {data,error}=await db.auth.signInWithPassword({email:f.email,password:f.password});if(error){msg.className='message error';msg.textContent='E-mail ou senha inválidos.';return}session=data.session;await loadProfile();setAuthUI();const destination=postLoginRoute||'#/plano';postLoginRoute=null;location.hash=destination};
 async function loadProfile(){profile=null;if(!session)return;const {data,error}=await db.from('profiles').select('name,sector,role,active').eq('id',session.user.id).maybeSingle();if(!error&&data?.active!==false)profile=data;activeScope=profile?.role==='admin'?'all':profile?.sector?'sector':'all';if(profile?.role==='admin')clearDemandFilters();$('#planGreeting').textContent=profile?.role==='admin'?`Olá, ${profile.name||'administrador'}. Você está na visão Geral e pode acompanhar todas as demandas da CDL.`:profile?.name?`Olá, ${profile.name}. Acompanhe as demandas do seu setor e da CDL.`:'Acompanhe e atualize as solicitações em um único ambiente.';startNotifications()}
 async function loadWorkspace(){await loadProfile();await loadAssignmentUsers();await loadDemands()}
 async function loadAssignmentUsers(){const {data,error}=await db.rpc('list_active_assignment_users');if(error){assignmentUsers=[];toast('Não foi possível carregar os responsáveis cadastrados.');return}assignmentUsers=data||[]}
@@ -44,8 +44,387 @@ function bindKanban(){$$('#kanbanView .kanban-card').forEach(card=>{card.ondrags
 function bindWorkspaceControls(){$$('[data-field]').forEach(x=>x.onchange=()=>updateDemand(x));$$('[data-owner]').forEach(x=>x.onchange=()=>assignDemandOwner(x.dataset.id,x.value,x));$$('#tableView [data-edit]').forEach(x=>x.onclick=()=>openEdit(x.dataset.edit));$('#tableView').classList.toggle('hidden',viewMode!=='table');$('#kanbanView').classList.toggle('hidden',viewMode!=='kanban')}
 async function assignDemandOwner(id,ownerId,el){if(el)el.disabled=true;const {error}=await db.rpc('set_demand_assignee',{p_demand_id:id,p_owner_id:ownerId||null});if(el)el.disabled=false;if(error){toast('Erro ao definir responsável: '+error.message);await loadDemands();return false}const d=demands.find(x=>x.id===id),owner=assignmentUsers.find(x=>x.id===ownerId);if(d){d.assignee_id=owner?.id||null;d.assignee=owner?.name||owner?.email||null;d.updated_at=new Date().toISOString()}renderTable();toast(owner?'Responsável vinculado e lembretes habilitados.':'Responsável removido.');return true}
 async function updateDemand(el){el.disabled=true;const payload={[el.dataset.field]:el.value||null,updated_at:new Date().toISOString()};const {error}=await db.from('demands').update(payload).eq('id',el.dataset.id);el.disabled=false;if(error){toast('Erro ao atualizar: '+error.message);await loadDemands();return}const d=demands.find(x=>x.id===el.dataset.id);if(d)Object.assign(d,payload);renderTable();toast('Alteração salva.')}
-function openEdit(id){const d=demands.find(x=>x.id===id);if(!d)return;const f=$('#editForm');f.elements.assignee_id.innerHTML=assignmentOptions(d);Object.keys(d).forEach(k=>{if(f.elements[k])f.elements[k].value=d[k]??''});$('#editTitle').textContent=`${d.protocol} — Editar demanda`;const toggle=$('#toggleDemandActive');toggle.dataset.id=d.id;toggle.dataset.active=String(d.active!==false);toggle.textContent=d.active===false?'Reativar demanda':'Inativar demanda';toggle.classList.toggle('hidden',profile?.role!=='admin');$('#editModal').classList.remove('hidden');document.body.style.overflow='hidden'}
-function closeEdit(){$('#editModal').classList.add('hidden');document.body.style.overflow=''}
+function openEdit(id){const d=demands.find(x=>x.id===id);if(!d)return;const f=$('#editForm');f.elements.assignee_id.innerHTML=assignmentOptions(d);Object.keys(d).forEach(k=>{if(f.elements[k])f.elements[k].value=d[k]??''});$('#editTitle').textContent=`${d.protocol} — Editar demanda`;const toggle=$('#toggleDemandActive');toggle.dataset.id=d.id;toggle.dataset.active=String(d.active!==false);toggle.textContent=d.active===false?'Reativar demanda':'Inativar demanda';toggle.classList.toggle('hidden',profile?.role!=='admin');$('#editModal').classList.remove('hidden');document.body.style.overflow='hidden';loadDemandPurchaseDecision(d)}
+let demandPurchaseRequest = 0;
+const purchaseDecision = $('#demandPurchaseDecision');
+const savePurchaseDecision = $('#saveDemandPurchaseDecision');
+const purchaseStatus = $('#demandPurchaseStatus');
+const purchaseActions = $('#demandPurchaseActions');
+const purchaseList = $('#linkedPurchaseDrafts');
+const unlinkedPurchase = $('#unlinkedPurchaseDraft');
+const linkPurchase = $('#linkPurchaseDraft');
+const purchaseDialog = $('#purchaseDraftDialog');
+const purchaseDraftForm = $('#purchaseDraftForm');
+const purchaseRecordDialog = $('#purchaseRecordDialog');
+const purchaseRecordFields = 'id,title,requester,purpose,registered_name,demand_id,created_by,status,decision_note,demands(protocol)';
+let purchaseModuleRequest = 0;
+const purchaseStages = {draft:'Rascunho',submitted:'Em triagem',triaged:'Triagem concluída',returned:'Devolvida para ajuste',rejected:'Rejeitada'};
+const editablePurchase = row => ['draft','returned'].includes(row.status) && (profile?.role==='admin' || row.created_by===session?.user.id);
+const purchasePilotYear = 2026;
+
+function openPurchaseRecord(row) {
+  if (!session || !profile?.active) return;
+  $('#purchaseRecordTitle').textContent = purchaseProtocol(row.id) + ' · ' + row.title;
+  $('#purchaseRecordContent').innerHTML = `<p><strong>Situação</strong> · ${esc(purchaseStages[row.status])}</p>
+    <p><strong>Registrado por</strong> · ${esc(row.registered_name || 'Não informado')}</p>
+    <p><strong>Solicitante</strong> · ${esc(row.requester || 'Não informado')}</p>
+    <p><strong>Motivo da necessidade</strong> · ${esc(row.purpose || 'Não informado')}</p>
+    <p><strong>Origem</strong> · ${esc(row.demands?.protocol || (row.demand_id ? 'Demanda vinculada' : 'Compra independente'))}</p>
+    ${row.decision_note ? '<p><strong>Parecer</strong> · '+esc(row.decision_note)+'</p>' : ''}`;
+  $('#purchaseRecordStatus').textContent = '';
+  const source = $('#purchaseSourceDemand');
+  source.hidden = !row.demand_id;
+  source.onclick = () => {
+    purchaseRecordDialog.close();
+    if (location.hash === '#/plano' && demands.some(d => d.id === row.demand_id)) {
+      openEdit(row.demand_id);
+      return;
+    }
+    pendingDemandOpen = row.demand_id;
+    if (location.hash === '#/plano') route(); else location.hash = '#/plano';
+  };
+  if (!purchaseRecordDialog.open) purchaseRecordDialog.showModal();
+  const send = $('#submitPurchasePilot');
+  send.classList.toggle('hidden',!editablePurchase(row));
+  send.onclick = () => changePurchaseStatus(row,'submitted');
+  const triage = $('#purchaseTriageForm');
+  triage.reset();
+  triage.classList.toggle('hidden',!(profile.role==='admin'&&row.status==='submitted'));
+  triage.onsubmit = event => {
+    event.preventDefault();
+    changePurchaseStatus(row,event.submitter.value,triage.elements.decision_note.value.trim());
+  };
+  loadPurchaseItems(row);
+}
+
+async function loadPurchaseModule() {
+  const request = ++purchaseModuleRequest;
+  const status = $('#purchaseModuleStatus'), rows = $('#purchaseModuleRows');
+  const create = $('#newPurchaseFromModule');
+  rows.replaceChildren();
+  create.disabled = true;
+  if (!session || !profile?.active) {
+    status.textContent = 'Esta área exige um perfil interno ativo.';
+    return;
+  }
+  status.textContent = 'Carregando solicitações…';
+  const {data,error} = await db.from('purchase_requests').select(purchaseRecordFields).order('id', {ascending:false}).limit(100);
+  if (request !== purchaseModuleRequest || location.hash !== '#/compras' || !session || !profile?.active) return;
+  if (error) {
+    status.textContent = 'Não foi possível consultar Compras. Verifique se as migrações foram aplicadas no ambiente de homologação.';
+    return;
+  }
+  create.disabled = false;
+  loadPurchasePublicationControls();
+  status.textContent = data.length ? `${data.length} solicitação(ões) exibida(s)` : 'Nenhuma solicitação cadastrada.';
+  rows.innerHTML = data.map(row => `<article class="entry-card"><div><strong>${purchaseProtocol(row.id)} · ${esc(row.title)}</strong>
+    <p>${esc(row.demands?.protocol || (row.demand_id ? 'Demanda vinculada' : 'Compra independente'))} · ${esc(purchaseStages[row.status])}</p>
+    <button class="secondary" type="button" data-purchase-record="${row.id}">Abrir solicitação</button></div></article>`).join('');
+  rows.querySelectorAll('[data-purchase-record]').forEach(button => {
+    button.onclick = () => openPurchaseRecord(data.find(row => String(row.id) === button.dataset.purchaseRecord));
+  });
+}
+const purchaseItemForm = $('#purchaseItemForm');
+const purchasePublishForm = $('#purchasePublishForm');
+const purchaseUnits = ['unidade','kit','pacote','caixa','fardo','par','dúzia','rolo','folha','frasco','garrafa','saco','bandeja','kg','g','L','mL','m','m²','hora','diária'];
+const purchaseMoney = value => Number(value).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+let purchaseItemContext = null;
+
+async function loadPurchasePublicationControls() {
+  const panel = $('#purchasePublishPanel');
+  panel.classList.add('hidden');
+  if (!session || !profile?.active || profile.role !== 'admin') return;
+  const {data,error} = await db.from('obz_centers').select('id,code,name,fiscal_year').eq('status','approved').order('fiscal_year',{ascending:false}).order('code');
+  if (!session || !profile?.active || profile.role !== 'admin' || location.hash !== '#/compras') return;
+  panel.classList.remove('hidden');
+  const status = $('#purchasePublishStatus');
+  purchasePublishForm.elements.center.replaceChildren(new Option('Selecione',''));
+  purchasePublishForm.querySelector('button').disabled = Boolean(error || !data?.length);
+  if (error) { status.textContent = 'Não foi possível consultar os centros aprovados.'; return; }
+  for (const c of data) purchasePublishForm.elements.center.add(new Option(`${c.fiscal_year} · ${c.code} · ${c.name}`,c.id));
+  status.textContent = data.length ? 'A publicação registra uma cópia das rubricas aprovadas deste centro.' : 'Nenhum centro aprovado disponível.';
+}
+
+purchasePublishForm.onsubmit = async event => {
+  event.preventDefault();
+  if (!session || !profile?.active || profile.role !== 'admin') return;
+  const field = purchasePublishForm.elements.center;
+  if (!field.value || !confirm('Publicar as rubricas aprovadas deste centro para Compras?')) return;
+  const button = purchasePublishForm.querySelector('button');
+  button.disabled = true;
+  const {error} = await db.from('purchase_budget_publications').insert({center_id:field.value});
+  button.disabled = false;
+  $('#purchasePublishStatus').textContent = error?.message || 'Versão publicada para Compras.';
+};
+
+async function changePurchaseStatus(row,status,note=null) {
+  if (!session || !profile?.active || purchaseItemContext?.row !== row) return;
+  if (status==='submitted' && !editablePurchase(row)) return;
+  if (status!=='submitted' && (profile.role!=='admin' || row.status!=='submitted' || !note)) return;
+  const context=purchaseItemContext;
+  if(context.moving)return;
+  context.moving=true;
+  const {data,error} = await db.from('purchase_requests').update({status,decision_note:note})
+    .eq('id',row.id).eq('status',row.status).select(purchaseRecordFields).maybeSingle();
+  context.moving=false;
+  if (purchaseItemContext!==context || !purchaseRecordDialog.open) return;
+  if (error || !data) { $('#purchaseRecordStatus').textContent=error?.message || 'A etapa mudou. Reabra a solicitação.'; return; }
+  openPurchaseRecord(data);
+  if (location.hash==='#/compras') loadPurchaseModule();
+  if (row.demand_id && $('#editForm').elements.id.value===row.demand_id) loadPurchaseLinks(row.demand_id,demandPurchaseRequest);
+}
+
+async function loadPurchaseItems(row) {
+  const context = {row,publications:[],centers:[],rubricsRequest:0};
+  purchaseItemContext = context;
+  const fields = purchaseItemForm.elements;
+  const status = $('#purchaseRecordStatus'), list = $('#purchaseItemRows');
+  const editable = editablePurchase(row);
+  const send = $('#submitPurchasePilot');
+  send.disabled = true;
+  purchaseItemForm.classList.toggle('hidden',!editable);
+  purchaseItemForm.reset();
+  fields.unit.replaceChildren(new Option('Selecione',''), ...purchaseUnits.map(unit => new Option(unit,unit)));
+  fields.publication.replaceChildren(new Option('Informe a data de necessidade',''));
+  fields.rubric.replaceChildren(new Option('Selecione o centro',''));
+  purchaseItemForm.querySelector('button').disabled = true;
+  list.replaceChildren();
+  status.textContent = 'Carregando itens…';
+  const [items,budget,centers] = await Promise.all([
+    db.from('purchase_request_items').select('id,description,activity,quantity,unit,needed_on,estimated_amount,nature,center_code,publication_id,purchase_cost_centers(name),purchase_budget_lines(description)').eq('request_id',row.id).order('id'),
+    db.from('purchase_current_budget_publications').select('id,center_code,center_name,fiscal_year').order('center_name'),
+    db.from('purchase_cost_centers').select('code,name').order('name')
+  ]);
+  if (purchaseItemContext !== context || !purchaseRecordDialog.open || !session) return;
+  if (items.error || centers.error) { status.textContent = 'Não foi possível carregar itens e centros. Confira a migração do piloto.'; return; }
+  list.innerHTML = items.data.map(item => `<li><strong>${esc(item.description)}</strong> · ${esc(item.quantity)} ${esc(item.unit)} · ${esc(item.activity)}<br>
+    ${item.nature==='service'?'Serviço':'Material'} · ${esc(item.center_code ? (item.purchase_cost_centers?.name||item.center_code)+' · Piloto 2026' : (item.purchase_budget_lines?.description||'Rubrica')+' · Versão '+item.publication_id)}
+    · Estimativa ${esc(item.estimated_amount == null ? 'Não informada' : purchaseMoney(item.estimated_amount))}
+    ${editable?'<button type="button" class="secondary" data-remove-purchase-item="'+item.id+'">Remover item</button>':''}</li>`).join('');
+  list.querySelectorAll('[data-remove-purchase-item]').forEach(button => {
+    button.onclick=async()=>{
+      if(purchaseItemContext!==context||!editablePurchase(row)||!confirm('Remover este item do rascunho?'))return;
+      button.disabled=true;
+      const {data,error}=await db.from('purchase_request_items').delete().eq('id',button.dataset.removePurchaseItem).eq('request_id',row.id).select('id').maybeSingle();
+      if(purchaseItemContext!==context||!purchaseRecordDialog.open)return;
+      if(error||!data){button.disabled=false;status.textContent=error?.message||'O item não pôde ser removido.';return;}
+      await loadPurchaseItems(row);
+    };
+  });
+  context.publications = budget.data || [];
+  context.centers = centers.data;
+  fields.pilot_center.replaceChildren(new Option('Selecione',''),...centers.data.map(c=>new Option(c.name,c.code)));
+  status.textContent = 'Itens de 2026 são classificados por centro, sem consumo do OBZ 2027.';
+  send.disabled = !editable || !items.data.length;
+  if(editable){
+    fields.needed_on.value = new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo'}).format(new Date());
+    fields.needed_on.onchange();
+  }
+}
+
+purchaseItemForm.elements.needed_on.onchange = () => {
+  const fields = purchaseItemForm.elements,context=purchaseItemContext;
+  if(!context)return;
+  const year = Number(fields.needed_on.value.slice(0,4)),pilot=year===purchasePilotYear;
+  ++context.rubricsRequest;
+  $('#pilotCenterField').classList.toggle('hidden',!pilot);
+  $('#publishedCenterField').classList.toggle('hidden',pilot);
+  $('#publishedRubricField').classList.toggle('hidden',pilot);
+  fields.pilot_center.required=pilot;
+  fields.publication.required=fields.rubric.required=!pilot;
+  fields.pilot_center.disabled=!pilot;
+  fields.publication.disabled=fields.rubric.disabled=pilot;
+  if(pilot){purchaseItemForm.querySelector('button').disabled=!context.centers.length;return;}
+  const options = context.publications.filter(row => row.fiscal_year === year);
+  fields.publication.replaceChildren(new Option(options.length?'Selecione':'Sem publicação para o exercício',''), ...options.map(row => new Option(`${row.center_code} · ${row.center_name} · ${row.fiscal_year}`,row.id)));
+  fields.publication.onchange();
+};
+purchaseItemForm.elements.publication.onchange = async () => {
+  const context = purchaseItemContext;
+  if (!context) return;
+  const request = ++context.rubricsRequest;
+  const fields = purchaseItemForm.elements;
+  const id = fields.publication.value;
+  fields.rubric.replaceChildren(new Option(id?'Carregando rubricas…':'Selecione o centro',''));
+  purchaseItemForm.querySelector('button').disabled = true;
+  if (!id) return;
+  const {data,error} = await db.from('purchase_budget_lines').select('obz_line_id,description,account_code,approved_amount').eq('publication_id',id).order('description');
+  if (purchaseItemContext !== context || request !== context.rubricsRequest || !purchaseRecordDialog.open || !session) return;
+  if (error) { fields.rubric.replaceChildren(new Option('Falha ao carregar rubricas','')); return; }
+  fields.rubric.replaceChildren(new Option('Selecione',''), ...data.map(row => new Option(`${row.account_code ? row.account_code+' · ' : ''}${row.description} · ${purchaseMoney(row.approved_amount)} aprovado`,row.obz_line_id)));
+  purchaseItemForm.querySelector('button').disabled = !data.length;
+};
+
+purchaseItemForm.onsubmit = async event => {
+  event.preventDefault();
+  const context = purchaseItemContext, button = purchaseItemForm.querySelector('button');
+  if (!context || !session || !profile?.active || !editablePurchase(context.row) || button.disabled) return;
+  const fields = new FormData(purchaseItemForm);
+  const description = fields.get('description').trim(), activity = fields.get('activity').trim();
+  if (!description || !activity) return;
+  const needed_on=fields.get('needed_on'),pilot=Number(needed_on.slice(0,4))===purchasePilotYear;
+  button.disabled = true;
+  const {error} = await db.from('purchase_request_items').insert({
+    request_id:context.row.id,description,activity,quantity:fields.get('quantity'),unit:fields.get('unit'),
+    needed_on,nature:fields.get('nature'),estimated_amount:fields.get('estimate') || null,
+    center_code:pilot?fields.get('pilot_center'):null,
+    publication_id:pilot?null:fields.get('publication'),obz_line_id:pilot?null:fields.get('rubric')
+  });
+  if (purchaseItemContext !== context || !purchaseRecordDialog.open || !session) return;
+  if (error) { button.disabled = false; $('#purchaseRecordStatus').textContent = error.message; return; }
+  await loadPurchaseItems(context.row);
+};
+
+$('#refreshPurchases').onclick = loadPurchaseModule;
+$('#newPurchaseFromModule').onclick = () => openPurchaseDraft(null);
+$('#closePurchaseRecord').onclick = () => purchaseRecordDialog.close();
+let purchaseDraftDemand = null;
+let savedPurchaseDecision = 'pending';
+
+function purchaseProtocol(id) {
+  return 'CP-' + String(id).padStart(4, '0');
+}
+
+async function loadPurchaseLinks(demandId, request) {
+  const linked = db.from('purchase_requests').select(purchaseRecordFields).eq('demand_id', demandId).order('id');
+  const available = savedPurchaseDecision === 'yes'
+    ? db.from('purchase_requests').select('id,title').is('demand_id', null).order('id', {ascending:false}).limit(100)
+    : Promise.resolve({data: []});
+  const [links, drafts] = await Promise.all([linked, available]);
+  if (request !== demandPurchaseRequest || !session) return;
+  if (links.error || drafts.error) {
+    purchaseStatus.textContent = 'Não foi possível carregar as solicitações de compra.';
+    return;
+  }
+  purchaseList.innerHTML = links.data.map(row =>
+    `<li><strong>${purchaseProtocol(row.id)}</strong> · ${esc(row.title)} · ${esc(purchaseStages[row.status])} <button type="button" class="secondary" data-linked-purchase="${row.id}">Abrir solicitação</button></li>`
+  ).join('');
+  purchaseList.querySelectorAll('[data-linked-purchase]').forEach(button => {
+    button.onclick = () => openPurchaseRecord(links.data.find(row => String(row.id) === button.dataset.linkedPurchase));
+  });
+  if (links.data.length) {
+    purchaseStatus.textContent = links.data.length + ' solicitação(ões) de compra vinculada(s).';
+  }
+  unlinkedPurchase.innerHTML = '<option value="">Selecione um rascunho sem demanda</option>' +
+    drafts.data.map(row => `<option value="${row.id}">${purchaseProtocol(row.id)} · ${esc(row.title)}</option>`).join('');
+  linkPurchase.disabled = true;
+  purchaseActions.classList.toggle('hidden', savedPurchaseDecision !== 'yes');
+}
+
+function openPurchaseDraft(demand) {
+  if (!session || !profile?.active) return;
+  purchaseDraftDemand = demand;
+  purchaseDraftForm.reset();
+  purchaseDraftForm.elements.registered_by.value = profile.name?.trim() || session.user.email || 'Usuário interno';
+  purchaseDraftForm.elements.title.value = demand?.expected_result?.trim().slice(0, 150) ?? '';
+  $('#purchaseDraftOrigin').textContent = demand ? 'Demanda de origem ' + demand.protocol : 'Compra interna sem demanda de origem';
+  $('#purchaseDraftStatus').textContent = '';
+  purchaseDialog.showModal();
+}
+
+$('#newIndependentPurchase').onclick = () => openPurchaseDraft(null);
+$('#newLinkedPurchase').onclick = () => {
+  if (savedPurchaseDecision !== 'yes') return;
+  const demand = demands.find(row => row.id === $('#editForm').elements.id.value);
+  if (demand) openPurchaseDraft(demand);
+};
+$('#cancelPurchaseDraft').onclick = () => purchaseDialog.close();
+purchaseDialog.addEventListener('cancel', event => {
+  if (purchaseDraftForm.querySelector('[type=submit]').disabled) event.preventDefault();
+});
+purchaseDraftForm.onsubmit = async event => {
+  event.preventDefault();
+  const title = purchaseDraftForm.elements.title.value.trim();
+  const requester = purchaseDraftForm.elements.requester.value.trim();
+  const purpose = purchaseDraftForm.elements.purpose.value.trim();
+  if (!title || !requester || !purpose || !session || !profile?.active) return;
+  const demandId = purchaseDraftDemand?.id;
+  const request = demandPurchaseRequest;
+  const submit = purchaseDraftForm.querySelector('[type=submit]');
+  const cancel = $('#cancelPurchaseDraft');
+  submit.disabled = cancel.disabled = true;
+  const result = await db.from('purchase_requests').insert({title, requester, purpose, demand_id: demandId ?? null}).select('id').single();
+  submit.disabled = cancel.disabled = false;
+  if (result.error) {
+    $('#purchaseDraftStatus').textContent = 'Não foi possível salvar o rascunho. Confira a indicação de compra e tente novamente.';
+    return;
+  }
+  purchaseDialog.close();
+  toast(purchaseProtocol(result.data.id) + ' criada como rascunho.');
+  if (demandId && request === demandPurchaseRequest) await loadPurchaseLinks(demandId, request);
+  if (location.hash === '#/compras') await loadPurchaseModule();
+};
+
+unlinkedPurchase.onchange = () => { linkPurchase.disabled = !unlinkedPurchase.value; };
+linkPurchase.onclick = async () => {
+  if (!session || !profile?.active || !unlinkedPurchase.value || savedPurchaseDecision !== 'yes') return;
+  const request = demandPurchaseRequest;
+  const demandId = $('#editForm').elements.id.value;
+  linkPurchase.disabled = unlinkedPurchase.disabled = true;
+  const result = await db.from('purchase_requests').update({demand_id: demandId})
+    .eq('id', unlinkedPurchase.value).is('demand_id', null).select('id').maybeSingle();
+  unlinkedPurchase.disabled = false;
+  if (request !== demandPurchaseRequest || !session) return;
+  await loadPurchaseLinks(demandId, request);
+  if (request !== demandPurchaseRequest || !session) return;
+  if (result.error || !result.data) purchaseStatus.textContent = 'O vínculo não foi salvo. Confira se a solicitação continua disponível.';
+};
+
+function showPurchaseDecision(decision) {
+  savedPurchaseDecision = decision;
+  purchaseDecision.value = decision;
+  purchaseStatus.textContent = {
+    pending: 'Aguardando avaliação interna.',
+    no: 'Demanda sem necessidade de compra.',
+    yes: 'Compra necessária · Solicitação ainda não aberta.'
+  }[decision];
+}
+
+async function loadDemandPurchaseDecision(demand) {
+  const request = ++demandPurchaseRequest;
+  const internal = Boolean(session && profile?.active && demand.active !== false);
+  $('#demandPurchase').classList.toggle('hidden', !internal);
+  purchaseDecision.disabled = true;
+  savePurchaseDecision.disabled = true;
+  purchaseList.replaceChildren();
+  purchaseActions.classList.add('hidden');
+  if (!internal) return;
+  purchaseStatus.textContent = 'Carregando indicação de compra…';
+  const {data, error} = await db.from('demand_purchase_decisions')
+    .select('decision').eq('demand_id', demand.id)
+    .order('id', {ascending: false}).limit(1).maybeSingle();
+  if (request !== demandPurchaseRequest || !session) return;
+  if (error) {
+    purchaseStatus.textContent = 'Não foi possível carregar a indicação de compra.';
+    return;
+  }
+  showPurchaseDecision(data?.decision ?? 'pending');
+  purchaseDecision.disabled = false;
+  savePurchaseDecision.disabled = false;
+  await loadPurchaseLinks(demand.id, request);
+}
+
+savePurchaseDecision.onclick = async () => {
+  if (!session || !profile?.active || purchaseDecision.disabled) return;
+  const request = demandPurchaseRequest;
+  const id = $('#editForm').elements.id.value;
+  const decision = purchaseDecision.value;
+  purchaseDecision.disabled = true;
+  savePurchaseDecision.disabled = true;
+  const {error} = await db.from('demand_purchase_decisions').insert({demand_id: id, decision});
+  if (request !== demandPurchaseRequest || !session) return;
+  purchaseDecision.disabled = false;
+  savePurchaseDecision.disabled = false;
+  if (error) {
+    purchaseStatus.textContent = 'Não foi possível salvar a indicação de compra.';
+    return;
+  }
+  showPurchaseDecision(decision);
+  purchaseActions.classList.add('hidden');
+  await loadPurchaseLinks(id, request);
+};
+
+function closeEdit(){demandPurchaseRequest++;$('#editModal').classList.add('hidden');document.body.style.overflow=''}
 $('#closeModal').onclick=closeEdit;$('#cancelEdit').onclick=closeEdit;$('#editModal').onclick=e=>{if(e.target===$('#editModal'))closeEdit()};
 $('#toggleDemandActive').onclick=async e=>{const btn=e.currentTarget,id=btn.dataset.id,activate=btn.dataset.active==='false';if(!confirm(activate?'Reativar esta demanda?':'Inativar esta demanda? Ela sairá da visualização normal, mas continuará preservada.'))return;btn.disabled=true;const {error}=await db.rpc('set_demand_active',{p_id:id,p_active:activate});btn.disabled=false;if(error){toast('Não foi possível alterar a demanda: '+error.message);return}const d=demands.find(x=>x.id===id);if(d)d.active=activate;closeEdit();activeScope=activate?'all':'inactive';renderTable();toast(activate?'Demanda reativada.':'Demanda inativada.')};
 $('#editForm').onsubmit=async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget));const id=f.id,ownerId=f.assignee_id||null;delete f.id;delete f.assignee_id;for(const k of ['email','notes'])f[k]=f[k]||null;f.updated_at=new Date().toISOString();const btn=e.currentTarget.querySelector('[type=submit]');btn.disabled=true;const {error}=await db.from('demands').update(f).eq('id',id);if(!error){const result=await db.rpc('set_demand_assignee',{p_demand_id:id,p_owner_id:ownerId});if(result.error){btn.disabled=false;toast('Dados salvos, mas não foi possível vincular o responsável: '+result.error.message);return}}btn.disabled=false;if(error){toast('Erro ao salvar: '+error.message);return}const d=demands.find(x=>x.id===id),owner=assignmentUsers.find(x=>x.id===ownerId);if(d)Object.assign(d,f,{assignee_id:owner?.id||null,assignee:owner?.name||owner?.email||null});closeEdit();renderTable();toast('Demanda atualizada com sucesso.')};

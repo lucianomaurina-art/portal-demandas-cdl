@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="styles.css?v=logo-20260901-2">
   <link rel="stylesheet" href="operational.css?v=melhorias-20260905-1">
   <link rel="stylesheet" href="ideas.css?v=melhorias-20260905-1">
+  <link rel="stylesheet" href="portal-modules.css?v=portal-unificado-20261111-1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -20,13 +21,68 @@
     <section id="setup" class="view hidden"><div class="card narrow"><h1>Ativação pendente</h1><p>O sistema está pronto, mas ainda precisa receber o endereço e a chave pública do banco.</p></div></section>
 
     <section id="inicio" class="view">
-      <div class="hero portal-hero"><span class="eyebrow">Portal interno CDL Novo Hamburgo</span><h1>O que você deseja registrar?</h1><p>Escolha entre uma solicitação que precisa ser executada ou uma ideia que poderá se transformar em um novo projeto.</p></div>
-      <div class="entry-grid">
-        <a class="entry-card demand-entry" href="#/nova"><span class="entry-icon">✓</span><div><small>Execução</small><h2>Cadastrar uma demanda</h2><p>Registre uma atividade que já precisa de prazo, responsável e acompanhamento.</p><strong>Abrir formulário →</strong></div></a>
-        <a class="entry-card idea-entry" href="#/nova-ideia"><span class="entry-icon">✦</span><div><small>Inovação e melhoria</small><h2>Cadastrar uma ideia</h2><p>Compartilhe uma oportunidade, projeto ou iniciativa para avaliação e priorização.</p><strong>Abrir formulário →</strong></div></a>
+      <div class="hero portal-hero">
+        <span class="eyebrow">Portal interno CDL Novo Hamburgo</span>
+        <h1>O que você deseja fazer?</h1>
+        <p>Acesse as soluções de gestão da CDL em um só lugar. Cada módulo mantém os acessos e permissões da sua área.</p>
       </div>
+      <div class="entry-grid portal-modules" aria-label="Módulos do Portal Interno CDL">
+        <a class="entry-card demand-entry portal-module" href="#/nova">
+          <span class="entry-icon" aria-hidden="true">✓</span>
+          <div class="portal-module-body">
+            <div class="portal-module-meta"><small>Execução</small><span class="portal-status portal-status-active">Disponível</span></div>
+            <h2>Demandas</h2>
+            <p>Registre solicitações e acompanhe a execução, os responsáveis e os prazos.</p>
+            <strong>Abrir demandas <span aria-hidden="true">→</span></strong>
+          </div>
+        </a>
+        <a class="entry-card idea-entry portal-module" href="#/nova-ideia">
+          <span class="entry-icon" aria-hidden="true">✦</span>
+          <div class="portal-module-body">
+            <div class="portal-module-meta"><small>Inovação e melhoria</small><span class="portal-status portal-status-active">Disponível</span></div>
+            <h2>Ideias e Inovação</h2>
+            <p>Compartilhe oportunidades, melhorias e propostas para avaliação e priorização.</p>
+            <strong>Abrir ideias <span aria-hidden="true">→</span></strong>
+          </div>
+        </a>
+        <a class="entry-card budget-entry portal-module" href="https://lucianomaurina-art.github.io/cdl-obz-2027-homologacao/" target="_blank" rel="noopener noreferrer" aria-label="Abrir Orçamento Base Zero 2027 em homologação (nova aba)">
+          <span class="entry-icon" aria-hidden="true">▥</span>
+          <div class="portal-module-body">
+            <div class="portal-module-meta"><small>Planejamento e resultados</small><span class="portal-status portal-status-testing">Homologação</span></div>
+            <h2>Orçamento Base Zero</h2>
+            <p>Acesse os pacotes de decisão, justificativas, cenários e acompanhamento do OBZ 2027.</p>
+            <strong>Abrir OBZ 2027 <span aria-hidden="true">↗</span></strong>
+          </div>
+        </a>
+        <a class="entry-card purchases-entry portal-module" href="#/compras">
+          <span class="entry-icon" aria-hidden="true">▤</span>
+          <div class="portal-module-body">
+            <div class="portal-module-meta"><small>Aquisições e contratos</small><span class="portal-status portal-status-pending">Homologação</span></div>
+            <h2>Compras e Contratações</h2>
+            <p>Solicitações, cotações, aprovações e acompanhamento das compras da CDL.</p>
+            <strong>Abrir Compras e Contratações</strong>
+          </div>
+        </a>
+      </div>
+      <p class="portal-module-note">O OBZ 2027 abre em outra aba e ainda pode solicitar um login próprio. A área de compras exige acesso interno.</p>
     </section>
 
+    <section id="compras" class="view hidden">
+      <div class="section-head">
+        <div><span class="eyebrow">Gestão interna · Homologação</span><h1>Compras e Contratações</h1><p>Piloto 2026 · registre solicitações e acompanhe a triagem interna.</p></div>
+        <div class="head-actions"><button id="refreshPurchases" class="secondary">Atualizar</button><button id="newPurchaseFromModule" class="primary">Nova compra interna</button></div>
+      </div>
+      <p id="purchaseModuleStatus" role="status"></p>
+      <details id="purchasePublishPanel" class="hidden">
+        <summary>Publicar orçamento aprovado para Compras</summary>
+        <form id="purchasePublishForm">
+          <label>Centro aprovado<select name="center" required></select></label>
+          <button class="secondary" type="submit">Publicar versão</button>
+          <p id="purchasePublishStatus" role="status"></p>
+        </form>
+      </details>
+      <div id="purchaseModuleRows"></div>
+    </section>
     <section id="nova" class="view">
       <div class="hero"><span class="eyebrow">Solicitação interna</span><h1>Registre uma nova demanda</h1><p>Informe o que precisa ser realizado. Você receberá um protocolo somente após a confirmação do registro.</p></div>
       <form id="demandForm" class="card form-grid">
@@ -66,7 +122,7 @@
     <section id="login" class="view hidden"><div class="card narrow"><span class="eyebrow">Acesso restrito</span><h1>Área administrativa</h1><p>Entre com seu e-mail e senha para gerenciar as demandas.</p><form id="loginForm"><label>E-mail<input name="email" type="email" required></label><label>Senha<input name="password" type="password" required minlength="6"></label><button class="primary full" type="submit">Entrar</button><div id="loginMessage" class="message"></div></form></div></section>
 
     <section id="plano" class="view hidden admin-view">
-      <div class="section-head"><div><span class="eyebrow">Gestão</span><h1>Plano de ação</h1><p id="planGreeting">Este é o ambiente único para acompanhar e atualizar as solicitações.</p></div><div class="head-actions"><button id="importButton" class="ghost">Importar Excel</button><button id="exportButton" class="ghost">Exportar CSV</button><button id="refreshButton" class="ghost">Atualizar</button></div></div>
+      <div class="section-head"><div><span class="eyebrow">Gestão</span><h1>Plano de ação</h1><p id="planGreeting">Este é o ambiente único para acompanhar e atualizar as solicitações.</p></div><div class="head-actions"><button id="newIndependentPurchase" class="ghost" type="button">Nova compra interna</button><button id="importButton" class="ghost">Importar Excel</button><button id="exportButton" class="ghost">Exportar CSV</button><button id="refreshButton" class="ghost">Atualizar</button></div></div>
       <div id="scopeTabs" class="scope-tabs" role="tablist"><button data-scope="sector">Meu setor <span></span></button><button data-scope="mine">Minhas demandas <span></span></button><button data-scope="all" class="active">Geral <span></span></button><button data-scope="late">Atrasadas <span></span></button><button data-scope="done">Concluídas <span></span></button><button data-scope="inactive" class="hidden">Inativas <span></span></button></div>
       <div class="workspace-bar"><div class="filters card"><input id="search" placeholder="Pesquisar protocolo, demanda, solicitante ou responsável"><select id="filterStatus"></select><select id="filterNucleus"></select><select id="filterSector"></select><select id="filterPriority"></select></div><div class="view-switch" aria-label="Modo de visualização"><button data-mode="table" class="active">Tabela</button><button data-mode="kanban">Kanban</button></div></div>
       <div class="table-summary"><strong id="resultCount">0 demandas</strong><span id="viewHint">As alterações feitas na tabela são salvas automaticamente.</span></div>
@@ -105,6 +161,26 @@
         <label class="span-2">Descrição da demanda<textarea name="description" maxlength="1500" required></textarea></label>
         <label class="span-2">Resultado esperado<textarea name="expected_result" maxlength="800" required></textarea></label>
         <label class="span-2">Observações e andamento<textarea name="notes" maxlength="2000" placeholder="Registre decisões, retornos, links e andamento da demanda"></textarea></label>
+        <fieldset id="demandPurchase" class="span-2 hidden">
+          <legend>Compras · uso interno</legend>
+          <label>Envolve compra?
+            <select id="demandPurchaseDecision" disabled>
+              <option value="pending">A avaliar</option>
+              <option value="no">Não</option>
+              <option value="yes">Sim</option>
+            </select>
+          </label>
+          <button id="saveDemandPurchaseDecision" type="button" class="secondary" disabled>Salvar indicação</button>
+          <p id="demandPurchaseStatus" role="status"></p>
+          <ul id="linkedPurchaseDrafts" aria-label="Solicitações de compra vinculadas"></ul>
+          <div id="demandPurchaseActions" class="hidden">
+            <button id="newLinkedPurchase" type="button" class="secondary">Criar solicitação de compra</button>
+            <label>Solicitação existente
+              <select id="unlinkedPurchaseDraft"><option value="">Selecione um rascunho sem demanda</option></select>
+            </label>
+            <button id="linkPurchaseDraft" type="button" class="secondary" disabled>Vincular solicitação existente</button>
+          </div>
+        </fieldset>
         <div class="span-2 modal-actions"><button type="button" id="toggleDemandActive" class="danger-action hidden">Inativar demanda</button><button type="button" id="cancelEdit" class="secondary">Cancelar</button><button type="submit" class="primary">Salvar alterações</button></div>
       </form>
     </div>
@@ -142,8 +218,54 @@
   </div>
   <div id="convertIdeaModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="convertIdeaTitle"><div class="modal-panel convert-idea-panel"><div class="modal-head"><div><span class="eyebrow">Execução operacional</span><h2 id="convertIdeaTitle">Transformar ideia em projeto</h2></div><button id="closeConvertIdea" class="icon-button" aria-label="Fechar">×</button></div><form id="convertIdeaForm" class="edit-grid"><input name="idea_id" type="hidden"><label class="span-2">Nome do projeto<input name="project_name" maxlength="180" required></label><label class="span-2">Responsável pela implementação<select name="owner_id" required></select><small>Lista de usuários ativos cadastrados na plataforma.</small></label><label>Prazo inicial<input name="deadline" type="date" required></label><label>Prioridade<select name="priority" required></select></label><label class="span-2">Resultado esperado<textarea name="expected_result" maxlength="800" required></textarea></label><label class="span-2">Orientações para execução<textarea name="notes" maxlength="2000"></textarea></label><div class="span-2 modal-actions"><button type="button" id="cancelConvertIdea" class="secondary">Cancelar</button><button type="submit" class="primary">Criar demanda e vincular</button></div></form></div></div>
   <div id="toast" class="toast hidden"></div>
+  <dialog id="purchaseDraftDialog" aria-labelledby="purchaseDraftTitle">
+    <form id="purchaseDraftForm">
+      <h2 id="purchaseDraftTitle">Nova solicitação de compra</h2>
+      <p id="purchaseDraftOrigin"></p>
+      <label>Título da compra<input name="title" maxlength="150" required></label>
+      <label>Registrado por<input name="registered_by" readonly></label>
+      <label>Solicitante<input name="requester" maxlength="120" required></label>
+      <label>Motivo da necessidade<textarea name="purpose" maxlength="600" required></textarea></label>
+      <p id="purchaseDraftStatus" role="status"></p>
+      <div class="modal-actions">
+        <button id="cancelPurchaseDraft" class="secondary" type="button">Cancelar</button>
+        <button class="primary" type="submit">Salvar rascunho</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="purchaseRecordDialog" aria-labelledby="purchaseRecordTitle">
+    <h2 id="purchaseRecordTitle">Solicitação de compra</h2>
+    <div id="purchaseRecordContent"></div>
+    <p id="purchaseRecordStatus" role="status"></p>
+    <section aria-labelledby="purchaseItemsTitle">
+      <h3 id="purchaseItemsTitle">Itens da compra</h3>
+      <ul id="purchaseItemRows"></ul>
+      <form id="purchaseItemForm" class="edit-grid">
+        <label class="span-2">Descrição do item<input name="description" maxlength="180" required></label>
+        <label class="span-2">Ação ou atividade<input name="activity" maxlength="160" required></label>
+        <label>Quantidade<input name="quantity" type="number" min="0.001" step="0.001" required></label>
+        <label>Unidade<select name="unit" required></select></label>
+        <label>Data de necessidade<input name="needed_on" type="date" required></label>
+        <label>Valor estimado total (R$)<input name="estimate" type="number" min="0" step="0.01"></label>
+        <label>Natureza<select name="nature" required><option value="material">Material ou suprimento</option><option value="service">Serviço</option></select></label>
+        <label id="pilotCenterField" class="span-2 hidden">Centro de serviço ou apoio<select name="pilot_center"></select></label>
+        <label id="publishedCenterField" class="span-2">Centro e exercício<select name="publication" required></select></label>
+        <label id="publishedRubricField" class="span-2">Rubrica publicada<select name="rubric" required></select></label>
+        <div class="span-2"><button type="submit" class="primary" disabled>Adicionar item</button></div>
+      </form>
+    </section>
+    <form id="purchaseTriageForm" class="hidden">
+      <label>Parecer da triagem<textarea name="decision_note" maxlength="600" required></textarea></label>
+      <div class="modal-actions">
+        <button type="submit" value="triaged" class="primary">Concluir triagem</button>
+        <button type="submit" value="returned" class="secondary">Devolver para ajuste</button>
+        <button type="submit" value="rejected" class="secondary">Rejeitar</button>
+      </div>
+    </form>
+    <div class="modal-actions"><button id="submitPurchasePilot" type="button" class="primary hidden" disabled>Enviar para triagem</button><button id="purchaseSourceDemand" class="secondary" hidden>Abrir demanda de origem</button><button id="closePurchaseRecord" class="secondary">Fechar</button></div>
+  </dialog>
   <script src="config.js"></script>
-  <script src="app.js?v=notificacao-resend-20261027-2"></script>
+  <script src="app.js?v=portal-compras-piloto-20261111"></script>
   <script src="ideas.js?v=projeto-ideia-20260908-1"></script>
 </body>
 </html>
