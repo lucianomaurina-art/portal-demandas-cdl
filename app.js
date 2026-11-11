@@ -107,7 +107,7 @@ function openPurchasePrototype() {
   }
   status.textContent = '';
   frame.hidden = false;
-  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261111-drive';
+  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261111-kanban-anexos';
 }
 
 function closePurchasePrototype() {

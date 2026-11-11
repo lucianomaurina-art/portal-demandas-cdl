@@ -3,6 +3,7 @@
 *{box-sizing:border-box}body{margin:0;background:#f3f6fa;color:#172740;font:15px system-ui,sans-serif}header{background:#10243d;color:white;padding:20px max(5%,calc((100% - 1160px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}header strong{letter-spacing:.06em}header label{color:#cbd7e6}main{max-width:1200px;margin:auto;padding:32px 20px}h1{font-size:clamp(28px,5vw,42px);margin:0;letter-spacing:-.05em}h2{margin-top:0}p{line-height:1.55}nav,.row,.actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}nav{margin:22px 0;border-bottom:1px solid #d7e1eb;padding-bottom:12px}button,select,input,textarea{font:inherit;border:1px solid #b9c9da;border-radius:8px;padding:9px 12px}button{background:white;color:#172740;cursor:pointer;font-weight:650}button:hover{border-color:#0059b0}button.primary,nav button[aria-current]{background:#0759a9;color:white;border-color:#0759a9}.muted,small{color:#485d75}.tag{display:inline-block;background:#e7effc;color:#154781;border-radius:20px;padding:5px 10px;font-size:13px;font-weight:650}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}.card,section{background:white;border:1px solid #dae4ee;border-radius:14px;padding:20px;margin-bottom:12px}.card h3{margin:9px 0}.spread{justify-content:space-between}label.field{display:grid;gap:5px;margin-bottom:12px;font-weight:550}input,textarea,select{min-width:0;background:white;color:#172740}textarea{min-height:70px}dialog{width:min(820px,95vw);max-height:90vh;border:1px solid #d0dae5;border-radius:16px;padding:22px;color:#172740}dialog::backdrop{background:#10243d88}table{width:100%;border-collapse:collapse}td,th{text-align:left;border-bottom:1px solid #e0e7ef;padding:9px}.scroll{overflow:auto}.alert{background:#fff0ce;color:#573a00;padding:10px;border-radius:8px}.ok{background:#e4f5ec;color:#14553a}.meta{margin:8px 0 14px}.actions{margin:12px 0}.info{margin:10px 0}summary{cursor:pointer;font-weight:650}ol,ul{padding-left:22px}li{margin:6px 0}footer{color:#485d75;font-size:13px;margin-top:18px}[hidden]{display:none!important}
 .board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(240px,1fr);gap:12px;overflow:auto;padding-bottom:14px}.lane{background:#e7eef6;border-radius:12px;padding:12px;min-height:180px}.lane h3{font-size:15px;margin:0 0 12px}.lane .card{padding:12px}.lane .card button{width:100%;text-align:left}.itemsDialog{width:min(1500px,97vw)}.itemTable{min-width:1750px}.itemTable td{vertical-align:top}.itemTable input,.itemTable select,.itemTable textarea{width:100%;padding:8px}.itemTable textarea{min-height:42px;resize:vertical}.itemTable th:nth-child(1){width:18%}.itemTable th:nth-child(5),.itemTable th:nth-child(7){width:15%}.itemTable th:nth-child(8){width:14%}.itemTable input[type=number]{min-width:66px}
 @media print{header,main,dialog button{display:none!important}dialog[open]{position:static;width:100%;max-height:none;border:0}dialog::backdrop{background:white}.scroll{overflow:visible}}
+.card[draggable]{cursor:grab}.card[draggable]:active{cursor:grabbing}.lane.drop-target{outline:2px solid #1768a3;outline-offset:-2px}
 </style>
 <header><strong>CDL NOVO HAMBURGO</strong><label>Perfil de teste <select id="role"><option value="admin">Administrador · Luciano</option><option value="manager">Gestor</option><option value="user">Demandante · Colaborador</option></select></label></header>
 <main><div class="row spread"><div><h1>Solicitações de compras</h1><p class="muted">Portal de Demandas / Compras</p></div><button id="new" class="primary">+ Nova solicitação</button></div>
@@ -71,11 +72,82 @@ function renderBoard(){
  const groups=batches();
  $('view').innerHTML=draftList()+'<div class="row spread"><h2>Acompanhamento</h2><label>Etapa <select id="filter"><option value="">Todas</option>'+lanes.map(([k,v])=>'<option value="'+k+'" '+(filter===k?'selected':'')+'>'+v+'</option>').join('')+'</select></label></div><p class="muted">Cada cartão representa uma solicitação. Quando os itens estão em etapas diferentes, o cartão mostra a primeira pendência do fluxo.</p><div class="board">'+lanes.filter(([stage])=>!filter||filter===stage).map(([stage,label])=>{
   const cards=groups.filter(items=>batchStage(items)===stage);
-  return '<div class="lane"><h3>'+label+' · '+cards.length+'</h3>'+cards.map(items=>'<div class="card"><small>'+protocol(batchId(items[0]))+'</small><h3>'+esc(batchTitle(items))+'</h3><p class="muted">'+esc(batchSummary(items))+'</p><button data-batch="'+batchId(items[0])+'">Abrir solicitação</button></div>').join('')+'</div>';
+  return '<div class="lane" data-lane="'+stage+'"><h3>'+label+' · '+cards.length+'</h3>'+cards.map(items=>'<div class="card" draggable="true" data-drag-batch="'+batchId(items[0])+'"><small>'+protocol(batchId(items[0]))+'</small><h3>'+esc(batchTitle(items))+'</h3><p class="muted">'+esc(batchSummary(items))+'</p><button data-batch="'+batchId(items[0])+'">Abrir solicitação</button></div>').join('')+'</div>';
  }).join('')+'</div>';
+ wireBoardDrag();
  wireDrafts();
  $('filter').onchange=e=>{filter=e.target.value;render()};
  document.querySelectorAll('[data-batch]').forEach(b=>b.onclick=()=>batchDetails(Number(b.dataset.batch)));
+}
+function wireBoardDrag(){
+ let dragged;
+ const board=$('view').querySelector('.board');
+ board.ondragstart=e=>{
+  const card=e.target.closest('[data-drag-batch]');
+  if(!card)return;
+  dragged=Number(card.dataset.dragBatch);
+  e.dataTransfer.setData('text/plain',String(dragged));
+  e.dataTransfer.effectAllowed='move';
+ };
+ board.ondragend=()=>{
+  dragged=undefined;
+  board.querySelectorAll('.drop-target').forEach(lane=>lane.classList.remove('drop-target'));
+ };
+ board.ondragover=e=>{
+  const lane=e.target.closest('[data-lane]');
+  if(dragged===undefined||!lane)return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  board.querySelectorAll('[data-lane]').forEach(target=>target.classList.toggle('drop-target',target===lane));
+ };
+ board.ondragleave=e=>{
+  const lane=e.target.closest('[data-lane]');
+  if(lane&&!lane.contains(e.relatedTarget))lane.classList.remove('drop-target');
+ };
+ board.ondrop=e=>{
+  const lane=e.target.closest('[data-lane]');
+  if(dragged===undefined||!lane)return;
+  e.preventDefault();
+  const id=dragged;
+  board.ondragend();
+  const items=batches().find(group=>batchId(group[0])===id);
+  if(items)moveBoardCard(items,lane.dataset.lane);
+ };
+}
+function moveBoardCard(items,target){
+ const source=batchStage(items),id=batchId(items[0]);
+ if(source===target)return;
+ const current=items.filter(item=>item.status===source);
+ if(source==='analysis'&&target==='quote'){
+  for(const item of current){item.status='quote';item.returnToAnalysis=false;log(item,'Iniciou a cotação pelo Kanban.')}
+  save();note(protocol(id)+' movida para Orçamento.');
+  return;
+ }
+ const action={
+  'quote:review':'#submitBudgetReview',
+  'fix:review':'#submitBudgetReview',
+  'review:signature':'#batchApproval',
+  'review:fix':'#batchApproval',
+  'review:denied':'#batchApproval',
+  'review:approved':'#batchApproval',
+ }[source+':'+target];
+ if(action&&(source!=='review'||admin())){
+  batchDetails(id);
+  $('body').querySelector(action)?.scrollIntoView({block:'nearest'});
+  note('Confirme a etapa no formulário da solicitação.');
+  return;
+ }
+ if(source==='fix'&&target==='quote'){details(current[0]);return;}
+ if(source==='signature'&&target==='approved'&&admin()){
+  const order=ordersFor(current).find(order=>!order.signature);
+  if(order){orderDetails(order.id);return;}
+ }
+ if((source==='approved'&&target==='ordered')||(source==='ordered'&&target==='done')){
+  details(current[0]);
+  $('form')?.querySelector('input')?.focus();
+  return;
+ }
+ note('Movimentação indisponível para esta etapa ou perfil.');
 }
 const activityLabel=activity=>esc(activity||'Não informada');
 const legacyPurchaseReason=rows=>[...new Set(rows.map(r=>r.purchaseReason).filter(Boolean))].join(' · ');
@@ -88,10 +160,11 @@ function batchDetails(id){
  if(!items)return;
  const pending=items.filter(r=>r.status==='analysis');
  const reviews=items.filter(r=>r.status==='review');
- open(protocol(id)+' · '+batchTitle(items),registeredLine(items[0].registeredBy)+requesterLine(items[0].requester)+reasonLine(requestReason(id))+'<p>'+esc(batchSummary(items))+'</p><div class="scroll"><table><thead><tr><th>Item e quantidade</th><th>Centro</th><th>Ação ou atividade</th><th>Necessidade</th><th>Fornecedor</th><th>Etapa</th><th></th></tr></thead><tbody>'+items.map(r=>'<tr><td><strong>'+esc(r.title)+'</strong><br><small>'+esc(r.qty)+' '+esc(r.unit)+'</small></td><td>'+esc(r.center)+'</td><td>'+activityLabel(r.activity)+'</td><td>'+dateLabel(r.need)+'</td><td>'+esc(r.approval?.vendor||vendor(r.picked)?.name||vendor(r.preferred)?.name||'A definir no orçamento')+'</td><td><span class="tag">'+states[r.status]+'</span></td><td><button data-item="'+r.id+'">Abrir item</button></td></tr>').join('')+'</tbody></table></div>'+
+ open(protocol(id)+' · '+batchTitle(items),registeredLine(items[0].registeredBy)+requesterLine(items[0].requester)+reasonLine(requestReason(id))+'<p>'+esc(batchSummary(items))+'</p><div class="scroll"><table><thead><tr><th>Item e quantidade</th><th>Centro</th><th>Ação ou atividade</th><th>Necessidade</th><th>Fornecedor</th><th>Etapa</th><th></th></tr></thead><tbody>'+items.map(r=>'<tr><td><strong>'+esc(r.title)+'</strong><br><small>'+esc(r.qty)+' '+esc(r.unit)+'</small></td><td>'+esc(r.center)+'</td><td>'+activityLabel(r.activity)+'</td><td>'+dateLabel(r.need)+'</td><td>'+esc(r.approval?.vendor||vendor(r.picked)?.name||vendor(r.preferred)?.name||'A definir no orçamento')+'</td><td><span class="tag">'+states[r.status]+'</span></td><td><button data-item="'+r.id+'">Abrir item</button> <button data-attach-quote="'+r.id+'">Anexar orçamento</button></td></tr>').join('')+'</tbody></table></div>'+
  (items[0].demandId?'<div class="actions"><button id="backDemand">Abrir demanda '+esc(items[0].demandId)+'</button></div>':'')+quoteComparison(items)+quoteReviewPanel(items)+quoteSubmissionPanel(items)+orderLinks(items)+inactiveButton('solicitação')+(admin()&&reviews.length?approvalPanel(items,reviews):'')+
  (pending.length?'<form id="form" class="info">'+field('Observação para cotação (opcional)','<textarea name="reason"></textarea>')+'<button class="primary" value="quote">Iniciar cotação</button></form>':''));
  document.querySelectorAll('[data-item]').forEach(b=>b.onclick=()=>details(items.find(r=>r.id===Number(b.dataset.item))));
+ document.querySelectorAll('[data-attach-quote]').forEach(b=>b.onclick=()=>quoteAttachmentForm(items.find(r=>r.id===Number(b.dataset.attachQuote))));
  if($('backDemand'))$('backDemand').onclick=()=>demandDetails(items[0].demandId);
  wireOrders();
  wireInactive('request',id);
@@ -467,6 +540,52 @@ function quoteForm(r,q){
  });
 
 }
+function quoteAttachmentForm(r){
+ if(!visible().includes(r))return;
+ open('Anexar orçamento · '+r.title,'<form id="form">'+
+ field('Cotação vinculada','<select name="quote"><option value="">Documento complementar do item</option>'+r.quotes.map((q,i)=>'<option value="'+i+'">'+esc(vendor(q.vendor)?.name||'Fornecedor')+'</option>').join('')+'</select>')+
+ driveDocumentField('quotes','Link do orçamento no Drive')+
+ field('Arquivo (PDF, JPG ou PNG até 2 MB)','<input name="file" type="file" accept=".pdf,.jpg,.jpeg,.png">')+
+ '<p class="muted">Arquivos selecionados neste Kanban ficam no navegador. Para compartilhar, informe o link do arquivo no Drive.</p>'+
+ '<p id="attachmentError" role="alert"></p><button class="primary">Salvar anexo</button></form>');
+ const form=$('form'),button=form.querySelector('button.primary');
+ submit(async f=>{
+  const error=message=>{$('attachmentError').textContent=message};
+  const file=f.get('file'),raw=f.get('driveUrl').trim(),url=driveFileUrl(raw);
+  if(raw&&!url){error('Cole o link de um arquivo do Google Drive.');return;}
+  if(Boolean(url)===Boolean(file?.name)){error('Informe um link ou selecione um arquivo.');return;}
+  if(file?.name&&(!file.size||file.size>2_000_000||!/[.](pdf|jpe?g|png)$/i.test(file.name))){
+   error('Selecione um PDF, JPG ou PNG de até 2 MB.');return;
+  }
+  button.disabled=true;
+  let attachment={name:'Orçamento no Drive',url};
+  if(file?.name){
+   try{
+    const data=await new Promise((resolve,reject)=>{
+     const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);
+    });
+    attachment={name:file.name,data};
+   }catch{
+    if($('form')===form){button.disabled=false;error('Não foi possível ler o arquivo.');}
+    return;
+   }
+  }
+  if($('form')!==form||!$('modal').open||!visible().includes(r))return;
+  const index=f.get('quote'),quote=index===''?null:r.quotes[Number(index)];
+  const previous=r.quoteDocuments;
+  const previousAttachment=quote?.attachment;
+  if(quote&&!hasQuoteAttachment(quote))quote.attachment=attachment;
+  else r.quoteDocuments=[...(previous||[]),{attachment,supplier:quote?vendor(quote.vendor)?.name:''}];
+  log(r,'Anexou documento de orçamento.');
+  try{localStorage.setItem(key,JSON.stringify(db));}catch{
+   r.quoteDocuments=previous;
+   if(quote)quote.attachment=previousAttachment;
+   r.log.shift();
+   button.disabled=false;error('Não foi possível salvar o anexo no navegador.');return;
+  }
+  render();details(r);note('Orçamento anexado.');
+ });
+}
 function details(r){
  if(!visible().includes(r))return;
  const analysis=r.status==='analysis',edit=editable(r),review=admin()&&r.status==='review',picked=r.quotes.find(q=>q.vendor===r.picked);
@@ -475,6 +594,8 @@ function details(r){
  open(code(r)+' · '+r.title,registeredLine(r.registeredBy)+requesterLine(r.requester)+reasonLine(requestReason(batchId(r)))+'<p><strong>Ação ou atividade</strong> · '+activityLabel(r.activity)+'</p><p class="meta"><span class="tag">'+states[r.status]+'</span> · '+esc(r.center)+' · '+esc(r.category)+'</p><p>'+esc(r.qty)+' '+esc(r.unit)+' · Data necessária '+esc(r.need.split('-').reverse().join('/'))+'<br>'+esc(r.reason)+'</p><p class="muted">Fornecedor homologado indicado na abertura · '+esc(vendor(r.preferred)?.name||'A definir no orçamento')+'</p>'+approval+
  '<button id="backBatch">Voltar à solicitação</button>'+orderLinks([r])+budgetInfo(r)+quoteValueSummary(r)+
  (analysis?'<form id="form" class="info">'+field('Observação para cotação (opcional)','<textarea name="reason"></textarea>')+'<div class="actions"><button class="primary" value="quote">Iniciar cotação</button></div></form>':'')+
+ '<div class="actions"><button id="attachQuote">Anexar orçamento</button></div>'+
+ (r.quoteDocuments?.length?'<ul>'+r.quoteDocuments.map(doc=>'<li>'+(doc.supplier?esc(doc.supplier)+' · ':'')+quoteAttachmentLink(doc)+'</li>').join('')+'</ul>':'')+
  '<h3>Cotações ('+r.quotes.length+' de '+required(r)+' exigidas)</h3><div class="scroll"><table><thead><tr><th>Fornecedor</th><th>Bruto</th><th>Desconto</th><th>Final</th><th>Prazo e pagamento</th><th>Comprovante</th><th>Validação na categoria</th></tr></thead><tbody>'+r.quotes.map(q=>'<tr><td>'+esc(vendor(q.vendor).name)+(q.vendor===r.picked?' · Indicado':'')+'</td><td>'+cash(q.gross??q.price)+'</td><td>'+cash(q.discount??0)+'</td><td>'+cash(q.price)+(q===cheapest?'<br><small>Menor custo</small>':'')+'</td><td>'+esc(q.days)+' d · '+esc(paymentLabel(q))+(q.wholesale?'<br><small>'+esc(q.wholesale)+'</small>':'')+'</td><td>'+esc(q.evidence)+'<br>'+quoteAttachmentLink(q)+'</td><td>'+esc(validation(q.vendor,r.category))+(admin()&&(edit||review)?' <button data-validate="'+q.vendor+'">Avaliar</button>':'')+(edit&&!r.returnToAnalysis?' <button data-quote="'+q.vendor+'">Editar cotação</button>':'')+'</td></tr>').join('')+'</tbody></table></div>'+
  (edit?'<div class="actions"><button id="editRequest">Editar item</button>'+(!r.returnToAnalysis?'<button id="addVendor">Cadastrar fornecedor</button><button id="addQuote">Adicionar cotação</button>':'')+'</div>':'')+
  (edit&&r.status==='fix'&&r.returnToAnalysis?'<div class="actions"><button class="primary" id="retryAnalysis">Voltar à cotação</button></div>':'')+
@@ -486,6 +607,7 @@ function details(r){
  (fiscalAllowed(r)?fiscalPanel(r):'')+
  '<details class="info"><summary>Histórico</summary><ul>'+r.log.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></details>');
  $('backBatch').onclick=()=>batchDetails(batchId(r));
+ $('attachQuote').onclick=()=>quoteAttachmentForm(r);
  wireOrders();
  if($('linkBudget'))$('linkBudget').onclick=()=>linkLegacyBudget(r);
  wireFiscal(r);
