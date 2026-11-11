@@ -59,3 +59,13 @@ A etapa seguinte é conectar itens e ordens à versão publicada do pacote OBZ,
 com autorização e saldo por rubrica. A integração de anexos com o Google Drive
 também depende de autorização no servidor. Antes da publicação, testar as
 migrações, os perfis autorizados e os fluxos existentes em homologação.
+
+## Integração da interface — revisão sobre base atualizada
+
+- O acesso interno é organizado em quatro cartões na página inicial.
+- A rota `#/compras` incorpora em iframe o Kanban de demonstração `compras/index.html`, cuja persistência ainda utiliza armazenamento local do navegador.
+- A rota `#/compras-triagem` utiliza as tabelas de solicitações, itens e cotações no Supabase para operações compartilhadas.
+- A página inclui uma distinção explícita entre as duas experiências, para evitar o uso equivocado do protótipo como processo oficial.
+- A navegação após login retorna corretamente à rota de Compras solicitada, inclusive `#/compras-triagem`.
+- A última atualização de Compras em `main` alterou uploads e esquema; esta revisão foi criada a partir da versão mais recente disponível naquele momento e não altera o Kanban nem suas funções.
+- A integração não é publicada até a confirmação da atualização final do módulo de Compras e homologação dos percursos completos.
