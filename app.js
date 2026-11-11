@@ -193,6 +193,61 @@ async function changePurchaseStatus(row,status,note=null) {
   if (row.demand_id && $('#editForm').elements.id.value===row.demand_id) loadPurchaseLinks(row.demand_id,demandPurchaseRequest);
 }
 
+function renderPurchaseQuotes(list, context, editable) {
+  list.querySelectorAll('[data-purchase-quotes]').forEach(async panel => {
+    const itemId = panel.dataset.purchaseQuotes;
+    const {data, error} = await db.from('purchase_quote_documents')
+      .select('supplier_name,final_cents,file_name,drive_id')
+      .eq('item_id', itemId).order('supplier_name');
+    if (purchaseItemContext !== context || !panel.isConnected) return;
+    const results = panel.querySelector('ul');
+    if (error) {
+      results.innerHTML = '<li>Não foi possível carregar os anexos de cotação.</li>';
+      return;
+    }
+    results.innerHTML = data.map(quote => {
+      const url = 'https://drive.google.com/file/d/' + encodeURIComponent(quote.drive_id) + '/view';
+      return `<li>${esc(quote.supplier_name)} · ${esc(purchaseMoney(quote.final_cents / 100))}
+        · <a href="${url}" target="_blank" rel="noopener noreferrer">${esc(quote.file_name)}</a></li>`;
+    }).join('');
+    if (!editable) return;
+    const form = panel.querySelector('form');
+    const status = panel.querySelector('[role="status"]');
+    const button = form.querySelector('button');
+    let uploadId = crypto.randomUUID();
+    form.onchange = () => { uploadId = crypto.randomUUID(); };
+    button.disabled = false;
+    form.onsubmit = async event => {
+      event.preventDefault();
+      const payload = new FormData(form);
+      const gross = Math.round(Number(payload.get('gross_amount')) * 100);
+      const discount = Math.round(Number(payload.get('discount_amount')) * 100);
+      if (!Number.isSafeInteger(gross) || !Number.isSafeInteger(discount) || gross <= discount || discount < 0) {
+        status.textContent = 'O desconto deve ser menor que o valor bruto.';
+        return;
+      }
+      payload.delete('gross_amount');
+      payload.delete('discount_amount');
+      payload.set('item_id', itemId);
+      payload.set('upload_id', uploadId);
+      payload.set('gross_cents', gross);
+      payload.set('discount_cents', discount);
+      const fields = form.querySelector('fieldset');
+      fields.disabled = true;
+      status.textContent = 'Enviando cotação ao Drive…';
+      const {error} = await db.functions.invoke('compras-cotacao-drive', {body: payload});
+      if (purchaseItemContext !== context || !panel.isConnected) return;
+      if (error) {
+        const details = await error.context?.json?.().catch(() => null);
+        fields.disabled = false;
+        status.textContent = details?.error || 'Não foi possível enviar a cotação. Tente novamente.';
+        return;
+      }
+      await loadPurchaseItems(context.row);
+    };
+  });
+}
+
 async function loadPurchaseItems(row) {
   const context = {row,publications:[],centers:[],rubricsRequest:0};
   purchaseItemContext = context;
@@ -219,7 +274,21 @@ async function loadPurchaseItems(row) {
   list.innerHTML = items.data.map(item => `<li><strong>${esc(item.description)}</strong> · ${esc(item.quantity)} ${esc(item.unit)} · ${esc(item.activity)}<br>
     ${item.nature==='service'?'Serviço':'Material'} · ${esc(item.center_code ? (item.purchase_cost_centers?.name||item.center_code)+' · Piloto 2026' : (item.purchase_budget_lines?.description||'Rubrica')+' · Versão '+item.publication_id)}
     · Estimativa ${esc(item.estimated_amount == null ? 'Não informada' : purchaseMoney(item.estimated_amount))}
-    ${editable?'<button type="button" class="secondary" data-remove-purchase-item="'+item.id+'">Remover item</button>':''}</li>`).join('');
+    ${editable?'<button type="button" class="secondary" data-remove-purchase-item="'+item.id+'">Remover item</button>':''}<details data-purchase-quotes="${item.id}">
+      <summary>Cotações e anexos</summary>
+      <ul></ul>
+      ${editable ? `<form>
+        <fieldset>
+          <label>Fornecedor <input name="supplier_name" required maxlength="180"></label>
+          <label>Valor bruto (R$) <input name="gross_amount" type="number" min="0.01" step="0.01" required></label>
+          <label>Desconto (R$) <input name="discount_amount" type="number" min="0" step="0.01" value="0" required></label>
+          <label>Arquivo (PDF, JPG ou PNG até 2 MB) <input name="file" type="file" accept=".pdf,.jpg,.jpeg,.png" required></label>
+          <button type="submit" disabled>Anexar cotação</button>
+        </fieldset>
+        <p role="status"></p>
+      </form>` : ''}
+    </details></li>`).join('');
+  renderPurchaseQuotes(list, context, editable);
   list.querySelectorAll('[data-remove-purchase-item]').forEach(button => {
     button.onclick=async()=>{
       if(purchaseItemContext!==context||!editablePurchase(row)||!confirm('Remover este item do rascunho?'))return;
