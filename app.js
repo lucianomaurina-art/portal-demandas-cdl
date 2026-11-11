@@ -13,7 +13,7 @@ fillSelect($('[name=nucleus]'),NUCLEI);fillSelect($('[name=sector]'),SECTORS);fi
 fillSelect($('#filterStatus'),STATUSES,'Todos os status');fillSelect($('#filterNucleus'),NUCLEI,'Todos os núcleos');fillSelect($('#filterPriority'),PRIORITIES,'Todas as prioridades');
 fillSelect($('#filterSector'),SECTORS,'Todos os setores');
 fillSelect($('#editForm [name=nucleus]'),NUCLEI);fillSelect($('#editForm [name=sector]'),SECTORS);fillSelect($('#editForm [name=priority]'),PRIORITIES);fillSelect($('#editForm [name=status]'),STATUSES);
-function route(){const id=location.hash.replace('#/','')||'inicio';$$('.view').forEach(v=>v.classList.add('hidden'));if(!configured){$('#setup').classList.remove('hidden');return}const protectedView=['plano','ideias','dashboard','usuarios','compras'].includes(id);if(protectedView&&!session){if(id==='compras')postLoginRoute='#/compras';location.hash='#/login';return}if(id==='usuarios'&&profile?.role!=='admin'){location.hash='#/plano';return}$('#'+(document.getElementById(id)?id:'inicio')).classList.remove('hidden');if(id==='plano')loadWorkspace().then(()=>{if(pendingDemandOpen&&location.hash==='#/plano'){const demandId=pendingDemandOpen;pendingDemandOpen=null;openEdit(demandId)}});if(id==='compras')loadPurchaseModule();if(id==='ideias'&&typeof loadIdeas==='function')loadIdeas();if(id==='dashboard')loadDemands(true);if(id==='usuarios')loadProfiles()}
+function route(){const id=location.hash.replace('#/','')||'inicio';$$('.view').forEach(v=>v.classList.add('hidden'));if(!configured){$('#setup').classList.remove('hidden');return}const protectedView=['plano','ideias','dashboard','usuarios','compras','compras-triagem'].includes(id);if(protectedView&&!session){if(id==='compras')postLoginRoute='#/compras';location.hash='#/login';return}if(id==='usuarios'&&profile?.role!=='admin'){location.hash='#/plano';return}$('#'+(document.getElementById(id)?id:'inicio')).classList.remove('hidden');if(id==='plano')loadWorkspace().then(()=>{if(pendingDemandOpen&&location.hash==='#/plano'){const demandId=pendingDemandOpen;pendingDemandOpen=null;openEdit(demandId)}});if(id==='compras')openPurchasePrototype();else closePurchasePrototype();if(id==='compras-triagem')loadPurchaseModule();if(id==='ideias'&&typeof loadIdeas==='function')loadIdeas();if(id==='dashboard')loadDemands(true);if(id==='usuarios')loadProfiles()}
 function setAuthUI(){$$('.admin-only').forEach(x=>x.classList.toggle('hidden',!session));$('#usersNav').classList.toggle('hidden',!session||profile?.role!=='admin');$('#notificationCenter').classList.toggle('hidden',!session);$('#authButton').textContent=session?'Sair':'Área administrativa'}
 window.addEventListener('hashchange',route);
 $('#authButton').onclick=async()=>{if(session){stopNotifications();await db.auth.signOut();session=null;setAuthUI();location.hash='#/inicio'}else location.hash='#/login'};
@@ -97,6 +97,25 @@ function openPurchaseRecord(row) {
   loadPurchaseItems(row);
 }
 
+function openPurchasePrototype() {
+  const frame = $('#purchasePrototypeFrame');
+  const status = $('#purchasePrototypeStatus');
+  if (!session || !profile?.active) {
+    closePurchasePrototype();
+    status.textContent = 'Esta área exige um perfil interno ativo.';
+    return;
+  }
+  status.textContent = '';
+  frame.hidden = false;
+  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261111-completo';
+}
+
+function closePurchasePrototype() {
+  const frame = $('#purchasePrototypeFrame');
+  if (frame.hasAttribute('src')) frame.removeAttribute('src');
+  frame.hidden = true;
+}
+
 async function loadPurchaseModule() {
   const request = ++purchaseModuleRequest;
   const status = $('#purchaseModuleStatus'), rows = $('#purchaseModuleRows');
@@ -109,7 +128,7 @@ async function loadPurchaseModule() {
   }
   status.textContent = 'Carregando solicitações…';
   const {data,error} = await db.from('purchase_requests').select(purchaseRecordFields).order('id', {ascending:false}).limit(100);
-  if (request !== purchaseModuleRequest || location.hash !== '#/compras' || !session || !profile?.active) return;
+  if (request !== purchaseModuleRequest || location.hash !== '#/compras-triagem' || !session || !profile?.active) return;
   if (error) {
     status.textContent = 'Não foi possível consultar Compras. Verifique se as migrações foram aplicadas no ambiente de homologação.';
     return;
@@ -135,7 +154,7 @@ async function loadPurchasePublicationControls() {
   panel.classList.add('hidden');
   if (!session || !profile?.active || profile.role !== 'admin') return;
   const {data,error} = await db.from('obz_centers').select('id,code,name,fiscal_year').eq('status','approved').order('fiscal_year',{ascending:false}).order('code');
-  if (!session || !profile?.active || profile.role !== 'admin' || location.hash !== '#/compras') return;
+  if (!session || !profile?.active || profile.role !== 'admin' || location.hash !== '#/compras-triagem') return;
   panel.classList.remove('hidden');
   const status = $('#purchasePublishStatus');
   purchasePublishForm.elements.center.replaceChildren(new Option('Selecione',''));
@@ -170,7 +189,7 @@ async function changePurchaseStatus(row,status,note=null) {
   if (purchaseItemContext!==context || !purchaseRecordDialog.open) return;
   if (error || !data) { $('#purchaseRecordStatus').textContent=error?.message || 'A etapa mudou. Reabra a solicitação.'; return; }
   openPurchaseRecord(data);
-  if (location.hash==='#/compras') loadPurchaseModule();
+  if (location.hash==='#/compras-triagem') loadPurchaseModule();
   if (row.demand_id && $('#editForm').elements.id.value===row.demand_id) loadPurchaseLinks(row.demand_id,demandPurchaseRequest);
 }
 
@@ -352,7 +371,7 @@ purchaseDraftForm.onsubmit = async event => {
   purchaseDialog.close();
   toast(purchaseProtocol(result.data.id) + ' criada como rascunho.');
   if (demandId && request === demandPurchaseRequest) await loadPurchaseLinks(demandId, request);
-  if (location.hash === '#/compras') await loadPurchaseModule();
+  if (location.hash === '#/compras-triagem') await loadPurchaseModule();
 };
 
 unlinkedPurchase.onchange = () => { linkPurchase.disabled = !unlinkedPurchase.value; };
