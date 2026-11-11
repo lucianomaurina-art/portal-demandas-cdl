@@ -1,0 +1,28 @@
+name: Portal unificado — verificação de regressão
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'portal-modules.css'
+      - 'tests/portal-unificado.test.mjs'
+      - '.github/workflows/portal-unificado-smoke.yml'
+  push:
+    branches:
+      - feature/portal-unificado-home-2027
+    paths:
+      - 'index.html'
+      - 'portal-modules.css'
+      - 'tests/portal-unificado.test.mjs'
+      - '.github/workflows/portal-unificado-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verificar rotas, cartões e estilos isolados
+        run: node --test tests/portal-unificado.test.mjs

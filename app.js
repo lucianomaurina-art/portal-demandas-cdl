@@ -5,7 +5,7 @@ const NUCLEI=['CDL Mulher','CDL Jovem','CDL Innova','CDL Cultura','Caminhos de H
 const SECTORS=['Marketing e Comunicação','Comercial','Relacionamento e Atendimento','Financeiro e Administrativo','TI, CRM e Automação','Eventos','Gestão Executiva','Presidência e Conselho','Outro'];
 const PRIORITIES=['Urgente','Alta','Média','Baixa'];
 const STATUSES=['Não iniciado','Em andamento','Aguardando retorno','Concluído','Cancelado'];
-let session=null, demands=[], profile=null, assignmentUsers=[], publicAssignmentUsers=[], activeScope='all', viewMode='table',notificationTimer=null,notifications=[],soundEnabled=false;
+let postLoginRoute=null, pendingDemandOpen=null, session=null, demands=[], profile=null, assignmentUsers=[], publicAssignmentUsers=[], activeScope='all', viewMode='table',notificationTimer=null,notifications=[],soundEnabled=false;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function fillSelect(el,items,first='Selecione'){el.innerHTML=`<option value="">${first}</option>`+items.map(v=>`<option>${esc(v)}</option>`).join('')}
@@ -13,7 +13,7 @@ fillSelect($('[name=nucleus]'),NUCLEI);fillSelect($('[name=sector]'),SECTORS);fi
 fillSelect($('#filterStatus'),STATUSES,'Todos os status');fillSelect($('#filterNucleus'),NUCLEI,'Todos os núcleos');fillSelect($('#filterPriority'),PRIORITIES,'Todas as prioridades');
 fillSelect($('#filterSector'),SECTORS,'Todos os setores');
 fillSelect($('#editForm [name=nucleus]'),NUCLEI);fillSelect($('#editForm [name=sector]'),SECTORS);fillSelect($('#editForm [name=priority]'),PRIORITIES);fillSelect($('#editForm [name=status]'),STATUSES);
-function route(){const id=location.hash.replace('#/','')||'inicio';$$('.view').forEach(v=>v.classList.add('hidden'));if(!configured){$('#setup').classList.remove('hidden');return}const protectedView=['plano','ideias','dashboard','usuarios'].includes(id);if(protectedView&&!session){location.hash='#/login';return}if(id==='usuarios'&&profile?.role!=='admin'){location.hash='#/plano';return}$('#'+(document.getElementById(id)?id:'inicio')).classList.remove('hidden');if(id==='plano')loadWorkspace();if(id==='ideias'&&typeof loadIdeas==='function')loadIdeas();if(id==='dashboard')loadDemands(true);if(id==='usuarios')loadProfiles()}
+function route(){const id=location.hash.replace('#/','')||'inicio';$$('.view').forEach(v=>v.classList.add('hidden'));if(!configured){$('#setup').classList.remove('hidden');return}const protectedView=['plano','ideias','dashboard','usuarios','compras'].includes(id);if(protectedView&&!session){if(id==='compras')postLoginRoute='#/compras';location.hash='#/login';return}if(id==='usuarios'&&profile?.role!=='admin'){location.hash='#/plano';return}$('#'+(document.getElementById(id)?id:'inicio')).classList.remove('hidden');if(id==='plano')loadWorkspace().then(()=>{if(pendingDemandOpen&&location.hash==='#/plano'){const demandId=pendingDemandOpen;pendingDemandOpen=null;openEdit(demandId)}});if(id==='compras')loadPurchaseModule();if(id==='ideias'&&typeof loadIdeas==='function')loadIdeas();if(id==='dashboard')loadDemands(true);if(id==='usuarios')loadProfiles()}
 function setAuthUI(){$$('.admin-only').forEach(x=>x.classList.toggle('hidden',!session));$('#usersNav').classList.toggle('hidden',!session||profile?.role!=='admin');$('#notificationCenter').classList.toggle('hidden',!session);$('#authButton').textContent=session?'Sair':'Área administrativa'}
 window.addEventListener('hashchange',route);
 $('#authButton').onclick=async()=>{if(session){stopNotifications();await db.auth.signOut();session=null;setAuthUI();location.hash='#/inicio'}else location.hash='#/login'};
@@ -21,7 +21,7 @@ async function loadPublicAssignmentUsers(){const select=$('#demandForm [name=own
 function renderPublicAssignmentUsers(){const form=$('#demandForm'),sector=form.elements.sector.value,select=form.elements.owner_id,rows=publicAssignmentUsers.filter(x=>x.sector===sector);select.disabled=!sector||!rows.length;select.innerHTML=!sector?'<option value="">Selecione primeiro o setor de destino</option>':rows.length?'<option value="">Selecione o responsável</option>'+rows.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join(''):'<option value="">Nenhum usuário ativo cadastrado neste setor</option>'}
 $('#demandForm [name=sector]').addEventListener('change',renderPublicAssignmentUsers);
 $('#demandForm').onsubmit=async e=>{e.preventDefault();const btn=$('#sendButton'),msg=$('#formMessage'),f=Object.fromEntries(new FormData(e.currentTarget));if(!f.owner_id){msg.className='message error';msg.textContent='Selecione um responsável ativo do setor escolhido.';return}btn.disabled=true;msg.className='message';msg.textContent='Registrando...';const {data,error}=await db.rpc('submit_demand_with_assignee',{p_requester:f.requester,p_email:f.email||null,p_nucleus:f.nucleus,p_sector:f.sector,p_owner_id:f.owner_id,p_description:f.description,p_expected_result:f.expected_result,p_deadline:f.deadline,p_priority:f.priority,p_notes:f.notes||null});if(error){btn.disabled=false;msg.classList.add('error');msg.textContent='Não foi possível registrar. '+error.message;return}msg.textContent='Demanda registrada. Notificando o responsável...';const {error:notificationError}=await db.functions.invoke('notificar-nova-demanda',{body:{protocol:data}});let notificationReason='';if(notificationError?.context){try{const detail=await notificationError.context.json();notificationReason=detail?.error||''}catch(_e){}}btn.disabled=false;msg.classList.add('success');msg.textContent=notificationError?`Demanda registrada com sucesso. Protocolo ${data}. O e-mail não foi enviado${notificationReason?`: ${notificationReason}`:'.'}`:`Demanda registrada com sucesso. Protocolo ${data}. O responsável foi notificado por e-mail.`;if(notificationError)console.error('Falha ao notificar responsável:',notificationReason||notificationError);e.currentTarget.reset();$('[name=priority]').value='Média';renderPublicAssignmentUsers()};
-$('#loginForm').onsubmit=async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget)),msg=$('#loginMessage');msg.textContent='Entrando...';const {data,error}=await db.auth.signInWithPassword({email:f.email,password:f.password});if(error){msg.className='message error';msg.textContent='E-mail ou senha inválidos.';return}session=data.session;await loadProfile();setAuthUI();location.hash='#/plano'};
+$('#loginForm').onsubmit=async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.currentTarget)),msg=$('#loginMessage');msg.textContent='Entrando...';const {data,error}=await db.auth.signInWithPassword({email:f.email,password:f.password});if(error){msg.className='message error';msg.textContent='E-mail ou senha inválidos.';return}session=data.session;await loadProfile();setAuthUI();const destination=postLoginRoute||'#/plano';postLoginRoute=null;location.hash=destination};
 async function loadProfile(){profile=null;if(!session)return;const {data,error}=await db.from('profiles').select('name,sector,role,active').eq('id',session.user.id).maybeSingle();if(!error&&data?.active!==false)profile=data;activeScope=profile?.role==='admin'?'all':profile?.sector?'sector':'all';if(profile?.role==='admin')clearDemandFilters();$('#planGreeting').textContent=profile?.role==='admin'?`Olá, ${profile.name||'administrador'}. Você está na visão Geral e pode acompanhar todas as demandas da CDL.`:profile?.name?`Olá, ${profile.name}. Acompanhe as demandas do seu setor e da CDL.`:'Acompanhe e atualize as solicitações em um único ambiente.';startNotifications()}
 async function loadWorkspace(){await loadProfile();await loadAssignmentUsers();await loadDemands()}
 async function loadAssignmentUsers(){const {data,error}=await db.rpc('list_active_assignment_users');if(error){assignmentUsers=[];toast('Não foi possível carregar os responsáveis cadastrados.');return}assignmentUsers=data||[]}
@@ -55,6 +55,62 @@ const unlinkedPurchase = $('#unlinkedPurchaseDraft');
 const linkPurchase = $('#linkPurchaseDraft');
 const purchaseDialog = $('#purchaseDraftDialog');
 const purchaseDraftForm = $('#purchaseDraftForm');
+const purchaseRecordDialog = $('#purchaseRecordDialog');
+const purchaseRecordFields = 'id,title,requester,purpose,registered_name,demand_id,demands(protocol)';
+let purchaseModuleRequest = 0;
+
+function openPurchaseRecord(row) {
+  if (!session || !profile?.active) return;
+  $('#purchaseRecordTitle').textContent = purchaseProtocol(row.id) + ' · ' + row.title;
+  $('#purchaseRecordContent').innerHTML = `<p><strong>Situação</strong> · Rascunho</p>
+    <p><strong>Registrado por</strong> · ${esc(row.registered_name || 'Não informado')}</p>
+    <p><strong>Solicitante</strong> · ${esc(row.requester || 'Não informado')}</p>
+    <p><strong>Motivo da necessidade</strong> · ${esc(row.purpose || 'Não informado')}</p>
+    <p><strong>Origem</strong> · ${esc(row.demands?.protocol || (row.demand_id ? 'Demanda vinculada' : 'Compra independente'))}</p>`;
+  $('#purchaseRecordStatus').textContent = '';
+  const source = $('#purchaseSourceDemand');
+  source.hidden = !row.demand_id;
+  source.onclick = () => {
+    purchaseRecordDialog.close();
+    if (location.hash === '#/plano' && demands.some(d => d.id === row.demand_id)) {
+      openEdit(row.demand_id);
+      return;
+    }
+    pendingDemandOpen = row.demand_id;
+    if (location.hash === '#/plano') route(); else location.hash = '#/plano';
+  };
+  if (!purchaseRecordDialog.open) purchaseRecordDialog.showModal();
+}
+
+async function loadPurchaseModule() {
+  const request = ++purchaseModuleRequest;
+  const status = $('#purchaseModuleStatus'), rows = $('#purchaseModuleRows');
+  const create = $('#newPurchaseFromModule');
+  rows.replaceChildren();
+  create.disabled = true;
+  if (!session || !profile?.active) {
+    status.textContent = 'Esta área exige um perfil interno ativo.';
+    return;
+  }
+  status.textContent = 'Carregando solicitações…';
+  const {data,error} = await db.from('purchase_requests').select(purchaseRecordFields).order('id', {ascending:false}).limit(100);
+  if (request !== purchaseModuleRequest || location.hash !== '#/compras' || !session || !profile?.active) return;
+  if (error) {
+    status.textContent = 'Não foi possível consultar Compras. Verifique se as migrações foram aplicadas no ambiente de homologação.';
+    return;
+  }
+  create.disabled = false;
+  status.textContent = data.length ? `${data.length} rascunho(s) exibido(s)` : 'Nenhuma solicitação cadastrada.';
+  rows.innerHTML = data.map(row => `<article class="entry-card"><div><strong>${purchaseProtocol(row.id)} · ${esc(row.title)}</strong>
+    <p>${esc(row.demands?.protocol || (row.demand_id ? 'Demanda vinculada' : 'Compra independente'))} · Rascunho</p>
+    <button class="secondary" type="button" data-purchase-record="${row.id}">Abrir solicitação</button></div></article>`).join('');
+  rows.querySelectorAll('[data-purchase-record]').forEach(button => {
+    button.onclick = () => openPurchaseRecord(data.find(row => String(row.id) === button.dataset.purchaseRecord));
+  });
+}
+$('#refreshPurchases').onclick = loadPurchaseModule;
+$('#newPurchaseFromModule').onclick = () => openPurchaseDraft(null);
+$('#closePurchaseRecord').onclick = () => purchaseRecordDialog.close();
 let purchaseDraftDemand = null;
 let savedPurchaseDecision = 'pending';
 
@@ -63,7 +119,7 @@ function purchaseProtocol(id) {
 }
 
 async function loadPurchaseLinks(demandId, request) {
-  const linked = db.from('purchase_requests').select('id,title').eq('demand_id', demandId).order('id');
+  const linked = db.from('purchase_requests').select(purchaseRecordFields).eq('demand_id', demandId).order('id');
   const available = savedPurchaseDecision === 'yes'
     ? db.from('purchase_requests').select('id,title').is('demand_id', null).order('id', {ascending:false}).limit(100)
     : Promise.resolve({data: []});
@@ -74,8 +130,11 @@ async function loadPurchaseLinks(demandId, request) {
     return;
   }
   purchaseList.innerHTML = links.data.map(row =>
-    `<li><strong>${purchaseProtocol(row.id)}</strong> · ${esc(row.title)} · Rascunho</li>`
+    `<li><strong>${purchaseProtocol(row.id)}</strong> · ${esc(row.title)} · Rascunho <button type="button" class="secondary" data-linked-purchase="${row.id}">Abrir solicitação</button></li>`
   ).join('');
+  purchaseList.querySelectorAll('[data-linked-purchase]').forEach(button => {
+    button.onclick = () => openPurchaseRecord(links.data.find(row => String(row.id) === button.dataset.linkedPurchase));
+  });
   if (links.data.length) {
     purchaseStatus.textContent = links.data.length + ' solicitação(ões) de compra vinculada(s).';
   }
@@ -89,6 +148,7 @@ function openPurchaseDraft(demand) {
   if (!session || !profile?.active) return;
   purchaseDraftDemand = demand;
   purchaseDraftForm.reset();
+  purchaseDraftForm.elements.registered_by.value = profile.name || '';
   purchaseDraftForm.elements.title.value = demand?.expected_result?.trim().slice(0, 150) ?? '';
   $('#purchaseDraftOrigin').textContent = demand ? 'Demanda de origem ' + demand.protocol : 'Compra interna sem demanda de origem';
   $('#purchaseDraftStatus').textContent = '';
@@ -108,13 +168,15 @@ purchaseDialog.addEventListener('cancel', event => {
 purchaseDraftForm.onsubmit = async event => {
   event.preventDefault();
   const title = purchaseDraftForm.elements.title.value.trim();
-  if (!title || !session || !profile?.active) return;
+  const requester = purchaseDraftForm.elements.requester.value.trim();
+  const purpose = purchaseDraftForm.elements.purpose.value.trim();
+  if (!title || !requester || !purpose || !session || !profile?.active) return;
   const demandId = purchaseDraftDemand?.id;
   const request = demandPurchaseRequest;
   const submit = purchaseDraftForm.querySelector('[type=submit]');
   const cancel = $('#cancelPurchaseDraft');
   submit.disabled = cancel.disabled = true;
-  const result = await db.from('purchase_requests').insert({title, demand_id: demandId ?? null}).select('id').single();
+  const result = await db.from('purchase_requests').insert({title, requester, purpose, demand_id: demandId ?? null}).select('id').single();
   submit.disabled = cancel.disabled = false;
   if (result.error) {
     $('#purchaseDraftStatus').textContent = 'Não foi possível salvar o rascunho. Confira a indicação de compra e tente novamente.';
@@ -123,6 +185,7 @@ purchaseDraftForm.onsubmit = async event => {
   purchaseDialog.close();
   toast(purchaseProtocol(result.data.id) + ' criada como rascunho.');
   if (demandId && request === demandPurchaseRequest) await loadPurchaseLinks(demandId, request);
+  if (location.hash === '#/compras') await loadPurchaseModule();
 };
 
 unlinkedPurchase.onchange = () => { linkPurchase.disabled = !unlinkedPurchase.value; };

@@ -3,6 +3,9 @@ begin;
 create table public.purchase_requests (
   id bigint generated always as identity primary key,
   title text not null check (char_length(btrim(title)) between 1 and 150),
+  requester text not null check (char_length(btrim(requester)) between 1 and 120),
+  purpose text not null check (char_length(btrim(purpose)) between 1 and 600),
+  registered_name text not null,
   demand_id uuid references public.demands(id) on delete restrict,
   created_by uuid not null default auth.uid(),
   created_at timestamptz not null default now(),
@@ -14,8 +17,8 @@ create index purchase_requests_demand_idx on public.purchase_requests (demand_id
 
 alter table public.purchase_requests enable row level security;
 revoke all on public.purchase_requests from public, anon, authenticated;
-grant select (id, title, demand_id, created_at) on public.purchase_requests to authenticated;
-grant insert (title, demand_id) on public.purchase_requests to authenticated;
+grant select (id, title, requester, purpose, registered_name, demand_id, created_at) on public.purchase_requests to authenticated;
+grant insert (title, requester, purpose, demand_id) on public.purchase_requests to authenticated;
 grant update (demand_id) on public.purchase_requests to authenticated;
 
 create policy purchase_requests_read on public.purchase_requests
@@ -45,6 +48,13 @@ create function public.validate_purchase_request_link() returns trigger
 language plpgsql set search_path = ''
 as $$
 begin
+  if tg_op = 'INSERT' then
+    select p.name into new.registered_name
+    from public.profiles p where p.id = auth.uid() and p.active;
+    if not found then
+      raise exception 'É necessário um perfil interno ativo.' using errcode = '42501';
+    end if;
+  end if;
   if new.demand_id is null then
     return new;
   end if;
