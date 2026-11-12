@@ -56,7 +56,7 @@ const linkPurchase = $('#linkPurchaseDraft');
 const purchaseDialog = $('#purchaseDraftDialog');
 const purchaseDraftForm = $('#purchaseDraftForm');
 const purchaseRecordDialog = $('#purchaseRecordDialog');
-const purchaseRecordFields = 'id,title,requester,purpose,registered_name,demand_id,created_by,status,decision_note,demands(protocol)';
+const purchaseRecordFields = 'id,title,requester,purpose,registered_name,demand_id,created_by,status,decision_note,demands(protocol,expected_result)';
 let purchaseModuleRequest = 0;
 const purchaseStages = {draft:'Rascunho',submitted:'Em triagem',triaged:'Triagem concluída',returned:'Devolvida para ajuste',rejected:'Rejeitada'};
 const editablePurchase = row => ['draft','returned'].includes(row.status) && (profile?.role==='admin' || row.created_by===session?.user.id);
@@ -177,7 +177,7 @@ function openPurchasePrototype() {
   }
   status.textContent = '';
   frame.hidden = false;
-  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261112-compras-demandas-ativas';
+  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261112-compras-fornecedores';
 }
 
 function closePurchasePrototype() {
@@ -418,8 +418,9 @@ purchaseItemForm.onsubmit = async event => {
   const context = purchaseItemContext, button = purchaseItemForm.querySelector('button');
   if (!context || !session || !profile?.active || !editablePurchase(context.row) || button.disabled) return;
   const fields = new FormData(purchaseItemForm);
-  const description = fields.get('description').trim(), activity = fields.get('activity').trim();
-  if (!description || !activity) return;
+  const description = fields.get('description').trim();
+  if (!description) return;
+  const activity = (context.row.demands?.expected_result?.trim() || context.row.title).slice(0,160);
   const needed_on=fields.get('needed_on'),pilot=Number(needed_on.slice(0,4))===purchasePilotYear;
   button.disabled = true;
   const {error} = await db.from('purchase_request_items').insert({

@@ -1,7 +1,7 @@
 <!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Compras · CDL Novo Hamburgo</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f3f6fa;color:#172740;font:15px system-ui,sans-serif}header{background:#10243d;color:white;padding:20px max(5%,calc((100% - 1160px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}header strong{letter-spacing:.06em}header label{color:#cbd7e6}main{max-width:1200px;margin:auto;padding:32px 20px}h1{font-size:clamp(28px,5vw,42px);margin:0;letter-spacing:-.05em}h2{margin-top:0}p{line-height:1.55}nav,.row,.actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}nav{margin:22px 0;border-bottom:1px solid #d7e1eb;padding-bottom:12px}button,select,input,textarea{font:inherit;border:1px solid #b9c9da;border-radius:8px;padding:9px 12px}button{background:white;color:#172740;cursor:pointer;font-weight:650}button:hover{border-color:#0059b0}button.primary,nav button[aria-current]{background:#0759a9;color:white;border-color:#0759a9}.muted,small{color:#485d75}.tag{display:inline-block;background:#e7effc;color:#154781;border-radius:20px;padding:5px 10px;font-size:13px;font-weight:650}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}.card,section{background:white;border:1px solid #dae4ee;border-radius:14px;padding:20px;margin-bottom:12px}.card h3{margin:9px 0}.spread{justify-content:space-between}label.field{display:grid;gap:5px;margin-bottom:12px;font-weight:550}input,textarea,select{min-width:0;background:white;color:#172740}textarea{min-height:70px}dialog{width:min(820px,95vw);max-height:90vh;border:1px solid #d0dae5;border-radius:16px;padding:22px;color:#172740}dialog::backdrop{background:#10243d88}table{width:100%;border-collapse:collapse}td,th{text-align:left;border-bottom:1px solid #e0e7ef;padding:9px}.scroll{overflow:auto}.alert{background:#fff0ce;color:#573a00;padding:10px;border-radius:8px}.ok{background:#e4f5ec;color:#14553a}.meta{margin:8px 0 14px}.actions{margin:12px 0}.info{margin:10px 0}summary{cursor:pointer;font-weight:650}ol,ul{padding-left:22px}li{margin:6px 0}footer{color:#485d75;font-size:13px;margin-top:18px}[hidden]{display:none!important}
-.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(240px,1fr);gap:12px;overflow:auto;padding-bottom:14px}.lane{background:#e7eef6;border-radius:12px;padding:12px;min-height:180px}.lane h3{font-size:15px;margin:0 0 12px}.lane .card{padding:12px}.lane .card button{width:100%;text-align:left}.itemsDialog{width:min(1500px,97vw)}.itemTable{min-width:1750px}.itemTable td{vertical-align:top}.itemTable input,.itemTable select,.itemTable textarea{width:100%;padding:8px}.itemTable textarea{min-height:42px;resize:vertical}.itemTable th:nth-child(1){width:18%}.itemTable th:nth-child(5),.itemTable th:nth-child(7){width:15%}.itemTable th:nth-child(8){width:14%}.itemTable input[type=number]{min-width:66px}
+.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(240px,1fr);gap:12px;overflow:auto;padding-bottom:14px}.lane{background:#e7eef6;border-radius:12px;padding:12px;min-height:180px}.lane h3{font-size:15px;margin:0 0 12px}.lane .card{padding:12px}.lane .card button{width:100%;text-align:left}.itemsDialog{width:min(1500px,97vw)}.itemTable{min-width:1550px}.itemTable [data-replicate-date]{margin-top:6px;width:100%;white-space:nowrap}.itemTable td{vertical-align:top}.itemTable input,.itemTable select,.itemTable textarea{width:100%;padding:8px}.itemTable textarea{min-height:42px;resize:vertical}.itemTable th:nth-child(1){width:18%}.itemTable th:nth-child(5),.itemTable th:nth-child(6){width:15%}.itemTable th:nth-child(7){width:14%}.itemTable input[type=number]{min-width:66px}
 @media print{header,main,dialog button{display:none!important}dialog[open]{position:static;width:100%;max-height:none;border:0}dialog::backdrop{background:white}.scroll{overflow:visible}}
 .card[draggable]{cursor:grab}.card[draggable]:active{cursor:grabbing}.lane.drop-target{outline:2px solid #1768a3;outline-offset:-2px}
 nav button,nav a{flex-shrink:0}.demand-description{white-space:pre-wrap;overflow-wrap:anywhere}
@@ -29,6 +29,7 @@ nav button,nav a{flex-shrink:0}.demand-description{white-space:pre-wrap;overflow
 <nav aria-label="Portal de Demandas e Compras" id="nav"><button data-tab="demands">Demandas</button><button data-tab="requests">Solicitação de compra</button><button data-tab="orders">Ordens de compra</button><button data-tab="budget">Orçamento aprovado</button><button data-tab="vendors">Fornecedores</button><button data-tab="costs">Histórico de compras</button><button id="archiveTab" data-tab="archive" hidden>Inativos</button><a href="https://drive.google.com/drive/folders/1OYkBpzPSk1MxEa0L9j3uEf53s9ysKZYU" target="_blank" rel="noopener noreferrer">Pasta de documentos</a><button data-tab="design">Fluxo e regras</button></nav>
 <div id="notice" role="status"></div><div id="view"></div><footer>Protótipo com dados fictícios. As alterações ficam no navegador. Use somente dados de teste.</footer></main>
 <dialog id="modal"><div class="row spread"><h2 id="modalTitle"></h2><button id="close" aria-label="Fechar">Fechar</button></div><div id="body"></div></dialog>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
 <script>
 const centers={Serviço:['SPC Brasil','Certificação Digital','Locação de Salas e Espaços','Eventos'],Apoio:['Financeiro','Marketing','Governança','Infraestrutura','TI']};
 const categories=['Materiais e suprimentos','Equipamentos e tecnologia','Serviços terceirizados','Eventos e comunicação'];
@@ -204,7 +205,7 @@ function batchDetails(id){
  if(!items)return;
  const pending=items.filter(r=>r.status==='analysis');
  const reviews=items.filter(r=>r.status==='review');
- open(protocol(id)+' · '+batchTitle(items),registeredLine(items[0].registeredBy)+requesterLine(items[0].requester)+reasonLine(requestReason(id))+'<p>'+esc(batchSummary(items))+'</p><div class="scroll"><table><thead><tr><th>Item e quantidade</th><th>Centro</th><th>Ação ou atividade</th><th>Necessidade</th><th>Fornecedor</th><th>Etapa</th><th></th></tr></thead><tbody>'+items.map(r=>'<tr><td><strong>'+esc(r.title)+'</strong><br><small>'+esc(r.qty)+' '+esc(r.unit)+'</small></td><td>'+esc(r.center)+'</td><td>'+activityLabel(r.activity)+'</td><td>'+dateLabel(r.need)+'</td><td>'+esc(r.approval?.vendor||vendor(r.picked)?.name||vendor(r.preferred)?.name||'A definir no orçamento')+'</td><td><span class="tag">'+states[r.status]+'</span></td><td><button data-item="'+r.id+'">Abrir item</button> <button data-attach-quote="'+r.id+'">Anexar orçamento</button></td></tr>').join('')+'</tbody></table></div>'+
+ open(protocol(id)+' · '+batchTitle(items),registeredLine(items[0].registeredBy)+requesterLine(items[0].requester)+reasonLine(requestReason(id))+'<p>'+esc(batchSummary(items))+'</p><div class="scroll"><table><thead><tr><th>Item e quantidade</th><th>Centro</th><th>Necessidade</th><th>Fornecedor</th><th>Etapa</th><th></th></tr></thead><tbody>'+items.map(r=>'<tr><td><strong>'+esc(r.title)+'</strong><br><small>'+esc(r.qty)+' '+esc(r.unit)+'</small></td><td>'+esc(r.center)+'</td><td>'+dateLabel(r.need)+'</td><td>'+esc(r.approval?.vendor||vendor(r.picked)?.name||vendor(r.preferred)?.name||'A definir no orçamento')+'</td><td><span class="tag">'+states[r.status]+'</span></td><td><button data-item="'+r.id+'">Abrir item</button> <button data-attach-quote="'+r.id+'">Anexar orçamento</button></td></tr>').join('')+'</tbody></table></div>'+
  (items[0].demandId?'<div class="actions"><button id="backDemand">Abrir demanda '+esc(items[0].demandId)+'</button></div>':'')+quoteComparison(items)+quoteReviewPanel(items)+quoteSubmissionPanel(items)+orderLinks(items)+inactiveButton('solicitação')+(admin()&&reviews.length?approvalPanel(items,reviews):'')+
  (pending.length?'<form id="form" class="info">'+field('Observação para cotação (opcional)','<textarea name="reason"></textarea>')+'<button class="primary" value="quote">Iniciar cotação</button></form>':''));
  document.querySelectorAll('[data-item]').forEach(b=>b.onclick=()=>details(items.find(r=>r.id===Number(b.dataset.item))));
@@ -241,12 +242,13 @@ function batchForm(draft){
  field('Motivo da necessidade','<textarea name="purchaseReason" maxlength="600" required></textarea>')+
  field('Tipo de aquisição','<select name="route" id="purchaseRoute">'+options(['Suprimentos e compras avulsas','Mercado e gêneros de consumo','Prestação de serviço com contrato'])+'</select>')+
  '<p id="purchaseRouteInfo" class="muted">O valor estimado é opcional. Registre os valores na cotação.</p>'+
- '<div class="scroll"><table class="itemTable"><thead><tr><th>Descrição do item</th><th>Qtd.</th><th>Unidade</th><th>Data necessária</th><th>Centro de serviço ou apoio</th><th>Ação ou atividade</th><th>Rubrica aprovada (opcional)</th><th>Total estimado opcional (R$)</th><th>Fornecedor homologado</th><th>Observação</th><th></th></tr></thead><tbody id="itemRows"></tbody></table></div>'+
+ '<div class="scroll"><table class="itemTable"><thead><tr><th>Descrição do item</th><th>Qtd.</th><th>Unidade</th><th>Data necessária</th><th>Centro de serviço ou apoio</th><th>Rubrica aprovada (opcional)</th><th>Total estimado opcional (R$)</th><th>Fornecedor homologado</th><th>Observação</th><th></th></tr></thead><tbody id="itemRows"></tbody></table></div>'+
  '<div class="actions"><button type="button" id="addItem">+ Adicionar item</button><button type="submit" class="primary">Registrar solicitação</button></div><p id="batchError" role="alert"></p></form>',true);
  const rows=$('itemRows');
+ let replicatedDate='';
  function add(){
   const row=rows.insertRow();
-  row.innerHTML='<td><textarea name="title" aria-label="Descrição do item" required maxlength="180"></textarea></td><td><input name="qty" aria-label="Quantidade" type="number" min="1" value="1" required></td><td>'+unitSelect()+'</td><td><input name="need" aria-label="Data necessária" type="date" required></td><td><select name="center" aria-label="Centro" required><option value="">Selecione</option>'+Object.entries(centers).map(([group,items])=>'<optgroup label="'+group+'">'+options(items)+'</optgroup>').join('')+'</select></td><td><input name="activity" aria-label="Ação ou atividade" maxlength="160" required></td><td><select name="budgetId" aria-label="Rubrica aprovada (opcional)"></select></td><td><input name="estimate" aria-label="Total estimado opcional" type="number" min="0.01" step="0.01"></td><td><select name="preferred" aria-label="Fornecedor homologado"></select></td><td><textarea name="reason" aria-label="Observação"></textarea></td><td><button type="button" aria-label="Remover item">×</button></td>';
+  row.innerHTML='<td><textarea name="title" aria-label="Descrição do item" required maxlength="180"></textarea></td><td><input name="qty" aria-label="Quantidade" type="number" min="1" value="1" required></td><td>'+unitSelect()+'</td><td><input name="need" aria-label="Data necessária" type="date" required><button type="button" data-replicate-date>Replicar data</button></td><td><select name="center" aria-label="Centro" required><option value="">Selecione</option>'+Object.entries(centers).map(([group,items])=>'<optgroup label="'+group+'">'+options(items)+'</optgroup>').join('')+'</select></td><td><select name="budgetId" aria-label="Rubrica aprovada (opcional)"></select></td><td><input name="estimate" aria-label="Total estimado opcional" type="number" min="0.01" step="0.01"></td><td><select name="preferred" aria-label="Fornecedor homologado"></select></td><td><textarea name="reason" aria-label="Observação"></textarea></td><td><button type="button" aria-label="Remover item">×</button></td>';
   const get=name=>row.querySelector('[name="'+name+'"]');
   const updateSupplier=()=>get('preferred').innerHTML=preferredOptions(budgetLine(get('budgetId').value)?.category,get('preferred').value);
   const updateBudget=()=>{
@@ -254,7 +256,19 @@ function batchForm(draft){
    updateSupplier();
   };
   get('budgetId').onchange=updateSupplier;
+  get('need').value=replicatedDate;
   get('center').onchange=updateBudget;get('need').onchange=updateBudget;updateBudget();
+  row.querySelector('[data-replicate-date]').onclick=()=>{
+   const date=get('need');
+   if(!date.value){date.reportValidity();return;}
+   replicatedDate=date.value;
+   for(const input of rows.querySelectorAll('[name="need"]')){
+    input.value=replicatedDate;
+    input.onchange();
+   }
+   $('batchError').textContent='';
+   $('purchaseRouteInfo').textContent='Data de necessidade aplicada a todos os itens.';
+  };
   row.querySelector('button').onclick=()=>{if(rows.rows.length>1)row.remove()};
   get('title').focus();
  }
@@ -270,13 +284,13 @@ function batchForm(draft){
   if(route==='Prestação de serviço com contrato')return;
   const items=[...rows.rows].map(row=>Object.fromEntries([...row.querySelectorAll('[name]')].map(input=>[input.name,input.value.trim()])));
   for(const item of items)item.category=budgetLine(item.budgetId)?.category;
-  if(!title||!requester||!purchaseReason||items.some(r=>!r.title||!r.unit||!r.activity||(r.preferred&&validation(r.preferred,r.category)!=='Validado'))){$('batchError').textContent='Confira os campos e a homologação dos fornecedores selecionados.';return}
+  if(!title||!requester||!purchaseReason||items.some(r=>!r.title||!r.unit||(r.preferred&&validation(r.preferred,r.category)!=='Validado'))){$('batchError').textContent='Confira os campos e a homologação dos fornecedores selecionados.';return}
   const issue=budgetCheck(items, r=>toCents(r.estimate),true);
   if(issue){$('batchError').textContent=issue;return}
   if(draft&&!visibleDrafts().includes(draft))return;
   const firstId=nextPurchaseId(),id=draft?.id??firstId;
   const records=items.map((data,i)=>{
-   const r={...data,id:firstId+i,batch:id,batchTitle:title,requester,registeredBy:actor(),demandId:draft?.demandId??null,line:i+1,owner:draft?.owner??ownerKey(),status:'analysis',market:route==='Mercado e gêneros de consumo',minimum:route==='Mercado e gêneros de consumo'?1:3,quotes:[],log:[]};
+   const r={...data,id:firstId+i,batch:id,batchTitle:title,activity:origin?.title,requester,registeredBy:actor(),demandId:draft?.demandId??null,line:i+1,owner:draft?.owner??ownerKey(),status:'analysis',market:route==='Mercado e gêneros de consumo',minimum:route==='Mercado e gêneros de consumo'?1:3,quotes:[],log:[]};
    log(r,r.budgetId?'Registrou para análise · Reserva '+cash(toCents(r.estimate)/100)+' · '+r.budgetId:'Registrou para análise sem vínculo com o OBZ.');return r;
   });
   if(draft)db.drafts=db.drafts.filter(d=>d!==draft);
@@ -303,8 +317,10 @@ function render(){
  }else if(tab==='budget'){
  renderBudget();
  }else if(tab==='vendors'){
- $('view').innerHTML='<div class="row spread"><h2>Cadastro e validação</h2><button id="newVendor" class="primary">+ Cadastrar fornecedor</button></div><div class="grid">'+activeVendors().map(v=>'<div class="card"><h3>'+esc(v.name)+'</h3><small>'+esc(v.doc)+' '+esc(v.contact)+'</small>'+Object.entries(v.status).map(([cat,status])=>'<p>'+esc(cat)+'<br><span class="tag">'+status+'</span></p>').join('')+'<button data-vendor="'+v.id+'">Abrir cadastro e histórico</button>'+'</div>').join('')+'</div>';
+ $('view').innerHTML='<div class="row spread"><h2>Cadastro e validação</h2><div class="actions"><button id="vendorModel">Baixar planilha modelo</button><button id="vendorImport">Importar fornecedores</button><button id="newVendor" class="primary">+ Cadastrar fornecedor</button></div></div><div class="grid">'+activeVendors().map(v=>'<div class="card"><h3>'+esc(v.name)+'</h3><small>'+esc(v.doc)+' '+esc(v.contact)+'</small>'+Object.entries(v.status).map(([cat,status])=>'<p>'+esc(cat)+'<br><span class="tag">'+status+'</span></p>').join('')+'<button data-vendor="'+v.id+'">Abrir cadastro e histórico</button>'+'</div>').join('')+'</div>';
  $('newVendor').onclick=()=>vendorForm();
+ $('vendorModel').onclick=downloadVendorModel;
+ $('vendorImport').onclick=openVendorImport;
  document.querySelectorAll('[data-vendor]').forEach(b=>b.onclick=()=>vendorDetails(vendor(b.dataset.vendor)));
  }else if(tab==='costs'){
  renderCosts();
@@ -323,12 +339,10 @@ function render(){
 function submit(handler){$('form').onsubmit=e=>{e.preventDefault();handler(new FormData(e.target))}}
 function requestForm(r){
  if(r&&(!visible().includes(r)||!['quote','fix'].includes(r.status)))return;
- open(r?'Editar solicitação':'Nova solicitação','<form id="form">'+field('Item ou serviço','<input name="title" required maxlength="120" value="'+esc(r?.title)+'">')+'<div class="grid">'+field('Centro de serviço ou apoio','<select name="center" required><option value="">Selecione</option>'+Object.entries(centers).map(([group,items])=>'<optgroup label="'+group+'">'+options(items,r?.center)+'</optgroup>').join('')+'</select>')+field('Quantidade','<input name="qty" type="number" min="1" required value="'+(r?.qty||1)+'">')+field('Unidade',unitSelect(r?.unit))+field('Data necessária','<input name="need" type="date" required value="'+esc(r?.need)+'">')+'</div>'+field('Fornecedor homologado','<select name="preferred" id="editPreferred">'+preferredOptions(budgetLine(r?.budgetId)?.category,r?.preferred)+'</select>')+field('Ação ou atividade','<input name="activity" maxlength="160" required value="'+esc(r?.activity)+'">')+
+ open(r?'Editar solicitação':'Nova solicitação','<form id="form">'+field('Item ou serviço','<input name="title" required maxlength="120" value="'+esc(r?.title)+'">')+'<div class="grid">'+field('Centro de serviço ou apoio','<select name="center" required><option value="">Selecione</option>'+Object.entries(centers).map(([group,items])=>'<optgroup label="'+group+'">'+options(items,r?.center)+'</optgroup>').join('')+'</select>')+field('Quantidade','<input name="qty" type="number" min="1" required value="'+(r?.qty||1)+'">')+field('Unidade',unitSelect(r?.unit))+field('Data necessária','<input name="need" type="date" required value="'+esc(r?.need)+'">')+'</div>'+field('Fornecedor homologado','<select name="preferred" id="editPreferred">'+preferredOptions(budgetLine(r?.budgetId)?.category,r?.preferred)+'</select>')+
  field('Observação e especificações','<textarea name="reason">'+esc(r?.reason)+'</textarea>')+budgetFields(r)+quoteValueSummary(r,false)+'<p id="editBudgetError" role="alert"></p><button class="primary">Salvar alterações</button></form>');
  wireBudgetFields(r);
  submit(f=>{const data=Object.fromEntries(f),current=r||{id:nextId(db.requests),owner:ownerKey(),status:'quote',quotes:[],log:[]};
- if(!data.activity.trim()){$('editBudgetError').textContent='Informe a ação ou atividade.';return}
- data.activity=data.activity.trim();
  data.category=budgetLine(data.budgetId)?.category;
  if(data.preferred&&validation(data.preferred,data.category)!=='Validado'){$('editBudgetError').textContent='Selecione um fornecedor homologado para a rubrica.';return}
  const issue=budgetCheck([{...data,id:r?.id}],item=>toCents(item.estimate),true);
@@ -344,8 +358,92 @@ function log(r,message){r.log.unshift(new Date().toLocaleString('pt-BR')+' · '+
 const supplierFields=[
  ['name','Razão social','text',true],['tradeName','Nome fantasia','text'],['doc','CNPJ ou identificação de teste','text',true],
  ['contact','Responsável comercial','text',true],['email','E-mail','email'],['phone','Telefone ou WhatsApp','tel'],
- ['address','Endereço','text'],['city','Cidade e UF','text']
+ ['address','Endereço','text'],['city','Cidade e UF','text'],['purpose','Finalidade do fornecimento','text']
 ];
+const normalizeDoc=value=>value.replace(/[.\/\s-]/g,'').toUpperCase();
+const vendorColumns=[...supplierFields.map(([key,label])=>[key,key==='doc'?'CNPJ ou identificação':label]),['categories','Categorias de fornecimento'],['notes','Observações comerciais']];
+function downloadVendorModel(){
+ if(!window.XLSX){note('Não foi possível carregar a ferramenta de planilhas. Atualize a página.');return;}
+ const workbook=XLSX.utils.book_new();
+ const sheet=XLSX.utils.aoa_to_sheet([vendorColumns.map(([,label])=>label)]);
+ sheet['!cols']=vendorColumns.map(([,label])=>({wch:Math.max(20,label.length+4)}));
+ XLSX.utils.book_append_sheet(workbook,sheet,'Fornecedores');
+ const guide=XLSX.utils.aoa_to_sheet([
+  ['Como preencher','Orientação'],
+  ['Cadastro','Preencha um fornecedor por linha na aba Fornecedores.'],
+  ['Campos obrigatórios','Razão social, CNPJ ou identificação, responsável comercial e categorias de fornecimento.'],
+  ['Identificação','Digite o CNPJ como texto para manter zeros à esquerda.'],
+  ['Categorias','Use os nomes abaixo. Separe múltiplas categorias por ponto e vírgula.'],
+  ['Finalidade','Descreva o que o fornecedor oferece. Ex.: material de limpeza para eventos.'],
+  ['Validação','As categorias importadas entram como Pendente. Cadastros existentes não são substituídos.'],
+  ...categories.map(category=>['Categoria permitida',category])
+ ]);
+ guide['!cols']=[{wch:24},{wch:100}];
+ XLSX.utils.book_append_sheet(workbook,guide,'Instruções');
+ XLSX.writeFile(workbook,'modelo-cadastro-fornecedores-cdl.xlsx');
+}
+function parseVendorImport(sheet){
+ const rows=XLSX.utils.sheet_to_json(sheet,{header:1,raw:false,defval:'',blankrows:true});
+ const headers=(rows.shift()||[]).map(value=>String(value).trim());
+ const positions=vendorColumns.map(([,label])=>headers.indexOf(label));
+ if(positions.includes(-1))throw new Error('Use a aba Fornecedores do modelo e mantenha todos os cabeçalhos.');
+ const occupied=new Set(activeVendors().map(v=>normalizeDoc(v.doc)));
+ const records=[],errors=[];
+ for(const [index,row] of rows.entries()){
+  if(!row.some(value=>String(value).trim()))continue;
+  const {categories:labels,...data}=Object.fromEntries(vendorColumns.map(([key],i)=>[key,String(row[positions[i]]??'').trim()]));
+  const doc=normalizeDoc(data.doc);
+  const selected=[...new Set(labels.split(';').map(value=>value.trim()).filter(Boolean))];
+  let error;
+  if(!data.name||!doc||!data.contact||!selected.length)error='preencha razão social, identificação, responsável e categorias.';
+  else if(selected.some(category=>!categories.includes(category)))error='use as categorias listadas na aba Instruções.';
+  else if(occupied.has(doc))error='a identificação já consta no cadastro ou na planilha.';
+  else if(supplierFields.some(([key])=>data[key].length>180)||data.notes.length>1000)error='reduza o tamanho dos campos de texto.';
+  else if(data.email&&!/^[^\s@]+@[^\s@]+$/.test(data.email))error='confira o e-mail.';
+  if(error){errors.push('Linha '+(index+2)+' · '+error);continue;}
+  occupied.add(doc);
+  records.push({...data,reviews:[],status:Object.fromEntries(selected.map(category=>[category,'Pendente']))});
+ }
+ return {records,errors};
+}
+function openVendorImport(){
+ open('Importar fornecedores','<p>Preencha a aba Fornecedores do modelo. Os cadastros entram com homologação pendente.</p>'+
+ '<div class="actions"><button id="importVendorModel">Baixar planilha modelo</button></div>'+
+ field('Planilha preenchida','<input id="vendorFile" type="file" accept=".xlsx,.xls">')+
+ '<div id="vendorImportResult" role="status"></div><button id="confirmVendorImport" class="primary" disabled>Confirmar importação</button>');
+ $('importVendorModel').onclick=downloadVendorModel;
+ const input=$('vendorFile'),result=$('vendorImportResult'),confirmImport=$('confirmVendorImport');
+ input.onchange=async()=>{
+  confirmImport.disabled=true;
+  const file=input.files[0];
+  if(!file){result.textContent='';return;}
+  try{
+   if(!window.XLSX)throw new Error('Não foi possível carregar a ferramenta de planilhas.');
+   if(file.size>5_000_000)throw new Error('Selecione uma planilha de até 5 MB.');
+   const workbook=XLSX.read(await file.arrayBuffer());
+   if(!input.isConnected||input.files[0]!==file)return;
+   const sheet=workbook.Sheets.Fornecedores;
+   if(!sheet)throw new Error('A aba Fornecedores não foi encontrada.');
+   const {records,errors}=parseVendorImport(sheet);
+   if(errors.length){
+    result.innerHTML='<p>Corrija a planilha e selecione o arquivo novamente.</p><ul>'+errors.map(error=>'<li>'+esc(error)+'</li>').join('')+'</ul>';
+    return;
+   }
+   result.textContent=records.length?records.length+' fornecedor(es) pronto(s) para importar.':'A planilha está sem fornecedores.';
+   confirmImport.disabled=!records.length;
+   confirmImport.onclick=()=>{
+    const current=parseVendorImport(sheet);
+    if(current.errors.length){result.textContent=current.errors.join(' ');confirmImport.disabled=true;return;}
+    const first=nextId(db.vendors),previous=db.vendors;
+    db.vendors=[...previous,...current.records.map((record,index)=>({...record,id:first+index}))];
+    try{localStorage.setItem(key,JSON.stringify(db));}catch{
+     db.vendors=previous;result.textContent='Não foi possível salvar os fornecedores neste navegador.';return;
+    }
+    close();render();note(current.records.length+' fornecedor(es) importado(s) para validação.');
+   };
+  }catch(error){if(input.isConnected&&input.files[0]===file)result.textContent=error.message;}
+ };
+}
 function vendorForm(back,existing){
  if(existing?.deleted)return;
  open(existing?'Editar fornecedor':'Cadastrar fornecedor','<form id="form"><div class="grid">'+supplierFields.map(([name,label,type,required])=>
@@ -356,7 +454,6 @@ function vendorForm(back,existing){
  submit(f=>{
  if(existing?.deleted)return;
  const data=Object.fromEntries([...supplierFields.map(([k])=>k),'notes'].map(k=>[k,String(f.get(k)||'').trim()]));
- const normalizeDoc=value=>value.replace(/[.\/\s-]/g,'').toUpperCase();
  const doc=normalizeDoc(data.doc);
  const selected=[...new Set(f.getAll('categories'))].filter(cat=>categories.includes(cat));
  if(!data.name||!data.contact||!doc||!selected.length){$('error').textContent='Informe a razão social, a identificação, o responsável e pelo menos uma categoria.';return}
@@ -668,7 +765,7 @@ function details(r){
  const attachmentLink=q=>quoteAttachmentLink(q)+(portalUploadAvailable()&&localAttachments.includes(q)
   ?' <button data-upload-local-quote="'+localAttachments.indexOf(q)+'">Enviar ao Drive</button>':'');
  const approval=r.approval?'<p class="alert ok">Aprovação registrada · '+esc(r.approval.vendor)+' · '+cash(r.approval.price)+' · '+esc(r.approval.reason)+(r.approval.caveat?' · Ressalva '+esc(r.approval.caveat):'')+'</p>':'';
- open(code(r)+' · '+r.title,registeredLine(r.registeredBy)+requesterLine(r.requester)+reasonLine(requestReason(batchId(r)))+'<p><strong>Ação ou atividade</strong> · '+activityLabel(r.activity)+'</p><p class="meta"><span class="tag">'+states[r.status]+'</span> · '+esc(r.center)+' · '+esc(r.category)+'</p><p>'+esc(r.qty)+' '+esc(r.unit)+' · Data necessária '+esc(r.need.split('-').reverse().join('/'))+'<br>'+esc(r.reason)+'</p><p class="muted">Fornecedor homologado indicado na abertura · '+esc(vendor(r.preferred)?.name||'A definir no orçamento')+'</p>'+approval+
+ open(code(r)+' · '+r.title,registeredLine(r.registeredBy)+requesterLine(r.requester)+reasonLine(requestReason(batchId(r)))+'<p class="meta"><span class="tag">'+states[r.status]+'</span> · '+esc(r.center)+' · '+esc(r.category)+'</p><p>'+esc(r.qty)+' '+esc(r.unit)+' · Data necessária '+esc(r.need.split('-').reverse().join('/'))+'<br>'+esc(r.reason)+'</p><p class="muted">Fornecedor homologado indicado na abertura · '+esc(vendor(r.preferred)?.name||'A definir no orçamento')+'</p>'+approval+
  '<button id="backBatch">Voltar à solicitação</button>'+orderLinks([r])+budgetInfo(r)+quoteValueSummary(r)+
  (analysis?'<form id="form" class="info">'+field('Observação para cotação (opcional)','<textarea name="reason"></textarea>')+'<div class="actions"><button class="primary" value="quote">Iniciar cotação</button></div></form>':'')+
  '<div class="actions"><button id="attachQuote">Anexar orçamento</button></div>'+
