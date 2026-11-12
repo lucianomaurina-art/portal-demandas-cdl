@@ -13,7 +13,55 @@ fillSelect($('[name=nucleus]'),NUCLEI);fillSelect($('[name=sector]'),SECTORS);fi
 fillSelect($('#filterStatus'),STATUSES,'Todos os status');fillSelect($('#filterNucleus'),NUCLEI,'Todos os núcleos');fillSelect($('#filterPriority'),PRIORITIES,'Todas as prioridades');
 fillSelect($('#filterSector'),SECTORS,'Todos os setores');
 fillSelect($('#editForm [name=nucleus]'),NUCLEI);fillSelect($('#editForm [name=sector]'),SECTORS);fillSelect($('#editForm [name=priority]'),PRIORITIES);fillSelect($('#editForm [name=status]'),STATUSES);
-function route(){const id=location.hash.replace('#/','')||'inicio';$$('.view').forEach(v=>v.classList.add('hidden'));if(!configured){$('#setup').classList.remove('hidden');return}const protectedView=['plano','ideias','dashboard','usuarios','compras','compras-triagem'].includes(id);if(protectedView&&!session){if(['compras','compras-triagem'].includes(id))postLoginRoute='#/'+id;location.hash='#/login';return}if(id==='usuarios'&&profile?.role!=='admin'){location.hash='#/plano';return}$('#'+(document.getElementById(id)?id:'inicio')).classList.remove('hidden');if(id==='plano')loadWorkspace().then(()=>{if(pendingDemandOpen&&location.hash==='#/plano'){const demandId=pendingDemandOpen;pendingDemandOpen=null;openEdit(demandId)}});if(id==='compras')openPurchasePrototype();else closePurchasePrototype();if(id==='compras-triagem')loadPurchaseModule();if(id==='ideias'&&typeof loadIdeas==='function')loadIdeas();if(id==='dashboard')loadDemands(true);if(id==='usuarios')loadProfiles()}
+const protectedViews = ['plano', 'ideias', 'dashboard', 'usuarios', 'compras', 'compras-triagem'];
+const portalModules = {
+  inicio: 'inicio',
+  nova: 'demandas',
+  plano: 'demandas',
+  dashboard: 'demandas',
+  'nova-ideia': 'ideias',
+  ideias: 'ideias',
+  compras: 'compras',
+  'compras-triagem': 'compras',
+};
+
+function route() {
+  const requested = location.hash.startsWith('#/') ? location.hash.slice(2) : '';
+  const id = requested && document.getElementById(requested)?.classList.contains('view') ? requested : 'inicio';
+  if (id !== 'compras') closePurchasePrototype();
+  $$('.view').forEach(view => view.classList.add('hidden'));
+  if (!configured) {
+    $('#setup').classList.remove('hidden');
+    return;
+  }
+  if (protectedViews.includes(id) && !session) {
+    postLoginRoute = '#/' + id;
+    location.hash = '#/login';
+    return;
+  }
+  if (id !== 'login') postLoginRoute = null;
+  if (id === 'usuarios' && profile?.role !== 'admin') {
+    location.hash = '#/plano';
+    return;
+  }
+  $$('.portal-switcher [data-module]').forEach(link => {
+    if (link.dataset.module === portalModules[id]) link.setAttribute('aria-current', 'location');
+    else link.removeAttribute('aria-current');
+  });
+  document.getElementById(id).classList.remove('hidden');
+  if (id === 'plano') loadWorkspace().then(() => {
+    if (pendingDemandOpen && location.hash === '#/plano') {
+      const demandId = pendingDemandOpen;
+      pendingDemandOpen = null;
+      openEdit(demandId);
+    }
+  });
+  if (id === 'compras') openPurchasePrototype();
+  if (id === 'compras-triagem') loadPurchaseModule();
+  if (id === 'ideias' && typeof loadIdeas === 'function') loadIdeas();
+  if (id === 'dashboard') loadDemands(true);
+  if (id === 'usuarios') loadProfiles();
+}
 function setAuthUI(){$$('.admin-only').forEach(x=>x.classList.toggle('hidden',!session));$('#usersNav').classList.toggle('hidden',!session||profile?.role!=='admin');$('#notificationCenter').classList.toggle('hidden',!session);$('#authButton').textContent=session?'Sair':'Área administrativa'}
 window.addEventListener('hashchange',route);
 $('#authButton').onclick=async()=>{if(session){stopNotifications();await db.auth.signOut();session=null;setAuthUI();location.hash='#/inicio'}else location.hash='#/login'};
