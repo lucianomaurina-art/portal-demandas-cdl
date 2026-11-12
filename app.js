@@ -13,7 +13,7 @@ fillSelect($('[name=nucleus]'),NUCLEI);fillSelect($('[name=sector]'),SECTORS);fi
 fillSelect($('#filterStatus'),STATUSES,'Todos os status');fillSelect($('#filterNucleus'),NUCLEI,'Todos os núcleos');fillSelect($('#filterPriority'),PRIORITIES,'Todas as prioridades');
 fillSelect($('#filterSector'),SECTORS,'Todos os setores');
 fillSelect($('#editForm [name=nucleus]'),NUCLEI);fillSelect($('#editForm [name=sector]'),SECTORS);fillSelect($('#editForm [name=priority]'),PRIORITIES);fillSelect($('#editForm [name=status]'),STATUSES);
-function route(){const id=location.hash.replace('#/','')||'inicio';$$('.view').forEach(v=>v.classList.add('hidden'));if(!configured){$('#setup').classList.remove('hidden');return}const protectedView=['plano','ideias','dashboard','usuarios','compras','compras-triagem'].includes(id);if(protectedView&&!session){if(id==='compras')postLoginRoute='#/compras';location.hash='#/login';return}if(id==='usuarios'&&profile?.role!=='admin'){location.hash='#/plano';return}$('#'+(document.getElementById(id)?id:'inicio')).classList.remove('hidden');if(id==='plano')loadWorkspace().then(()=>{if(pendingDemandOpen&&location.hash==='#/plano'){const demandId=pendingDemandOpen;pendingDemandOpen=null;openEdit(demandId)}});if(id==='compras')openPurchasePrototype();else closePurchasePrototype();if(id==='compras-triagem')loadPurchaseModule();if(id==='ideias'&&typeof loadIdeas==='function')loadIdeas();if(id==='dashboard')loadDemands(true);if(id==='usuarios')loadProfiles()}
+function route(){const id=location.hash.replace('#/','')||'inicio';$$('.view').forEach(v=>v.classList.add('hidden'));if(!configured){$('#setup').classList.remove('hidden');return}const protectedView=['plano','ideias','dashboard','usuarios','compras','compras-triagem'].includes(id);if(protectedView&&!session){if(['compras','compras-triagem'].includes(id))postLoginRoute='#/'+id;location.hash='#/login';return}if(id==='usuarios'&&profile?.role!=='admin'){location.hash='#/plano';return}$('#'+(document.getElementById(id)?id:'inicio')).classList.remove('hidden');if(id==='plano')loadWorkspace().then(()=>{if(pendingDemandOpen&&location.hash==='#/plano'){const demandId=pendingDemandOpen;pendingDemandOpen=null;openEdit(demandId)}});if(id==='compras')openPurchasePrototype();else closePurchasePrototype();if(id==='compras-triagem')loadPurchaseModule();if(id==='ideias'&&typeof loadIdeas==='function')loadIdeas();if(id==='dashboard')loadDemands(true);if(id==='usuarios')loadProfiles()}
 function setAuthUI(){$$('.admin-only').forEach(x=>x.classList.toggle('hidden',!session));$('#usersNav').classList.toggle('hidden',!session||profile?.role!=='admin');$('#notificationCenter').classList.toggle('hidden',!session);$('#authButton').textContent=session?'Sair':'Área administrativa'}
 window.addEventListener('hashchange',route);
 $('#authButton').onclick=async()=>{if(session){stopNotifications();await db.auth.signOut();session=null;setAuthUI();location.hash='#/inicio'}else location.hash='#/login'};
@@ -115,6 +115,54 @@ window.sendKanbanQuoteToDrive = async (source, file, itemId, uploadId) => {
   return data.drive_url;
 };
 
+function purchaseFrameIsActive(source) {
+  const frame = $('#purchasePrototypeFrame');
+  return source === frame.contentWindow && !frame.hidden && session && profile?.active;
+}
+
+window.purchasePortalProfile = source => {
+  if (!purchaseFrameIsActive(source)) return null;
+  return {id: session.user.id, name: userName(), role: profile.role};
+};
+
+window.loadPurchasingDemands = async source => {
+  if (!purchaseFrameIsActive(source)) throw new Error('Entre no portal para consultar suas demandas.');
+  const userId = session.user.id;
+  let result = profile.role === 'admin' ? await db.rpc('list_admin_demands') : await db.from('demands').select('*');
+  if (result.error && profile?.role === 'admin') result = await db.from('demands').select('*');
+  if (!purchaseFrameIsActive(source) || session.user.id !== userId || result.error) {
+    throw new Error('Não foi possível carregar suas demandas.');
+  }
+  const assigned = (result.data || []).filter(d => inScope(d, 'mine'));
+  const ids = assigned.map(d => d.id);
+  const [decisions, purchases] = ids.length ? await Promise.all([
+    db.from('demand_purchase_decisions').select('demand_id,decision').in('demand_id', ids).order('id', {ascending:false}),
+    db.from('purchase_requests').select('id,demand_id').in('demand_id', ids)
+  ]) : [{data:[]},{data:[]}];
+  if (!purchaseFrameIsActive(source) || session.user.id !== userId) throw new Error('Sessão encerrada.');
+  return assigned.map(d => ({
+    id: d.id, protocol: d.protocol, title: d.expected_result || d.description,
+    description: d.description, expectedResult: d.expected_result, requester: d.requester,
+    assignee: d.assignee || userName(), sector: d.sector, nucleus: d.nucleus,
+    deadline: d.deadline, priority: d.priority, status: d.status,
+    decision: decisions.data?.find(row => row.demand_id === d.id)?.decision,
+    purchases: purchases.data?.filter(row => row.demand_id === d.id).length,
+  }));
+};
+
+window.openPurchasingDemand = async (source, id) => {
+  if (!purchaseFrameIsActive(source)) return;
+  const userId = session.user.id;
+  const {data, error} = await db.from('demands').select('*').eq('id',id).maybeSingle();
+  if (!purchaseFrameIsActive(source) || session.user.id !== userId) return;
+  if (error || !data || !inScope(data,'mine')) {
+    toast('A demanda não está disponível para este usuário.');
+    return;
+  }
+  demands = [...demands.filter(d => d.id !== id), data];
+  openEdit(id);
+};
+
 function openPurchasePrototype() {
   const frame = $('#purchasePrototypeFrame');
   const status = $('#purchasePrototypeStatus');
@@ -125,7 +173,7 @@ function openPurchasePrototype() {
   }
   status.textContent = '';
   frame.hidden = false;
-  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261111-mercado-realizado';
+  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261112-compras-navegacao';
 }
 
 function closePurchasePrototype() {

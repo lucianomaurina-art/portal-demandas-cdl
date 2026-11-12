@@ -4,10 +4,29 @@
 .board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(240px,1fr);gap:12px;overflow:auto;padding-bottom:14px}.lane{background:#e7eef6;border-radius:12px;padding:12px;min-height:180px}.lane h3{font-size:15px;margin:0 0 12px}.lane .card{padding:12px}.lane .card button{width:100%;text-align:left}.itemsDialog{width:min(1500px,97vw)}.itemTable{min-width:1750px}.itemTable td{vertical-align:top}.itemTable input,.itemTable select,.itemTable textarea{width:100%;padding:8px}.itemTable textarea{min-height:42px;resize:vertical}.itemTable th:nth-child(1){width:18%}.itemTable th:nth-child(5),.itemTable th:nth-child(7){width:15%}.itemTable th:nth-child(8){width:14%}.itemTable input[type=number]{min-width:66px}
 @media print{header,main,dialog button{display:none!important}dialog[open]{position:static;width:100%;max-height:none;border:0}dialog::backdrop{background:white}.scroll{overflow:visible}}
 .card[draggable]{cursor:grab}.card[draggable]:active{cursor:grabbing}.lane.drop-target{outline:2px solid #1768a3;outline-offset:-2px}
+nav button,nav a{flex-shrink:0}.demand-description{white-space:pre-wrap;overflow-wrap:anywhere}
+.demand-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}
+.demand-facts dt{font-weight:700}.demand-facts dd{margin:4px 0 0;overflow-wrap:anywhere}
+@media(max-width:900px){
+ main{padding:22px 16px}
+ nav{overflow-x:auto;flex-wrap:nowrap;padding-bottom:8px}
+ .board{grid-auto-columns:minmax(218px,46%);scroll-snap-type:x proximity}
+ .lane{scroll-snap-align:start}
+}
+@media(max-width:600px){
+ header{padding:12px 14px}
+ main{padding:16px 12px}
+ .grid{grid-template-columns:minmax(0,1fr)}
+ .board{grid-auto-columns:minmax(0,84%);gap:8px}
+ dialog,.itemsDialog{width:calc(100% - 20px);max-height:calc(100% - 20px);padding:14px}
+ dialog .row{flex-wrap:wrap}
+ button,select,input,textarea{min-height:44px;font-size:16px}
+ input[type=checkbox],input[type=radio]{min-height:auto}
+}
 </style>
-<header><strong>CDL NOVO HAMBURGO</strong><label>Perfil de teste <select id="role"><option value="admin">Administrador · Luciano</option><option value="manager">Gestor</option><option value="user">Demandante · Colaborador</option></select></label></header>
+<header><strong>CDL NOVO HAMBURGO</strong><span id="signedProfile" hidden></span><label id="demoProfile">Perfil de teste <select id="role"><option value="admin">Administrador · Luciano</option><option value="manager">Gestor</option><option value="user">Demandante · Colaborador</option></select></label></header>
 <main><div class="row spread"><div><h1>Solicitações de compras</h1><p class="muted">Portal de Demandas / Compras</p></div><button id="new" class="primary">+ Nova solicitação</button></div>
-<nav aria-label="Portal de Demandas e Compras" id="nav"><button data-tab="demands">Demandas</button><button data-tab="requests">Kanban de compras</button><button data-tab="orders">Ordens de compra</button><button data-tab="budget">Orçamento aprovado</button><button data-tab="vendors">Fornecedores</button><button data-tab="costs">Histórico de compras</button><button id="archiveTab" data-tab="archive" hidden>Inativos</button><a href="https://drive.google.com/drive/folders/1OYkBpzPSk1MxEa0L9j3uEf53s9ysKZYU" target="_blank" rel="noopener noreferrer">Pasta de documentos</a><button data-tab="design">Fluxo e regras</button></nav>
+<nav aria-label="Portal de Demandas e Compras" id="nav"><button data-tab="demands">Demandas</button><button data-tab="requests">Solicitação de compra</button><button data-tab="orders">Ordens de compra</button><button data-tab="budget">Orçamento aprovado</button><button data-tab="vendors">Fornecedores</button><button data-tab="costs">Histórico de compras</button><button id="archiveTab" data-tab="archive" hidden>Inativos</button><a href="https://drive.google.com/drive/folders/1OYkBpzPSk1MxEa0L9j3uEf53s9ysKZYU" target="_blank" rel="noopener noreferrer">Pasta de documentos</a><button data-tab="design">Fluxo e regras</button></nav>
 <div id="notice" role="status"></div><div id="view"></div><footer>Protótipo com dados fictícios. As alterações ficam no navegador. Use somente dados de teste.</footer></main>
 <dialog id="modal"><div class="row spread"><h2 id="modalTitle"></h2><button id="close" aria-label="Fechar">Fechar</button></div><div id="body"></div></dialog>
 <script>
@@ -24,10 +43,13 @@ let db;try{db=JSON.parse(localStorage.getItem(key))||structuredClone(seed)}catch
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cash=value=>Number(value).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const admin=()=>$('role').value==='admin';
-const manager=()=>$('role').value==='manager';
+const portalProfile=parent===window?null:parent.purchasePortalProfile?.(window);
+const role=()=>portalProfile?.role??$('role').value;
+const ownerKey=()=>portalProfile?.id??role();
+const admin=()=>role()==='admin';
+const manager=()=>role()==='manager';
 const canDeleteVendor=()=>admin()||manager();
-const actor=()=>admin()?'Luciano':manager()?'Gestor':'Colaborador';
+const actor=()=>portalProfile?.name||(admin()?'Luciano':manager()?'Gestor':'Colaborador');
 const activeVendors=()=>db.vendors.filter(v=>!v.deleted);
 const vendor=id=>db.vendors.find(v=>v.id===Number(id));
 const validation=(id,category)=>{
@@ -37,7 +59,7 @@ const validation=(id,category)=>{
  return Object.values(supplier?.status||{}).includes('Validado')?'Validado':'Homologação pendente';
 };
 const required=r=>r.market?1:3;
-const visible=()=>db.requests.filter(r=>!r.inactive&&(admin()||r.owner===$('role').value));
+const visible=()=>db.requests.filter(r=>!r.inactive&&(admin()||r.owner===ownerKey()));
 const nextId=list=>Math.max(0,...list.map(x=>x.id))+1;
 let tab='demands',filter='';
 const field=(label,html)=>'<label class="field">'+label+html+'</label>';
@@ -254,7 +276,7 @@ function batchForm(draft){
   if(draft&&!visibleDrafts().includes(draft))return;
   const firstId=nextPurchaseId(),id=draft?.id??firstId;
   const records=items.map((data,i)=>{
-   const r={...data,id:firstId+i,batch:id,batchTitle:title,requester,registeredBy:actor(),demandId:draft?.demandId??null,line:i+1,owner:draft?.owner??$('role').value,status:'analysis',market:route==='Mercado e gêneros de consumo',minimum:route==='Mercado e gêneros de consumo'?1:3,quotes:[],log:[]};
+   const r={...data,id:firstId+i,batch:id,batchTitle:title,requester,registeredBy:actor(),demandId:draft?.demandId??null,line:i+1,owner:draft?.owner??ownerKey(),status:'analysis',market:route==='Mercado e gêneros de consumo',minimum:route==='Mercado e gêneros de consumo'?1:3,quotes:[],log:[]};
    log(r,r.budgetId?'Registrou para análise · Reserva '+cash(toCents(r.estimate)/100)+' · '+r.budgetId:'Registrou para análise sem vínculo com o OBZ.');return r;
   });
   if(draft)db.drafts=db.drafts.filter(d=>d!==draft);
@@ -304,7 +326,7 @@ function requestForm(r){
  open(r?'Editar solicitação':'Nova solicitação','<form id="form">'+field('Item ou serviço','<input name="title" required maxlength="120" value="'+esc(r?.title)+'">')+'<div class="grid">'+field('Centro de serviço ou apoio','<select name="center" required><option value="">Selecione</option>'+Object.entries(centers).map(([group,items])=>'<optgroup label="'+group+'">'+options(items,r?.center)+'</optgroup>').join('')+'</select>')+field('Quantidade','<input name="qty" type="number" min="1" required value="'+(r?.qty||1)+'">')+field('Unidade',unitSelect(r?.unit))+field('Data necessária','<input name="need" type="date" required value="'+esc(r?.need)+'">')+'</div>'+field('Fornecedor homologado','<select name="preferred" id="editPreferred">'+preferredOptions(budgetLine(r?.budgetId)?.category,r?.preferred)+'</select>')+field('Ação ou atividade','<input name="activity" maxlength="160" required value="'+esc(r?.activity)+'">')+
  field('Observação e especificações','<textarea name="reason">'+esc(r?.reason)+'</textarea>')+budgetFields(r)+quoteValueSummary(r,false)+'<p id="editBudgetError" role="alert"></p><button class="primary">Salvar alterações</button></form>');
  wireBudgetFields(r);
- submit(f=>{const data=Object.fromEntries(f),current=r||{id:nextId(db.requests),owner:$('role').value,status:'quote',quotes:[],log:[]};
+ submit(f=>{const data=Object.fromEntries(f),current=r||{id:nextId(db.requests),owner:ownerKey(),status:'quote',quotes:[],log:[]};
  if(!data.activity.trim()){$('editBudgetError').textContent='Informe a ação ou atividade.';return}
  data.activity=data.activity.trim();
  data.category=budgetLine(data.budgetId)?.category;
@@ -348,7 +370,7 @@ function vendorForm(back,existing){
  });
 }
 function vendorOrders(v){
- const rows=db.requests.filter(r=>admin()||(!r.inactive&&r.owner===$('role').value));
+ const rows=db.requests.filter(r=>admin()||(!r.inactive&&r.owner===ownerKey()));
  return (db.orders||[]).filter(o=>o.vendorId===v.id&&rows.some(r=>r.orderId===o.id)&&(admin()||!o.inactive)).slice().sort((a,b)=>b.id-a.id);
 }
 function vendorDetails(v){
@@ -882,7 +904,7 @@ function renderCosts(){
  costRows();
 }
 function costRows(){
- const records=db.requests.filter(r=>admin()||(!r.inactive&&r.owner===$('role').value)).filter(r=>realizedQty(r)>0&&(!costCenter||r.center===costCenter)&&norm(r.title).includes(norm(costSearch)));
+ const records=db.requests.filter(r=>admin()||(!r.inactive&&r.owner===ownerKey())).filter(r=>realizedQty(r)>0&&(!costCenter||r.center===costCenter)&&norm(r.title).includes(norm(costSearch)));
  const groups=Map.groupBy?Map.groupBy(records,groupKey):records.reduce((map,r)=>{const key=groupKey(r);if(!map.has(key))map.set(key,[]);map.get(key).push(r);return map},new Map());
  $('costResults').innerHTML=groups.size?[...groups.values()].map(rows=>{
  const first=rows[0];
@@ -1197,7 +1219,7 @@ db.demands??=[
 ];
 db.drafts??=[];
 const demandById=id=>db.demands.find(d=>d.id===id);
-const visibleDrafts=()=>db.drafts.filter(d=>!d.inactive&&(admin()||d.owner===$('role').value));
+const visibleDrafts=()=>db.drafts.filter(d=>!d.inactive&&(admin()||d.owner===ownerKey()));
 const nextPurchaseId=()=>nextId([...db.requests,...db.drafts]);
 const demandStates={pending:'A avaliar',no:'Sem compra',yes:'Envolve compra'};
 function linkedPurchases(id){
@@ -1211,7 +1233,39 @@ function demandStatus(d){
  if(count)return count===1?'1 compra vinculada':count+' compras vinculadas';
  return d.decision==='yes'?'Compra necessária · Solicitação ainda não aberta':demandStates[d.decision];
 }
+let assignedDemands=[];
+function renderAssignedDemands(){
+ $('view').innerHTML='<section><div class="row spread"><h2>Minhas demandas</h2><button id="refreshAssigned">Atualizar</button></div>'+
+ '<div id="assignedDemands" class="grid" aria-live="polite">Carregando demandas…</div></section>';
+ const list=$('assignedDemands');
+ async function refresh(){
+  $('refreshAssigned').disabled=true;
+  try{
+   assignedDemands=await parent.loadPurchasingDemands(window);
+   if(!list.isConnected)return;
+   list.innerHTML=assignedDemands.length?assignedDemands.map(d=>'<article class="card"><small>'+esc(d.protocol)+'</small><h3>'+esc(d.title)+'</h3>'+
+    '<p>'+esc(d.sector)+' · '+esc(d.status)+(d.deadline?' · Prazo '+esc(dateLabel(d.deadline)):'')+'</p>'+
+    '<p class="muted">'+esc(d.purchases?d.purchases+' compra(s) vinculada(s)':d.decision?demandStates[d.decision]:'')+'</p>'+
+    '<button data-assigned-demand="'+esc(d.id)+'">Ver detalhes</button></article>').join(''):'<p>Nenhuma demanda ativa está atribuída a você.</p>';
+   list.querySelectorAll('[data-assigned-demand]').forEach(button=>button.onclick=()=>assignedDemandDetails(button.dataset.assignedDemand));
+  }catch(error){if(list.isConnected)list.textContent=error.message;}
+  finally{if(list.isConnected)$('refreshAssigned').disabled=false;}
+ }
+ $('refreshAssigned').onclick=refresh;
+ refresh();
+}
+function assignedDemandDetails(id){
+ const d=assignedDemands.find(item=>String(item.id)===id);
+ if(!d)return;
+ const fields=[['Solicitante',d.requester],['Responsável',d.assignee],['Setor',d.sector],['Núcleo',d.nucleus],['Situação',d.status],
+  ['Prioridade',d.priority],['Prazo',d.deadline&&dateLabel(d.deadline)],['Resultado esperado',d.expectedResult]];
+ open(d.protocol+' · '+d.title,'<p class="demand-description">'+esc(d.description)+'</p><dl class="demand-facts">'+
+ fields.filter(([,value])=>value).map(([label,value])=>'<div><dt>'+label+'</dt><dd>'+esc(value)+'</dd></div>').join('')+
+ '</dl><button class="primary" id="manageDemandPurchase">Gerenciar vínculo de compra</button>');
+ $('manageDemandPurchase').onclick=()=>{close();parent.openPurchasingDemand(window,d.id);};
+}
 function renderDemands(){
+ if(portalProfile){renderAssignedDemands();return;}
  $('view').innerHTML='<section><div class="row spread"><h2>Demandas internas</h2><button id="newDraft">Criar compra independente</button></div>'+
  '<p class="muted">Demandas fictícias para testar a integração com Compras.</p><div class="grid">'+db.demands.map(d=>'<article class="card"><small>'+esc(d.id)+'</small><h3>'+esc(d.title)+'</h3><p>'+esc(demandStatus(d))+'</p><button data-demand="'+esc(d.id)+'">Abrir demanda</button></article>').join('')+'</div></section>';
  $('newDraft').onclick=()=>draftForm();
@@ -1250,7 +1304,7 @@ function draftForm(demand){
  submit(f=>{
   const title=f.get('title').trim();
   if(!title||(demand&&demand.decision!=='yes'))return;
-  const draft={id:nextPurchaseId(),title,owner:$('role').value,demandId:demand?.id??null};
+  const draft={id:nextPurchaseId(),title,owner:ownerKey(),demandId:demand?.id??null};
   db.drafts.push(draft);save();
   if(demand)demandDetails(demand.id);else draftDetails(draft);
   note(protocol(draft.id)+' criada como rascunho.');
@@ -1351,5 +1405,11 @@ function archiveDetails(key){
  });
 }
 
+if(portalProfile){
+ $('demoProfile').hidden=true;
+ $('signedProfile').hidden=false;
+ $('signedProfile').textContent=actor()+' · '+({admin:'Administrador',manager:'Gestor',collaborator:'Colaborador'}[role()]||'Colaborador');
+ document.querySelector('footer').textContent='As demandas e os vínculos são do portal. Os demais registros deste quadro ficam neste navegador.';
+}
 render();
 </script></html>
