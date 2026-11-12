@@ -1246,7 +1246,7 @@ function renderAssignedDemands(){
    list.innerHTML=assignedDemands.length?assignedDemands.map(d=>'<article class="card"><small>'+esc(d.protocol)+'</small><h3>'+esc(d.title)+'</h3>'+
     '<p>'+esc(d.sector)+' · '+esc(d.status)+(d.deadline?' · Prazo '+esc(dateLabel(d.deadline)):'')+'</p>'+
     '<p class="muted">'+esc(d.purchases?d.purchases+' compra(s) vinculada(s)':d.decision?demandStates[d.decision]:'')+'</p>'+
-    '<button data-assigned-demand="'+esc(d.id)+'">Ver detalhes</button></article>').join(''):'<p>Nenhuma demanda ativa está atribuída a você.</p>';
+    '<button data-assigned-demand="'+esc(d.id)+'">Ver detalhes</button></article>').join(''):'<p>Nenhuma demanda ativa e não concluída está atribuída a você.</p>';
    list.querySelectorAll('[data-assigned-demand]').forEach(button=>button.onclick=()=>assignedDemandDetails(button.dataset.assignedDemand));
   }catch(error){if(list.isConnected)list.textContent=error.message;}
   finally{if(list.isConnected)$('refreshAssigned').disabled=false;}

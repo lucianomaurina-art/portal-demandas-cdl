@@ -125,6 +125,10 @@ window.purchasePortalProfile = source => {
   return {id: session.user.id, name: userName(), role: profile.role};
 };
 
+function isPurchasingDemandEligible(demand) {
+  return inScope(demand, 'mine') && demand.status !== 'Concluído';
+}
+
 window.loadPurchasingDemands = async source => {
   if (!purchaseFrameIsActive(source)) throw new Error('Entre no portal para consultar suas demandas.');
   const userId = session.user.id;
@@ -133,7 +137,7 @@ window.loadPurchasingDemands = async source => {
   if (!purchaseFrameIsActive(source) || session.user.id !== userId || result.error) {
     throw new Error('Não foi possível carregar suas demandas.');
   }
-  const assigned = (result.data || []).filter(d => inScope(d, 'mine'));
+  const assigned = (result.data || []).filter(isPurchasingDemandEligible);
   const ids = assigned.map(d => d.id);
   const [decisions, purchases] = ids.length ? await Promise.all([
     db.from('demand_purchase_decisions').select('demand_id,decision').in('demand_id', ids).order('id', {ascending:false}),
@@ -155,7 +159,7 @@ window.openPurchasingDemand = async (source, id) => {
   const userId = session.user.id;
   const {data, error} = await db.from('demands').select('*').eq('id',id).maybeSingle();
   if (!purchaseFrameIsActive(source) || session.user.id !== userId) return;
-  if (error || !data || !inScope(data,'mine')) {
+  if (error || !data || !isPurchasingDemandEligible(data)) {
     toast('A demanda não está disponível para este usuário.');
     return;
   }
@@ -173,7 +177,7 @@ function openPurchasePrototype() {
   }
   status.textContent = '';
   frame.hidden = false;
-  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261112-compras-navegacao';
+  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261112-compras-demandas-ativas';
 }
 
 function closePurchasePrototype() {
