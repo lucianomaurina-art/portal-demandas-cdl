@@ -13,7 +13,55 @@ fillSelect($('[name=nucleus]'),NUCLEI);fillSelect($('[name=sector]'),SECTORS);fi
 fillSelect($('#filterStatus'),STATUSES,'Todos os status');fillSelect($('#filterNucleus'),NUCLEI,'Todos os núcleos');fillSelect($('#filterPriority'),PRIORITIES,'Todas as prioridades');
 fillSelect($('#filterSector'),SECTORS,'Todos os setores');
 fillSelect($('#editForm [name=nucleus]'),NUCLEI);fillSelect($('#editForm [name=sector]'),SECTORS);fillSelect($('#editForm [name=priority]'),PRIORITIES);fillSelect($('#editForm [name=status]'),STATUSES);
-function route(){const id=location.hash.replace('#/','')||'inicio';$$('.view').forEach(v=>v.classList.add('hidden'));if(!configured){$('#setup').classList.remove('hidden');return}const protectedView=['plano','ideias','dashboard','usuarios','compras','compras-triagem'].includes(id);if(protectedView&&!session){if(id==='compras'||id==='compras-triagem')postLoginRoute='#/'+id;location.hash='#/login';return}if(id==='usuarios'&&profile?.role!=='admin'){location.hash='#/plano';return}$('#'+(document.getElementById(id)?id:'inicio')).classList.remove('hidden');if(id==='plano')loadWorkspace().then(()=>{if(pendingDemandOpen&&location.hash==='#/plano'){const demandId=pendingDemandOpen;pendingDemandOpen=null;openEdit(demandId)}});if(id==='compras')openPurchasePrototype();else closePurchasePrototype();if(id==='compras-triagem')loadPurchaseModule();if(id==='ideias'&&typeof loadIdeas==='function')loadIdeas();if(id==='dashboard')loadDemands(true);if(id==='usuarios')loadProfiles()}
+const protectedViews = ['plano', 'ideias', 'dashboard', 'usuarios', 'compras', 'compras-triagem'];
+const portalModules = {
+  inicio: 'inicio',
+  nova: 'demandas',
+  plano: 'demandas',
+  dashboard: 'demandas',
+  'nova-ideia': 'ideias',
+  ideias: 'ideias',
+  compras: 'compras',
+  'compras-triagem': 'compras',
+};
+
+function route() {
+  const requested = location.hash.startsWith('#/') ? location.hash.slice(2) : '';
+  const id = requested && document.getElementById(requested)?.classList.contains('view') ? requested : 'inicio';
+  if (id !== 'compras') closePurchasePrototype();
+  $$('.view').forEach(view => view.classList.add('hidden'));
+  if (!configured) {
+    $('#setup').classList.remove('hidden');
+    return;
+  }
+  if (protectedViews.includes(id) && !session) {
+    postLoginRoute = '#/' + id;
+    location.hash = '#/login';
+    return;
+  }
+  if (id !== 'login') postLoginRoute = null;
+  if (id === 'usuarios' && profile?.role !== 'admin') {
+    location.hash = '#/plano';
+    return;
+  }
+  $$('.portal-switcher [data-module]').forEach(link => {
+    if (link.dataset.module === portalModules[id]) link.setAttribute('aria-current', 'location');
+    else link.removeAttribute('aria-current');
+  });
+  document.getElementById(id).classList.remove('hidden');
+  if (id === 'plano') loadWorkspace().then(() => {
+    if (pendingDemandOpen && location.hash === '#/plano') {
+      const demandId = pendingDemandOpen;
+      pendingDemandOpen = null;
+      openEdit(demandId);
+    }
+  });
+  if (id === 'compras') openPurchasePrototype();
+  if (id === 'compras-triagem') loadPurchaseModule();
+  if (id === 'ideias' && typeof loadIdeas === 'function') loadIdeas();
+  if (id === 'dashboard') loadDemands(true);
+  if (id === 'usuarios') loadProfiles();
+}
 function setAuthUI(){$$('.admin-only').forEach(x=>x.classList.toggle('hidden',!session));$('#usersNav').classList.toggle('hidden',!session||profile?.role!=='admin');$('#notificationCenter').classList.toggle('hidden',!session);$('#authButton').textContent=session?'Sair':'Área administrativa'}
 window.addEventListener('hashchange',route);
 $('#authButton').onclick=async()=>{if(session){stopNotifications();await db.auth.signOut();session=null;setAuthUI();location.hash='#/inicio'}else location.hash='#/login'};
@@ -56,7 +104,7 @@ const linkPurchase = $('#linkPurchaseDraft');
 const purchaseDialog = $('#purchaseDraftDialog');
 const purchaseDraftForm = $('#purchaseDraftForm');
 const purchaseRecordDialog = $('#purchaseRecordDialog');
-const purchaseRecordFields = 'id,title,requester,purpose,registered_name,demand_id,created_by,status,decision_note,demands(protocol)';
+const purchaseRecordFields = 'id,title,requester,purpose,registered_name,demand_id,created_by,status,decision_note,demands(protocol,expected_result)';
 let purchaseModuleRequest = 0;
 const purchaseStages = {draft:'Rascunho',submitted:'Em triagem',triaged:'Triagem concluída',returned:'Devolvida para ajuste',rejected:'Rejeitada'};
 const editablePurchase = row => ['draft','returned'].includes(row.status) && (profile?.role==='admin' || row.created_by===session?.user.id);
@@ -115,6 +163,58 @@ window.sendKanbanQuoteToDrive = async (source, file, itemId, uploadId) => {
   return data.drive_url;
 };
 
+function purchaseFrameIsActive(source) {
+  const frame = $('#purchasePrototypeFrame');
+  return source === frame.contentWindow && !frame.hidden && session && profile?.active;
+}
+
+window.purchasePortalProfile = source => {
+  if (!purchaseFrameIsActive(source)) return null;
+  return {id: session.user.id, name: userName(), role: profile.role};
+};
+
+function isPurchasingDemandEligible(demand) {
+  return inScope(demand, 'mine') && demand.status !== 'Concluído';
+}
+
+window.loadPurchasingDemands = async source => {
+  if (!purchaseFrameIsActive(source)) throw new Error('Entre no portal para consultar suas demandas.');
+  const userId = session.user.id;
+  let result = profile.role === 'admin' ? await db.rpc('list_admin_demands') : await db.from('demands').select('*');
+  if (result.error && profile?.role === 'admin') result = await db.from('demands').select('*');
+  if (!purchaseFrameIsActive(source) || session.user.id !== userId || result.error) {
+    throw new Error('Não foi possível carregar suas demandas.');
+  }
+  const assigned = (result.data || []).filter(isPurchasingDemandEligible);
+  const ids = assigned.map(d => d.id);
+  const [decisions, purchases] = ids.length ? await Promise.all([
+    db.from('demand_purchase_decisions').select('demand_id,decision').in('demand_id', ids).order('id', {ascending:false}),
+    db.from('purchase_requests').select('id,demand_id').in('demand_id', ids)
+  ]) : [{data:[]},{data:[]}];
+  if (!purchaseFrameIsActive(source) || session.user.id !== userId) throw new Error('Sessão encerrada.');
+  return assigned.map(d => ({
+    id: d.id, protocol: d.protocol, title: d.expected_result || d.description,
+    description: d.description, expectedResult: d.expected_result, requester: d.requester,
+    assignee: d.assignee || userName(), sector: d.sector, nucleus: d.nucleus,
+    deadline: d.deadline, priority: d.priority, status: d.status,
+    decision: decisions.data?.find(row => row.demand_id === d.id)?.decision,
+    purchases: purchases.data?.filter(row => row.demand_id === d.id).length,
+  }));
+};
+
+window.openPurchasingDemand = async (source, id) => {
+  if (!purchaseFrameIsActive(source)) return;
+  const userId = session.user.id;
+  const {data, error} = await db.from('demands').select('*').eq('id',id).maybeSingle();
+  if (!purchaseFrameIsActive(source) || session.user.id !== userId) return;
+  if (error || !data || !isPurchasingDemandEligible(data)) {
+    toast('A demanda não está disponível para este usuário.');
+    return;
+  }
+  demands = [...demands.filter(d => d.id !== id), data];
+  openEdit(id);
+};
+
 function openPurchasePrototype() {
   const frame = $('#purchasePrototypeFrame');
   const status = $('#purchasePrototypeStatus');
@@ -125,7 +225,7 @@ function openPurchasePrototype() {
   }
   status.textContent = '';
   frame.hidden = false;
-  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261111-kanban-drive';
+  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261112-compras-fornecedores';
 }
 
 function closePurchasePrototype() {
@@ -366,8 +466,9 @@ purchaseItemForm.onsubmit = async event => {
   const context = purchaseItemContext, button = purchaseItemForm.querySelector('button');
   if (!context || !session || !profile?.active || !editablePurchase(context.row) || button.disabled) return;
   const fields = new FormData(purchaseItemForm);
-  const description = fields.get('description').trim(), activity = fields.get('activity').trim();
-  if (!description || !activity) return;
+  const description = fields.get('description').trim();
+  if (!description) return;
+  const activity = (context.row.demands?.expected_result?.trim() || context.row.title).slice(0,160);
   const needed_on=fields.get('needed_on'),pilot=Number(needed_on.slice(0,4))===purchasePilotYear;
   button.disabled = true;
   const {error} = await db.from('purchase_request_items').insert({

@@ -1,5 +1,3 @@
-/* Portal Interno CDL — acesso unificado aos módulos (homologação).
-   Escopo estrito à tela inicial: não altera Demandas, Ideias, dashboard ou formulários. */
 #inicio .portal-hero{max-width:850px;margin:18px auto 30px;text-align:center}
 #inicio .portal-hero h1{font-size:clamp(30px,3.2vw,39px)}
 #inicio .portal-hero p{color:var(--muted);font-size:15px;line-height:1.65}
@@ -49,4 +47,33 @@
   #inicio .portal-module-meta small{font-size:10px}
   #inicio .portal-status{font-size:9px}
   #inicio .portal-module p{font-size:13px}
+}
+
+.portal-switcher, .portal-purchase-links {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px 12px;
+  margin-bottom:16px;
+}
+.portal-switcher a, .portal-purchase-links a {
+  padding:8px 12px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:#fff;
+  color:var(--blue);
+  text-decoration:none;
+  font-weight:700;
+}
+.portal-switcher a[aria-current] {
+  background:var(--blue);
+  color:#fff;
+}
+.portal-switcher a:focus-visible, .portal-purchase-links a:focus-visible {
+  outline:2px solid var(--blue2);
+  outline-offset:2px;
+}
+.portal-purchase-links span {
+  flex:1 1 280px;
+  color:var(--muted);
 }

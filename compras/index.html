@@ -1,15 +1,35 @@
 <!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Compras · CDL Novo Hamburgo</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f3f6fa;color:#172740;font:15px system-ui,sans-serif}header{background:#10243d;color:white;padding:20px max(5%,calc((100% - 1160px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}header strong{letter-spacing:.06em}header label{color:#cbd7e6}main{max-width:1200px;margin:auto;padding:32px 20px}h1{font-size:clamp(28px,5vw,42px);margin:0;letter-spacing:-.05em}h2{margin-top:0}p{line-height:1.55}nav,.row,.actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}nav{margin:22px 0;border-bottom:1px solid #d7e1eb;padding-bottom:12px}button,select,input,textarea{font:inherit;border:1px solid #b9c9da;border-radius:8px;padding:9px 12px}button{background:white;color:#172740;cursor:pointer;font-weight:650}button:hover{border-color:#0059b0}button.primary,nav button[aria-current]{background:#0759a9;color:white;border-color:#0759a9}.muted,small{color:#485d75}.tag{display:inline-block;background:#e7effc;color:#154781;border-radius:20px;padding:5px 10px;font-size:13px;font-weight:650}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}.card,section{background:white;border:1px solid #dae4ee;border-radius:14px;padding:20px;margin-bottom:12px}.card h3{margin:9px 0}.spread{justify-content:space-between}label.field{display:grid;gap:5px;margin-bottom:12px;font-weight:550}input,textarea,select{min-width:0;background:white;color:#172740}textarea{min-height:70px}dialog{width:min(820px,95vw);max-height:90vh;border:1px solid #d0dae5;border-radius:16px;padding:22px;color:#172740}dialog::backdrop{background:#10243d88}table{width:100%;border-collapse:collapse}td,th{text-align:left;border-bottom:1px solid #e0e7ef;padding:9px}.scroll{overflow:auto}.alert{background:#fff0ce;color:#573a00;padding:10px;border-radius:8px}.ok{background:#e4f5ec;color:#14553a}.meta{margin:8px 0 14px}.actions{margin:12px 0}.info{margin:10px 0}summary{cursor:pointer;font-weight:650}ol,ul{padding-left:22px}li{margin:6px 0}footer{color:#485d75;font-size:13px;margin-top:18px}[hidden]{display:none!important}
-.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(240px,1fr);gap:12px;overflow:auto;padding-bottom:14px}.lane{background:#e7eef6;border-radius:12px;padding:12px;min-height:180px}.lane h3{font-size:15px;margin:0 0 12px}.lane .card{padding:12px}.lane .card button{width:100%;text-align:left}.itemsDialog{width:min(1500px,97vw)}.itemTable{min-width:1750px}.itemTable td{vertical-align:top}.itemTable input,.itemTable select,.itemTable textarea{width:100%;padding:8px}.itemTable textarea{min-height:42px;resize:vertical}.itemTable th:nth-child(1){width:18%}.itemTable th:nth-child(5),.itemTable th:nth-child(7){width:15%}.itemTable th:nth-child(8){width:14%}.itemTable input[type=number]{min-width:66px}
+.board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(240px,1fr);gap:12px;overflow:auto;padding-bottom:14px}.lane{background:#e7eef6;border-radius:12px;padding:12px;min-height:180px}.lane h3{font-size:15px;margin:0 0 12px}.lane .card{padding:12px}.lane .card button{width:100%;text-align:left}.itemsDialog{width:min(1500px,97vw)}.itemTable{min-width:1550px}.itemTable [data-replicate-date]{margin-top:6px;width:100%;white-space:nowrap}.itemTable td{vertical-align:top}.itemTable input,.itemTable select,.itemTable textarea{width:100%;padding:8px}.itemTable textarea{min-height:42px;resize:vertical}.itemTable th:nth-child(1){width:18%}.itemTable th:nth-child(5),.itemTable th:nth-child(6){width:15%}.itemTable th:nth-child(7){width:14%}.itemTable input[type=number]{min-width:66px}
 @media print{header,main,dialog button{display:none!important}dialog[open]{position:static;width:100%;max-height:none;border:0}dialog::backdrop{background:white}.scroll{overflow:visible}}
 .card[draggable]{cursor:grab}.card[draggable]:active{cursor:grabbing}.lane.drop-target{outline:2px solid #1768a3;outline-offset:-2px}
+nav button,nav a{flex-shrink:0}.demand-description{white-space:pre-wrap;overflow-wrap:anywhere}
+.demand-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}
+.demand-facts dt{font-weight:700}.demand-facts dd{margin:4px 0 0;overflow-wrap:anywhere}
+@media(max-width:900px){
+ main{padding:22px 16px}
+ nav{overflow-x:auto;flex-wrap:nowrap;padding-bottom:8px}
+ .board{grid-auto-columns:minmax(218px,46%);scroll-snap-type:x proximity}
+ .lane{scroll-snap-align:start}
+}
+@media(max-width:600px){
+ header{padding:12px 14px}
+ main{padding:16px 12px}
+ .grid{grid-template-columns:minmax(0,1fr)}
+ .board{grid-auto-columns:minmax(0,84%);gap:8px}
+ dialog,.itemsDialog{width:calc(100% - 20px);max-height:calc(100% - 20px);padding:14px}
+ dialog .row{flex-wrap:wrap}
+ button,select,input,textarea{min-height:44px;font-size:16px}
+ input[type=checkbox],input[type=radio]{min-height:auto}
+}
 </style>
-<header><strong>CDL NOVO HAMBURGO</strong><label>Perfil de teste <select id="role"><option value="admin">Administrador · Luciano</option><option value="manager">Gestor</option><option value="user">Demandante · Colaborador</option></select></label></header>
+<header><strong>CDL NOVO HAMBURGO</strong><span id="signedProfile" hidden></span><label id="demoProfile">Perfil de teste <select id="role"><option value="admin">Administrador · Luciano</option><option value="manager">Gestor</option><option value="user">Demandante · Colaborador</option></select></label></header>
 <main><div class="row spread"><div><h1>Solicitações de compras</h1><p class="muted">Portal de Demandas / Compras</p></div><button id="new" class="primary">+ Nova solicitação</button></div>
-<nav aria-label="Portal de Demandas e Compras" id="nav"><button data-tab="demands">Demandas</button><button data-tab="requests">Kanban de compras</button><button data-tab="orders">Ordens de compra</button><button data-tab="budget">Orçamento aprovado</button><button data-tab="vendors">Fornecedores</button><button data-tab="costs">Histórico de compras</button><button id="archiveTab" data-tab="archive" hidden>Inativos</button><a href="https://drive.google.com/drive/folders/1OYkBpzPSk1MxEa0L9j3uEf53s9ysKZYU" target="_blank" rel="noopener noreferrer">Pasta de documentos</a><button data-tab="design">Fluxo e regras</button></nav>
+<nav aria-label="Portal de Demandas e Compras" id="nav"><button data-tab="demands">Demandas</button><button data-tab="requests">Solicitação de compra</button><button data-tab="orders">Ordens de compra</button><button data-tab="budget">Orçamento aprovado</button><button data-tab="vendors">Fornecedores</button><button data-tab="costs">Histórico de compras</button><button id="archiveTab" data-tab="archive" hidden>Inativos</button><a href="https://drive.google.com/drive/folders/1OYkBpzPSk1MxEa0L9j3uEf53s9ysKZYU" target="_blank" rel="noopener noreferrer">Pasta de documentos</a><button data-tab="design">Fluxo e regras</button></nav>
 <div id="notice" role="status"></div><div id="view"></div><footer>Protótipo com dados fictícios. As alterações ficam no navegador. Use somente dados de teste.</footer></main>
 <dialog id="modal"><div class="row spread"><h2 id="modalTitle"></h2><button id="close" aria-label="Fechar">Fechar</button></div><div id="body"></div></dialog>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
 <script>
 const centers={Serviço:['SPC Brasil','Certificação Digital','Locação de Salas e Espaços','Eventos'],Apoio:['Financeiro','Marketing','Governança','Infraestrutura','TI']};
 const categories=['Materiais e suprimentos','Equipamentos e tecnologia','Serviços terceirizados','Eventos e comunicação'];
@@ -24,10 +44,13 @@ let db;try{db=JSON.parse(localStorage.getItem(key))||structuredClone(seed)}catch
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cash=value=>Number(value).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const admin=()=>$('role').value==='admin';
-const manager=()=>$('role').value==='manager';
+const portalProfile=parent===window?null:parent.purchasePortalProfile?.(window);
+const role=()=>portalProfile?.role??$('role').value;
+const ownerKey=()=>portalProfile?.id??role();
+const admin=()=>role()==='admin';
+const manager=()=>role()==='manager';
 const canDeleteVendor=()=>admin()||manager();
-const actor=()=>admin()?'Luciano':manager()?'Gestor':'Colaborador';
+const actor=()=>portalProfile?.name||(admin()?'Luciano':manager()?'Gestor':'Colaborador');
 const activeVendors=()=>db.vendors.filter(v=>!v.deleted);
 const vendor=id=>db.vendors.find(v=>v.id===Number(id));
 const validation=(id,category)=>{
@@ -37,7 +60,7 @@ const validation=(id,category)=>{
  return Object.values(supplier?.status||{}).includes('Validado')?'Validado':'Homologação pendente';
 };
 const required=r=>r.market?1:3;
-const visible=()=>db.requests.filter(r=>!r.inactive&&(admin()||r.owner===$('role').value));
+const visible=()=>db.requests.filter(r=>!r.inactive&&(admin()||r.owner===ownerKey()));
 const nextId=list=>Math.max(0,...list.map(x=>x.id))+1;
 let tab='demands',filter='';
 const field=(label,html)=>'<label class="field">'+label+html+'</label>';
@@ -182,7 +205,7 @@ function batchDetails(id){
  if(!items)return;
  const pending=items.filter(r=>r.status==='analysis');
  const reviews=items.filter(r=>r.status==='review');
- open(protocol(id)+' · '+batchTitle(items),registeredLine(items[0].registeredBy)+requesterLine(items[0].requester)+reasonLine(requestReason(id))+'<p>'+esc(batchSummary(items))+'</p><div class="scroll"><table><thead><tr><th>Item e quantidade</th><th>Centro</th><th>Ação ou atividade</th><th>Necessidade</th><th>Fornecedor</th><th>Etapa</th><th></th></tr></thead><tbody>'+items.map(r=>'<tr><td><strong>'+esc(r.title)+'</strong><br><small>'+esc(r.qty)+' '+esc(r.unit)+'</small></td><td>'+esc(r.center)+'</td><td>'+activityLabel(r.activity)+'</td><td>'+dateLabel(r.need)+'</td><td>'+esc(r.approval?.vendor||vendor(r.picked)?.name||vendor(r.preferred)?.name||'A definir no orçamento')+'</td><td><span class="tag">'+states[r.status]+'</span></td><td><button data-item="'+r.id+'">Abrir item</button> <button data-attach-quote="'+r.id+'">Anexar orçamento</button></td></tr>').join('')+'</tbody></table></div>'+
+ open(protocol(id)+' · '+batchTitle(items),registeredLine(items[0].registeredBy)+requesterLine(items[0].requester)+reasonLine(requestReason(id))+'<p>'+esc(batchSummary(items))+'</p><div class="scroll"><table><thead><tr><th>Item e quantidade</th><th>Centro</th><th>Necessidade</th><th>Fornecedor</th><th>Etapa</th><th></th></tr></thead><tbody>'+items.map(r=>'<tr><td><strong>'+esc(r.title)+'</strong><br><small>'+esc(r.qty)+' '+esc(r.unit)+'</small></td><td>'+esc(r.center)+'</td><td>'+dateLabel(r.need)+'</td><td>'+esc(r.approval?.vendor||vendor(r.picked)?.name||vendor(r.preferred)?.name||'A definir no orçamento')+'</td><td><span class="tag">'+states[r.status]+'</span></td><td><button data-item="'+r.id+'">Abrir item</button> <button data-attach-quote="'+r.id+'">Anexar orçamento</button></td></tr>').join('')+'</tbody></table></div>'+
  (items[0].demandId?'<div class="actions"><button id="backDemand">Abrir demanda '+esc(items[0].demandId)+'</button></div>':'')+quoteComparison(items)+quoteReviewPanel(items)+quoteSubmissionPanel(items)+orderLinks(items)+inactiveButton('solicitação')+(admin()&&reviews.length?approvalPanel(items,reviews):'')+
  (pending.length?'<form id="form" class="info">'+field('Observação para cotação (opcional)','<textarea name="reason"></textarea>')+'<button class="primary" value="quote">Iniciar cotação</button></form>':''));
  document.querySelectorAll('[data-item]').forEach(b=>b.onclick=()=>details(items.find(r=>r.id===Number(b.dataset.item))));
@@ -219,12 +242,13 @@ function batchForm(draft){
  field('Motivo da necessidade','<textarea name="purchaseReason" maxlength="600" required></textarea>')+
  field('Tipo de aquisição','<select name="route" id="purchaseRoute">'+options(['Suprimentos e compras avulsas','Mercado e gêneros de consumo','Prestação de serviço com contrato'])+'</select>')+
  '<p id="purchaseRouteInfo" class="muted">O valor estimado é opcional. Registre os valores na cotação.</p>'+
- '<div class="scroll"><table class="itemTable"><thead><tr><th>Descrição do item</th><th>Qtd.</th><th>Unidade</th><th>Data necessária</th><th>Centro de serviço ou apoio</th><th>Ação ou atividade</th><th>Rubrica aprovada (opcional)</th><th>Total estimado opcional (R$)</th><th>Fornecedor homologado</th><th>Observação</th><th></th></tr></thead><tbody id="itemRows"></tbody></table></div>'+
+ '<div class="scroll"><table class="itemTable"><thead><tr><th>Descrição do item</th><th>Qtd.</th><th>Unidade</th><th>Data necessária</th><th>Centro de serviço ou apoio</th><th>Rubrica aprovada (opcional)</th><th>Total estimado opcional (R$)</th><th>Fornecedor homologado</th><th>Observação</th><th></th></tr></thead><tbody id="itemRows"></tbody></table></div>'+
  '<div class="actions"><button type="button" id="addItem">+ Adicionar item</button><button type="submit" class="primary">Registrar solicitação</button></div><p id="batchError" role="alert"></p></form>',true);
  const rows=$('itemRows');
+ let replicatedDate='';
  function add(){
   const row=rows.insertRow();
-  row.innerHTML='<td><textarea name="title" aria-label="Descrição do item" required maxlength="180"></textarea></td><td><input name="qty" aria-label="Quantidade" type="number" min="1" value="1" required></td><td>'+unitSelect()+'</td><td><input name="need" aria-label="Data necessária" type="date" required></td><td><select name="center" aria-label="Centro" required><option value="">Selecione</option>'+Object.entries(centers).map(([group,items])=>'<optgroup label="'+group+'">'+options(items)+'</optgroup>').join('')+'</select></td><td><input name="activity" aria-label="Ação ou atividade" maxlength="160" required></td><td><select name="budgetId" aria-label="Rubrica aprovada (opcional)"></select></td><td><input name="estimate" aria-label="Total estimado opcional" type="number" min="0.01" step="0.01"></td><td><select name="preferred" aria-label="Fornecedor homologado"></select></td><td><textarea name="reason" aria-label="Observação"></textarea></td><td><button type="button" aria-label="Remover item">×</button></td>';
+  row.innerHTML='<td><textarea name="title" aria-label="Descrição do item" required maxlength="180"></textarea></td><td><input name="qty" aria-label="Quantidade" type="number" min="1" value="1" required></td><td>'+unitSelect()+'</td><td><input name="need" aria-label="Data necessária" type="date" required><button type="button" data-replicate-date>Replicar data</button></td><td><select name="center" aria-label="Centro" required><option value="">Selecione</option>'+Object.entries(centers).map(([group,items])=>'<optgroup label="'+group+'">'+options(items)+'</optgroup>').join('')+'</select></td><td><select name="budgetId" aria-label="Rubrica aprovada (opcional)"></select></td><td><input name="estimate" aria-label="Total estimado opcional" type="number" min="0.01" step="0.01"></td><td><select name="preferred" aria-label="Fornecedor homologado"></select></td><td><textarea name="reason" aria-label="Observação"></textarea></td><td><button type="button" aria-label="Remover item">×</button></td>';
   const get=name=>row.querySelector('[name="'+name+'"]');
   const updateSupplier=()=>get('preferred').innerHTML=preferredOptions(budgetLine(get('budgetId').value)?.category,get('preferred').value);
   const updateBudget=()=>{
@@ -232,7 +256,19 @@ function batchForm(draft){
    updateSupplier();
   };
   get('budgetId').onchange=updateSupplier;
+  get('need').value=replicatedDate;
   get('center').onchange=updateBudget;get('need').onchange=updateBudget;updateBudget();
+  row.querySelector('[data-replicate-date]').onclick=()=>{
+   const date=get('need');
+   if(!date.value){date.reportValidity();return;}
+   replicatedDate=date.value;
+   for(const input of rows.querySelectorAll('[name="need"]')){
+    input.value=replicatedDate;
+    input.onchange();
+   }
+   $('batchError').textContent='';
+   $('purchaseRouteInfo').textContent='Data de necessidade aplicada a todos os itens.';
+  };
   row.querySelector('button').onclick=()=>{if(rows.rows.length>1)row.remove()};
   get('title').focus();
  }
@@ -248,13 +284,13 @@ function batchForm(draft){
   if(route==='Prestação de serviço com contrato')return;
   const items=[...rows.rows].map(row=>Object.fromEntries([...row.querySelectorAll('[name]')].map(input=>[input.name,input.value.trim()])));
   for(const item of items)item.category=budgetLine(item.budgetId)?.category;
-  if(!title||!requester||!purchaseReason||items.some(r=>!r.title||!r.unit||!r.activity||(r.preferred&&validation(r.preferred,r.category)!=='Validado'))){$('batchError').textContent='Confira os campos e a homologação dos fornecedores selecionados.';return}
+  if(!title||!requester||!purchaseReason||items.some(r=>!r.title||!r.unit||(r.preferred&&validation(r.preferred,r.category)!=='Validado'))){$('batchError').textContent='Confira os campos e a homologação dos fornecedores selecionados.';return}
   const issue=budgetCheck(items, r=>toCents(r.estimate),true);
   if(issue){$('batchError').textContent=issue;return}
   if(draft&&!visibleDrafts().includes(draft))return;
   const firstId=nextPurchaseId(),id=draft?.id??firstId;
   const records=items.map((data,i)=>{
-   const r={...data,id:firstId+i,batch:id,batchTitle:title,requester,registeredBy:actor(),demandId:draft?.demandId??null,line:i+1,owner:draft?.owner??$('role').value,status:'analysis',market:route==='Mercado e gêneros de consumo',minimum:route==='Mercado e gêneros de consumo'?1:3,quotes:[],log:[]};
+   const r={...data,id:firstId+i,batch:id,batchTitle:title,activity:origin?.title,requester,registeredBy:actor(),demandId:draft?.demandId??null,line:i+1,owner:draft?.owner??ownerKey(),status:'analysis',market:route==='Mercado e gêneros de consumo',minimum:route==='Mercado e gêneros de consumo'?1:3,quotes:[],log:[]};
    log(r,r.budgetId?'Registrou para análise · Reserva '+cash(toCents(r.estimate)/100)+' · '+r.budgetId:'Registrou para análise sem vínculo com o OBZ.');return r;
   });
   if(draft)db.drafts=db.drafts.filter(d=>d!==draft);
@@ -281,8 +317,10 @@ function render(){
  }else if(tab==='budget'){
  renderBudget();
  }else if(tab==='vendors'){
- $('view').innerHTML='<div class="row spread"><h2>Cadastro e validação</h2><button id="newVendor" class="primary">+ Cadastrar fornecedor</button></div><div class="grid">'+activeVendors().map(v=>'<div class="card"><h3>'+esc(v.name)+'</h3><small>'+esc(v.doc)+' '+esc(v.contact)+'</small>'+Object.entries(v.status).map(([cat,status])=>'<p>'+esc(cat)+'<br><span class="tag">'+status+'</span></p>').join('')+'<button data-vendor="'+v.id+'">Abrir cadastro e histórico</button>'+'</div>').join('')+'</div>';
+ $('view').innerHTML='<div class="row spread"><h2>Cadastro e validação</h2><div class="actions"><button id="vendorModel">Baixar planilha modelo</button><button id="vendorImport">Importar fornecedores</button><button id="newVendor" class="primary">+ Cadastrar fornecedor</button></div></div><div class="grid">'+activeVendors().map(v=>'<div class="card"><h3>'+esc(v.name)+'</h3><small>'+esc(v.doc)+' '+esc(v.contact)+'</small>'+Object.entries(v.status).map(([cat,status])=>'<p>'+esc(cat)+'<br><span class="tag">'+status+'</span></p>').join('')+'<button data-vendor="'+v.id+'">Abrir cadastro e histórico</button>'+'</div>').join('')+'</div>';
  $('newVendor').onclick=()=>vendorForm();
+ $('vendorModel').onclick=downloadVendorModel;
+ $('vendorImport').onclick=openVendorImport;
  document.querySelectorAll('[data-vendor]').forEach(b=>b.onclick=()=>vendorDetails(vendor(b.dataset.vendor)));
  }else if(tab==='costs'){
  renderCosts();
@@ -301,12 +339,10 @@ function render(){
 function submit(handler){$('form').onsubmit=e=>{e.preventDefault();handler(new FormData(e.target))}}
 function requestForm(r){
  if(r&&(!visible().includes(r)||!['quote','fix'].includes(r.status)))return;
- open(r?'Editar solicitação':'Nova solicitação','<form id="form">'+field('Item ou serviço','<input name="title" required maxlength="120" value="'+esc(r?.title)+'">')+'<div class="grid">'+field('Centro de serviço ou apoio','<select name="center" required><option value="">Selecione</option>'+Object.entries(centers).map(([group,items])=>'<optgroup label="'+group+'">'+options(items,r?.center)+'</optgroup>').join('')+'</select>')+field('Quantidade','<input name="qty" type="number" min="1" required value="'+(r?.qty||1)+'">')+field('Unidade',unitSelect(r?.unit))+field('Data necessária','<input name="need" type="date" required value="'+esc(r?.need)+'">')+'</div>'+field('Fornecedor homologado','<select name="preferred" id="editPreferred">'+preferredOptions(budgetLine(r?.budgetId)?.category,r?.preferred)+'</select>')+field('Ação ou atividade','<input name="activity" maxlength="160" required value="'+esc(r?.activity)+'">')+
+ open(r?'Editar solicitação':'Nova solicitação','<form id="form">'+field('Item ou serviço','<input name="title" required maxlength="120" value="'+esc(r?.title)+'">')+'<div class="grid">'+field('Centro de serviço ou apoio','<select name="center" required><option value="">Selecione</option>'+Object.entries(centers).map(([group,items])=>'<optgroup label="'+group+'">'+options(items,r?.center)+'</optgroup>').join('')+'</select>')+field('Quantidade','<input name="qty" type="number" min="1" required value="'+(r?.qty||1)+'">')+field('Unidade',unitSelect(r?.unit))+field('Data necessária','<input name="need" type="date" required value="'+esc(r?.need)+'">')+'</div>'+field('Fornecedor homologado','<select name="preferred" id="editPreferred">'+preferredOptions(budgetLine(r?.budgetId)?.category,r?.preferred)+'</select>')+
  field('Observação e especificações','<textarea name="reason">'+esc(r?.reason)+'</textarea>')+budgetFields(r)+quoteValueSummary(r,false)+'<p id="editBudgetError" role="alert"></p><button class="primary">Salvar alterações</button></form>');
  wireBudgetFields(r);
- submit(f=>{const data=Object.fromEntries(f),current=r||{id:nextId(db.requests),owner:$('role').value,status:'quote',quotes:[],log:[]};
- if(!data.activity.trim()){$('editBudgetError').textContent='Informe a ação ou atividade.';return}
- data.activity=data.activity.trim();
+ submit(f=>{const data=Object.fromEntries(f),current=r||{id:nextId(db.requests),owner:ownerKey(),status:'quote',quotes:[],log:[]};
  data.category=budgetLine(data.budgetId)?.category;
  if(data.preferred&&validation(data.preferred,data.category)!=='Validado'){$('editBudgetError').textContent='Selecione um fornecedor homologado para a rubrica.';return}
  const issue=budgetCheck([{...data,id:r?.id}],item=>toCents(item.estimate),true);
@@ -322,8 +358,92 @@ function log(r,message){r.log.unshift(new Date().toLocaleString('pt-BR')+' · '+
 const supplierFields=[
  ['name','Razão social','text',true],['tradeName','Nome fantasia','text'],['doc','CNPJ ou identificação de teste','text',true],
  ['contact','Responsável comercial','text',true],['email','E-mail','email'],['phone','Telefone ou WhatsApp','tel'],
- ['address','Endereço','text'],['city','Cidade e UF','text']
+ ['address','Endereço','text'],['city','Cidade e UF','text'],['purpose','Finalidade do fornecimento','text']
 ];
+const normalizeDoc=value=>value.replace(/[.\/\s-]/g,'').toUpperCase();
+const vendorColumns=[...supplierFields.map(([key,label])=>[key,key==='doc'?'CNPJ ou identificação':label]),['categories','Categorias de fornecimento'],['notes','Observações comerciais']];
+function downloadVendorModel(){
+ if(!window.XLSX){note('Não foi possível carregar a ferramenta de planilhas. Atualize a página.');return;}
+ const workbook=XLSX.utils.book_new();
+ const sheet=XLSX.utils.aoa_to_sheet([vendorColumns.map(([,label])=>label)]);
+ sheet['!cols']=vendorColumns.map(([,label])=>({wch:Math.max(20,label.length+4)}));
+ XLSX.utils.book_append_sheet(workbook,sheet,'Fornecedores');
+ const guide=XLSX.utils.aoa_to_sheet([
+  ['Como preencher','Orientação'],
+  ['Cadastro','Preencha um fornecedor por linha na aba Fornecedores.'],
+  ['Campos obrigatórios','Razão social, CNPJ ou identificação, responsável comercial e categorias de fornecimento.'],
+  ['Identificação','Digite o CNPJ como texto para manter zeros à esquerda.'],
+  ['Categorias','Use os nomes abaixo. Separe múltiplas categorias por ponto e vírgula.'],
+  ['Finalidade','Descreva o que o fornecedor oferece. Ex.: material de limpeza para eventos.'],
+  ['Validação','As categorias importadas entram como Pendente. Cadastros existentes não são substituídos.'],
+  ...categories.map(category=>['Categoria permitida',category])
+ ]);
+ guide['!cols']=[{wch:24},{wch:100}];
+ XLSX.utils.book_append_sheet(workbook,guide,'Instruções');
+ XLSX.writeFile(workbook,'modelo-cadastro-fornecedores-cdl.xlsx');
+}
+function parseVendorImport(sheet){
+ const rows=XLSX.utils.sheet_to_json(sheet,{header:1,raw:false,defval:'',blankrows:true});
+ const headers=(rows.shift()||[]).map(value=>String(value).trim());
+ const positions=vendorColumns.map(([,label])=>headers.indexOf(label));
+ if(positions.includes(-1))throw new Error('Use a aba Fornecedores do modelo e mantenha todos os cabeçalhos.');
+ const occupied=new Set(activeVendors().map(v=>normalizeDoc(v.doc)));
+ const records=[],errors=[];
+ for(const [index,row] of rows.entries()){
+  if(!row.some(value=>String(value).trim()))continue;
+  const {categories:labels,...data}=Object.fromEntries(vendorColumns.map(([key],i)=>[key,String(row[positions[i]]??'').trim()]));
+  const doc=normalizeDoc(data.doc);
+  const selected=[...new Set(labels.split(';').map(value=>value.trim()).filter(Boolean))];
+  let error;
+  if(!data.name||!doc||!data.contact||!selected.length)error='preencha razão social, identificação, responsável e categorias.';
+  else if(selected.some(category=>!categories.includes(category)))error='use as categorias listadas na aba Instruções.';
+  else if(occupied.has(doc))error='a identificação já consta no cadastro ou na planilha.';
+  else if(supplierFields.some(([key])=>data[key].length>180)||data.notes.length>1000)error='reduza o tamanho dos campos de texto.';
+  else if(data.email&&!/^[^\s@]+@[^\s@]+$/.test(data.email))error='confira o e-mail.';
+  if(error){errors.push('Linha '+(index+2)+' · '+error);continue;}
+  occupied.add(doc);
+  records.push({...data,reviews:[],status:Object.fromEntries(selected.map(category=>[category,'Pendente']))});
+ }
+ return {records,errors};
+}
+function openVendorImport(){
+ open('Importar fornecedores','<p>Preencha a aba Fornecedores do modelo. Os cadastros entram com homologação pendente.</p>'+
+ '<div class="actions"><button id="importVendorModel">Baixar planilha modelo</button></div>'+
+ field('Planilha preenchida','<input id="vendorFile" type="file" accept=".xlsx,.xls">')+
+ '<div id="vendorImportResult" role="status"></div><button id="confirmVendorImport" class="primary" disabled>Confirmar importação</button>');
+ $('importVendorModel').onclick=downloadVendorModel;
+ const input=$('vendorFile'),result=$('vendorImportResult'),confirmImport=$('confirmVendorImport');
+ input.onchange=async()=>{
+  confirmImport.disabled=true;
+  const file=input.files[0];
+  if(!file){result.textContent='';return;}
+  try{
+   if(!window.XLSX)throw new Error('Não foi possível carregar a ferramenta de planilhas.');
+   if(file.size>5_000_000)throw new Error('Selecione uma planilha de até 5 MB.');
+   const workbook=XLSX.read(await file.arrayBuffer());
+   if(!input.isConnected||input.files[0]!==file)return;
+   const sheet=workbook.Sheets.Fornecedores;
+   if(!sheet)throw new Error('A aba Fornecedores não foi encontrada.');
+   const {records,errors}=parseVendorImport(sheet);
+   if(errors.length){
+    result.innerHTML='<p>Corrija a planilha e selecione o arquivo novamente.</p><ul>'+errors.map(error=>'<li>'+esc(error)+'</li>').join('')+'</ul>';
+    return;
+   }
+   result.textContent=records.length?records.length+' fornecedor(es) pronto(s) para importar.':'A planilha está sem fornecedores.';
+   confirmImport.disabled=!records.length;
+   confirmImport.onclick=()=>{
+    const current=parseVendorImport(sheet);
+    if(current.errors.length){result.textContent=current.errors.join(' ');confirmImport.disabled=true;return;}
+    const first=nextId(db.vendors),previous=db.vendors;
+    db.vendors=[...previous,...current.records.map((record,index)=>({...record,id:first+index}))];
+    try{localStorage.setItem(key,JSON.stringify(db));}catch{
+     db.vendors=previous;result.textContent='Não foi possível salvar os fornecedores neste navegador.';return;
+    }
+    close();render();note(current.records.length+' fornecedor(es) importado(s) para validação.');
+   };
+  }catch(error){if(input.isConnected&&input.files[0]===file)result.textContent=error.message;}
+ };
+}
 function vendorForm(back,existing){
  if(existing?.deleted)return;
  open(existing?'Editar fornecedor':'Cadastrar fornecedor','<form id="form"><div class="grid">'+supplierFields.map(([name,label,type,required])=>
@@ -334,7 +454,6 @@ function vendorForm(back,existing){
  submit(f=>{
  if(existing?.deleted)return;
  const data=Object.fromEntries([...supplierFields.map(([k])=>k),'notes'].map(k=>[k,String(f.get(k)||'').trim()]));
- const normalizeDoc=value=>value.replace(/[.\/\s-]/g,'').toUpperCase();
  const doc=normalizeDoc(data.doc);
  const selected=[...new Set(f.getAll('categories'))].filter(cat=>categories.includes(cat));
  if(!data.name||!data.contact||!doc||!selected.length){$('error').textContent='Informe a razão social, a identificação, o responsável e pelo menos uma categoria.';return}
@@ -348,7 +467,7 @@ function vendorForm(back,existing){
  });
 }
 function vendorOrders(v){
- const rows=db.requests.filter(r=>admin()||(!r.inactive&&r.owner===$('role').value));
+ const rows=db.requests.filter(r=>admin()||(!r.inactive&&r.owner===ownerKey()));
  return (db.orders||[]).filter(o=>o.vendorId===v.id&&rows.some(r=>r.orderId===o.id)&&(admin()||!o.inactive)).slice().sort((a,b)=>b.id-a.id);
 }
 function vendorDetails(v){
@@ -646,7 +765,7 @@ function details(r){
  const attachmentLink=q=>quoteAttachmentLink(q)+(portalUploadAvailable()&&localAttachments.includes(q)
   ?' <button data-upload-local-quote="'+localAttachments.indexOf(q)+'">Enviar ao Drive</button>':'');
  const approval=r.approval?'<p class="alert ok">Aprovação registrada · '+esc(r.approval.vendor)+' · '+cash(r.approval.price)+' · '+esc(r.approval.reason)+(r.approval.caveat?' · Ressalva '+esc(r.approval.caveat):'')+'</p>':'';
- open(code(r)+' · '+r.title,registeredLine(r.registeredBy)+requesterLine(r.requester)+reasonLine(requestReason(batchId(r)))+'<p><strong>Ação ou atividade</strong> · '+activityLabel(r.activity)+'</p><p class="meta"><span class="tag">'+states[r.status]+'</span> · '+esc(r.center)+' · '+esc(r.category)+'</p><p>'+esc(r.qty)+' '+esc(r.unit)+' · Data necessária '+esc(r.need.split('-').reverse().join('/'))+'<br>'+esc(r.reason)+'</p><p class="muted">Fornecedor homologado indicado na abertura · '+esc(vendor(r.preferred)?.name||'A definir no orçamento')+'</p>'+approval+
+ open(code(r)+' · '+r.title,registeredLine(r.registeredBy)+requesterLine(r.requester)+reasonLine(requestReason(batchId(r)))+'<p class="meta"><span class="tag">'+states[r.status]+'</span> · '+esc(r.center)+' · '+esc(r.category)+'</p><p>'+esc(r.qty)+' '+esc(r.unit)+' · Data necessária '+esc(r.need.split('-').reverse().join('/'))+'<br>'+esc(r.reason)+'</p><p class="muted">Fornecedor homologado indicado na abertura · '+esc(vendor(r.preferred)?.name||'A definir no orçamento')+'</p>'+approval+
  '<button id="backBatch">Voltar à solicitação</button>'+orderLinks([r])+budgetInfo(r)+quoteValueSummary(r)+
  (analysis?'<form id="form" class="info">'+field('Observação para cotação (opcional)','<textarea name="reason"></textarea>')+'<div class="actions"><button class="primary" value="quote">Iniciar cotação</button></div></form>':'')+
  '<div class="actions"><button id="attachQuote">Anexar orçamento</button></div>'+
@@ -659,7 +778,7 @@ function details(r){
  (review?'<form id="form">'+(picked&&validation(picked.vendor,r.category)!=='Validado'?'<p class="alert">Aprovação bloqueada até validar o fornecedor indicado nesta categoria.</p>':'')+field('Parecer da decisão','<textarea name="decision" required></textarea>')+field('Ressalvas (opcional)','<textarea name="caveat"></textarea>')+'<div class="actions"><button class="primary" value="approved">Aprovar</button><button value="fix">Devolver para ajustes</button><button value="denied">Reprovar</button></div><p id="error" role="alert"></p></form>':'')+
  (r.status==='ordered'?deliveryPanel(r):'')+
  (['approved','ordered'].includes(r.status)?'<form id="form">'+field(r.status==='approved'?'Referência da compra realizada':'Referência do recebimento','<input name="ref" required>')+'<button class="primary">'+(r.status==='approved'?'Registrar compra':'Confirmar recebimento')+'</button></form>':'')+
- (fiscalAllowed(r)?fiscalPanel(r):'')+
+ marketActualSummary(r)+(fiscalAllowed(r)?fiscalPanel(r):'')+
  '<details class="info"><summary>Histórico</summary><ul>'+r.log.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></details>');
  $('backBatch').onclick=()=>batchDetails(batchId(r));
  $('attachQuote').onclick=()=>quoteAttachmentForm(r);
@@ -667,6 +786,7 @@ function details(r){
  wireOrders();
  if($('linkBudget'))$('linkBudget').onclick=()=>linkLegacyBudget(r);
  wireFiscal(r);
+ if($('marketActual'))$('marketActual').onclick=()=>marketActualForm([r],()=>details(r));
  if(analysis)$('form').onsubmit=e=>{
   e.preventDefault();
   const status=e.submitter?.value,reason=new FormData(e.target).get('reason').trim();
@@ -733,6 +853,54 @@ const dateLabel=date=>date.split('-').reverse().join('/');
 const norm=text=>String(text).trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ');
 const groupKey=r=>JSON.stringify([r.title,r.category,r.unit].map(norm));
 let costCenter='',costSearch='';
+const marketActualAllowed=r=>r.market&&r.approval&&visible().includes(r)&&['approved','ordered','done'].includes(r.status);
+const realizedTotal=r=>r.marketActual?.cents??fiscalTotal(r);
+const realizedQty=r=>r.marketActual?.qty??fiscalQty(r);
+function marketActualSummary(r){
+ if(!marketActualAllowed(r))return '';
+ const actual=r.marketActual;
+ return '<section><h3>Compra de mercado</h3><p>Estimado '+(r.estimate?cash(Number(r.estimate)):'Não informado')+
+ ' · Aprovado '+cash(r.approval.price)+' · Realizado '+(actual?cash(actual.cents/100)+' · '+esc(actual.qty)+' '+esc(r.unit):'A lançar')+
+ '</p><button id="marketActual">'+(actual?'Editar valores da compra':'Lançar valores da compra')+'</button></section>';
+}
+function marketActualForm(items,back){
+ const eligible=items.filter(marketActualAllowed);
+ if(!eligible.length)return;
+ open('Lançar valores da compra de mercado','<form id="marketPurchase">'+
+ '<p>Informe o total efetivamente pago por item, com os descontos do mercado.</p>'+
+ '<div class="scroll"><table><thead><tr><th>Item</th><th>Estimado</th><th>Aprovado</th><th>Quantidade comprada</th><th>Total pago (R$)</th></tr></thead><tbody>'+
+ eligible.map(r=>'<tr><td>'+esc(r.title)+' · '+esc(r.unit)+'</td><td>'+(r.estimate?cash(Number(r.estimate)):'—')+'</td><td>'+cash(r.approval.price)+'</td>'+
+ '<td><input type="number" min="0.001" max="'+esc(r.qty)+'" step="0.001" name="qty-'+r.id+'" aria-label="Quantidade comprada de '+esc(r.title)+'" value="'+esc(r.marketActual?.qty??r.qty)+'" required></td>'+
+ '<td><input type="number" min="0.01" step="0.01" name="total-'+r.id+'" aria-label="Total pago por '+esc(r.title)+'" value="'+esc(r.marketActual?r.marketActual.cents/100:'')+'" required></td></tr>').join('')+
+ '</tbody></table></div>'+field('Data da compra','<input type="date" name="date" required value="'+esc(eligible[0].marketActual?.date||new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo'}).format(new Date()))+'">')+
+ field('Referência do cupom ou da compra','<input name="ref" maxlength="100" required value="'+esc(eligible[0].marketActual?.ref||eligible[0].purchaseRef||'')+'">')+
+ '<p id="marketPurchaseError" role="alert"></p><div class="actions"><button class="primary">Salvar valores da compra</button><button type="button" id="marketBack">Voltar</button></div></form>',true);
+ $('marketBack').onclick=back;
+ $('marketPurchase').onsubmit=e=>{
+  e.preventDefault();
+  const form=new FormData(e.currentTarget),date=form.get('date'),ref=form.get('ref').trim();
+  const error=message=>{$('marketPurchaseError').textContent=message};
+  if(!date||!ref)return error('Informe a data e a referência da compra.');
+  const changes=eligible.map(r=>({r,qty:Number(form.get('qty-'+r.id)),cents:toCents(form.get('total-'+r.id))}));
+  for(const {r,qty,cents} of changes){
+   const order=ordersFor([r])[0];
+   if(!marketActualAllowed(r)||(r.status==='approved'&&order?.requiresSignature&&!order.signature))return error('A ordem precisa estar liberada para registrar a compra.');
+   if(!Number.isFinite(qty)||qty<=0||qty>Number(r.qty)||!Number.isSafeInteger(cents)||cents<=0)return error('Confira a quantidade e o valor de '+r.title+'.');
+   if(qty<fiscalQty(r)||cents<fiscalTotal(r)||(qty===fiscalQty(r)&&cents!==fiscalTotal(r)))return error('Os valores de '+r.title+' precisam conferir com os documentos fiscais já registrados.');
+  }
+  const previous=changes.map(({r})=>({actual:r.marketActual,status:r.status,ref:r.purchaseRef}));
+  changes.forEach(({r,qty,cents})=>{
+   r.marketActual={qty,cents,date,ref};
+   if(r.status==='approved'){r.status='ordered';r.purchaseRef=ref;}
+   log(r,'Registrou compra de mercado · '+qty+' '+r.unit+' · '+cash(cents/100)+' · '+ref);
+  });
+  try{localStorage.setItem(key,JSON.stringify(db));}catch{
+   changes.forEach(({r},i)=>{r.marketActual=previous[i].actual;r.status=previous[i].status;r.purchaseRef=previous[i].ref;r.log.shift();});
+   return error('Não foi possível salvar os valores no navegador.');
+  }
+  render();back();note('Valores efetivos da compra registrados.');
+ };
+}
 function fiscalPanel(r){
  const docs=documentsOf(r);
  const total=fiscalTotal(r),payments=docs.reduce((sum,d)=>sum+paid(d),0);
@@ -767,7 +935,7 @@ function fiscalForm(r){
  open('Anexar documento fiscal','<form id="form"><div class="grid">'+field('Tipo','<select name="type">'+options(['Nota fiscal','Cupom fiscal'])+'</select>')+
  field('Número ou chave de acesso','<input name="number" maxlength="100" required>')+
  field('Data de emissão','<input name="date" type="date" required>')+
- field('Quantidade coberta ('+esc(r.unit)+')','<input name="qty" type="number" min="1" max="'+Math.max(0,Number(r.qty)-fiscalQty(r))+'" required>')+
+ field('Quantidade coberta ('+esc(r.unit)+')','<input name="qty" type="number" min="0.001" step="0.001" max="'+Math.max(0,(r.marketActual?.qty??Number(r.qty))-fiscalQty(r))+'" required>')+
  field('Valor fiscal desta compra (R$)','<input name="value" type="number" min="0.01" step="0.01" required>')+'</div>'+
  driveDocumentField('fiscal','Link da nota ou cupom no Drive')+field('Arquivo local alternativo (PDF, XML, JPG, PNG · até 2 MB)','<input type="file" name="file" accept=".pdf,.xml,.jpg,.jpeg,.png">')+
  '<p class="muted">Informe apenas a quantidade e o valor do item deste pedido quando o documento incluir outros itens.</p><p id="fiscalError" role="alert"></p><div class="actions"><button class="primary" id="fiscalSave">Salvar documento</button>'+fiscalBack()+'</div></form>');
@@ -778,10 +946,16 @@ function fiscalForm(r){
  e.preventDefault();
  if(!fiscalAllowed(r))return;
  const f=new FormData(form),file=f.get('file'),number=f.get('number').trim(),qty=Number(f.get('qty')),cents=Math.round(Number(f.get('value'))*100);
- if(!number||!Number.isInteger(qty)||qty<1||qty+fiscalQty(r)>Number(r.qty)||!Number.isSafeInteger(cents)||cents<1){fiscalError('Confira a identificação, a quantidade disponível e o valor fiscal.');return}
+ if(!number||!Number.isFinite(qty)||qty<=0||Math.round((qty+fiscalQty(r))*1000)/1000>Number(r.qty)||!Number.isSafeInteger(cents)||cents<1){fiscalError('Confira a identificação, a quantidade disponível e o valor fiscal.');return}
  const link=driveFileUrl(f.get('driveUrl'));
  if(f.get('driveUrl')?.trim()&&!link){fiscalError('Cole o link de um arquivo do Google Drive.');return}
  if(!link&&(!file?.size||file.size>2_000_000||!/[.](pdf|xml|jpe?g|png)$/i.test(file.name))){fiscalError('Selecione um arquivo permitido de até 2 MB.');return}
+ if(r.marketActual){
+  const covered=Math.round((qty+fiscalQty(r))*1000)/1000,total=cents+fiscalTotal(r);
+  if(covered>r.marketActual.qty||total>r.marketActual.cents||(covered===r.marketActual.qty&&total!==r.marketActual.cents)){
+   fiscalError('Confira o documento com a quantidade e o valor realizados da compra.');return;
+  }
+ }
  const docs=r.fiscal??=[];
  const duplicate=()=>docs.some(d=>d.type===f.get('type')&&norm(d.number)===norm(number));
  if(duplicate()){fiscalError('Este documento já está vinculado a este pedido.');return}
@@ -795,7 +969,7 @@ function fiscalForm(r){
  reader.onerror=()=>{if($('form')!==form)return;saveButton.disabled=false;fiscalError('Não foi possível ler o arquivo selecionado.')};
  reader.onload=()=>{
  if($('form')!==form||!$('modal').open||!fiscalAllowed(r))return;
- if(duplicate()||qty+fiscalQty(r)>Number(r.qty)){saveButton.disabled=false;fiscalError('Confira os documentos já cadastrados para este pedido.');return}
+ if(duplicate()||Math.round((qty+fiscalQty(r))*1000)/1000>Number(r.qty)){saveButton.disabled=false;fiscalError('Confira os documentos já cadastrados para este pedido.');return}
  docs.push({type:f.get('type'),number,date:f.get('date'),qty,cents,name:file.name,data:reader.result,payments:[]});
  if(!commitFiscal(r,'Documento fiscal '+number+' anexado.',()=>docs.pop()))saveButton.disabled=false;
  };
@@ -820,26 +994,26 @@ function paymentForm(r,d){
  });
 }
 function renderCosts(){
- $('view').innerHTML='<section><h2>Histórico de compras</h2><p class="muted">Compare compras com o mesmo nome, categoria e unidade. O custo médio é o total fiscal dividido pela quantidade documentada.</p><div class="grid">'+field('Buscar item','<input id="costSearch" placeholder="Nome do item" value="'+esc(costSearch)+'">')+
+ $('view').innerHTML='<section><h2>Histórico de compras</h2><p class="muted">Compare compras com o mesmo nome, categoria e unidade. O custo médio usa o valor realizado e a quantidade comprada ou documentada.</p><div class="grid">'+field('Buscar item','<input id="costSearch" placeholder="Nome do item" value="'+esc(costSearch)+'">')+
  field('Centro','<select id="costCenter"><option value="">Todos os centros</option>'+options(Object.values(centers).flat(),costCenter)+'</select>')+'</div><div id="costResults"></div></section>';
  $('costSearch').oninput=e=>{costSearch=e.target.value;costRows()};
  $('costCenter').onchange=e=>{costCenter=e.target.value;costRows()};
  costRows();
 }
 function costRows(){
- const records=db.requests.filter(r=>admin()||(!r.inactive&&r.owner===$('role').value)).filter(r=>fiscalQty(r)>0&&(!costCenter||r.center===costCenter)&&norm(r.title).includes(norm(costSearch)));
+ const records=db.requests.filter(r=>admin()||(!r.inactive&&r.owner===ownerKey())).filter(r=>realizedQty(r)>0&&(!costCenter||r.center===costCenter)&&norm(r.title).includes(norm(costSearch)));
  const groups=Map.groupBy?Map.groupBy(records,groupKey):records.reduce((map,r)=>{const key=groupKey(r);if(!map.has(key))map.set(key,[]);map.get(key).push(r);return map},new Map());
  $('costResults').innerHTML=groups.size?[...groups.values()].map(rows=>{
  const first=rows[0];
- const total=rows.reduce((sum,r)=>sum+fiscalTotal(r),0),qty=rows.reduce((sum,r)=>sum+fiscalQty(r),0);
+ const total=rows.reduce((sum,r)=>sum+realizedTotal(r),0),qty=rows.reduce((sum,r)=>sum+realizedQty(r),0);
  return '<div class="card"><div class="row spread"><h3>'+esc(first.title)+'</h3><span class="tag">'+cash(total/qty/100)+' por '+esc(first.unit)+'</span></div>'+
- '<p class="muted">'+esc(first.category)+' · '+rows.length+' compra(s) · '+qty+' '+esc(first.unit)+' documentada(s)</p>'+
- '<div class="scroll"><table><thead><tr><th>Compra e centro</th><th>Fornecedor</th><th>Custo por unidade</th><th>Valor fiscal</th><th>Pago</th><th>Saldo</th><th></th></tr></thead><tbody>'+
+ '<p class="muted">'+esc(first.category)+' · '+rows.length+' compra(s) · '+qty+' '+esc(first.unit)+' comprada(s)</p>'+
+ '<div class="scroll"><table><thead><tr><th>Compra e centro</th><th>Fornecedor</th><th>Custo por unidade</th><th>Valor realizado</th><th>Pago</th><th>Saldo</th><th></th></tr></thead><tbody>'+
  rows.map(r=>{
- const total=fiscalTotal(r),payments=documentsOf(r).reduce((sum,d)=>sum+paid(d),0);
- return '<tr><td>'+code(r)+' · '+esc(r.center)+'<br><small>'+fiscalQty(r)+' de '+esc(r.qty)+' '+esc(r.unit)+'</small></td><td>'+esc(r.approval?.vendor||vendor(r.picked)?.name||'')+'</td><td>'+cash(total/fiscalQty(r)/100)+'</td><td>'+cash(total/100)+'</td><td>'+cash(payments/100)+'</td><td>'+cash((total-payments)/100)+'</td><td><button data-cost="'+r.id+'">Abrir</button></td></tr>';
+ const total=realizedTotal(r),payments=documentsOf(r).reduce((sum,d)=>sum+paid(d),0);
+ return '<tr><td>'+code(r)+' · '+esc(r.center)+'<br><small>'+realizedQty(r)+' de '+esc(r.qty)+' '+esc(r.unit)+'</small></td><td>'+esc(r.approval?.vendor||vendor(r.picked)?.name||'')+'</td><td>'+cash(total/realizedQty(r)/100)+'</td><td>'+cash(total/100)+'</td><td>'+cash(payments/100)+'</td><td>'+cash((total-payments)/100)+'</td><td><button data-cost="'+r.id+'">Abrir</button></td></tr>';
  }).join('')+'</tbody></table></div></div>';
- }).join(''):'<p>Nenhuma compra com documento fiscal para os filtros selecionados. Após registrar uma compra, anexe uma nota ou cupom no pedido.</p>';
+ }).join(''):'<p>Nenhuma compra com valor realizado para os filtros selecionados.</p>';
  document.querySelectorAll('[data-cost]').forEach(b=>b.onclick=()=>{
   const r=records.find(r=>r.id===Number(b.dataset.cost));
   if(r.inactive)archiveDetails(r.inactive.kind+':'+r.inactive.id);else details(r);
@@ -871,6 +1045,7 @@ function orderDetails(id){
  const o=ordersFor(visible()).find(order=>order.id===id);
  if(!o)return;
  const items=visible();
+ const orderItems=items.filter(r=>r.orderId===id);
  open(orderCode(id)+' · '+o.supplier,registeredLine(o.registeredBy)+requesterLine(o.requester)+reasonLine(o.purchaseReason||legacyPurchaseReason(o.items))+'<p>Solicitação '+protocol(o.batch)+' · Aprovada em '+esc(o.date)+' por '+esc(o.actor)+'</p><p>Parecer · '+esc(o.reason)+'</p>'+(o.caveat?'<p>Ressalva · '+esc(o.caveat)+'</p>':'')+'<p><strong>Total aprovado '+cash(o.total/100)+'</strong></p>'+
  '<div class="scroll"><table><thead><tr><th>Item e quantidade</th><th>Centro / rubrica</th><th>Ação ou atividade</th><th>Necessidade</th><th>Prazo e pagamento</th><th>Valor</th><th>Etapa</th><th></th></tr></thead><tbody>'+
  o.items.map(line=>{
@@ -882,11 +1057,12 @@ function orderDetails(id){
  (o.signedDocumentUrl?' · '+driveDocumentLink(o.signedDocumentUrl,'Abrir ordem assinada no Drive'):'')+'</p>'+
  (admin()?'<button id="attachSignedOrder">Vincular ordem assinada</button>':'')+
  '<h3>Documentos fiscais da ordem</h3>'+orderFiscal(items.filter(r=>r.orderId===id))+
- '<div class="actions"><button id="orderPrint">Imprimir ordem</button>'+
+ '<div class="actions">'+(orderItems.some(marketActualAllowed)?'<button id="orderMarketActual" class="primary">Lançar valores da compra de mercado</button>':'')+'<button id="orderPrint">Imprimir ordem</button>'+
  (admin()&&!o.signature&&o.requiresSignature?'<button id="orderSign" class="primary">Simular assinatura do gestor</button>':'')+
  '<button id="orderBatch">Voltar à solicitação</button>'+inactiveButton('ordem de compra')+'</div>',true);
  wireInactive('order',id);
  $('orderPrint').onclick=()=>window.print();
+ if($('orderMarketActual'))$('orderMarketActual').onclick=()=>marketActualForm(orderItems,()=>orderDetails(id));
  if($('orderSign'))$('orderSign').onclick=()=>signOrder(o);
  if($('attachSignedOrder'))$('attachSignedOrder').onclick=()=>signedOrderForm(o);
  document.querySelectorAll('[data-order-fiscal]').forEach(b=>b.onclick=()=>{
@@ -1051,8 +1227,8 @@ const toCents=value=>Math.round(Number(value)*100);
 function budgetUse(r){
  if(r.status==='denied'||(r.inactive&&!['ordered','done'].includes(r.status)))return {reserved:0,committed:0,actual:0};
  if(!r.approval)return {reserved:toCents(r.status==='review'?(selectedQuote(r)?.price||r.estimate||0):(r.estimate||0)),committed:0,actual:0};
- const actual=fiscalTotal(r);
- const remaining=Math.max(0,Number(r.qty)-fiscalQty(r));
+ const actual=realizedTotal(r);
+ const remaining=Math.max(0,Number(r.qty)-realizedQty(r));
  return {reserved:0,committed:Math.round(toCents(r.approval.price)*remaining/Number(r.qty)),actual};
 }
 function budgetTotals(id,excluded=new Set()){
@@ -1101,7 +1277,7 @@ function budgetInfo(r){
  const l=budgetLine(r.budgetId);
  if(!l)return '<p class="alert">Item sem vínculo com o OBZ.</p>'+(!r.approval&&r.status!=='denied'?'<button id="linkBudget">Vincular ao orçamento</button>':'');
  const u=budgetUse(r);
- return '<section><h3>Vinculação orçamentária</h3><p>'+esc(l.id+' · '+l.name)+' · '+esc(l.center)+'</p><p>Reserva do item '+cash(u.reserved/100)+' · Comprometido '+cash(u.committed/100)+' · Realizado fiscal '+cash(u.actual/100)+' · Saldo da rubrica '+cash(budgetTotals(l.id).available/100)+'</p></section>';
+ return '<section><h3>Vinculação orçamentária</h3><p>'+esc(l.id+' · '+l.name)+' · '+esc(l.center)+'</p><p>Reserva do item '+cash(u.reserved/100)+' · Comprometido '+cash(u.committed/100)+' · Realizado '+cash(u.actual/100)+' · Saldo da rubrica '+cash(budgetTotals(l.id).available/100)+'</p></section>';
 }
 function linkLegacyBudget(r){
  if(!visible().includes(r)||r.approval||r.status==='denied')return;
@@ -1140,7 +1316,7 @@ db.demands??=[
 ];
 db.drafts??=[];
 const demandById=id=>db.demands.find(d=>d.id===id);
-const visibleDrafts=()=>db.drafts.filter(d=>!d.inactive&&(admin()||d.owner===$('role').value));
+const visibleDrafts=()=>db.drafts.filter(d=>!d.inactive&&(admin()||d.owner===ownerKey()));
 const nextPurchaseId=()=>nextId([...db.requests,...db.drafts]);
 const demandStates={pending:'A avaliar',no:'Sem compra',yes:'Envolve compra'};
 function linkedPurchases(id){
@@ -1154,7 +1330,39 @@ function demandStatus(d){
  if(count)return count===1?'1 compra vinculada':count+' compras vinculadas';
  return d.decision==='yes'?'Compra necessária · Solicitação ainda não aberta':demandStates[d.decision];
 }
+let assignedDemands=[];
+function renderAssignedDemands(){
+ $('view').innerHTML='<section><div class="row spread"><h2>Minhas demandas</h2><button id="refreshAssigned">Atualizar</button></div>'+
+ '<div id="assignedDemands" class="grid" aria-live="polite">Carregando demandas…</div></section>';
+ const list=$('assignedDemands');
+ async function refresh(){
+  $('refreshAssigned').disabled=true;
+  try{
+   assignedDemands=await parent.loadPurchasingDemands(window);
+   if(!list.isConnected)return;
+   list.innerHTML=assignedDemands.length?assignedDemands.map(d=>'<article class="card"><small>'+esc(d.protocol)+'</small><h3>'+esc(d.title)+'</h3>'+
+    '<p>'+esc(d.sector)+' · '+esc(d.status)+(d.deadline?' · Prazo '+esc(dateLabel(d.deadline)):'')+'</p>'+
+    '<p class="muted">'+esc(d.purchases?d.purchases+' compra(s) vinculada(s)':d.decision?demandStates[d.decision]:'')+'</p>'+
+    '<button data-assigned-demand="'+esc(d.id)+'">Ver detalhes</button></article>').join(''):'<p>Nenhuma demanda ativa e não concluída está atribuída a você.</p>';
+   list.querySelectorAll('[data-assigned-demand]').forEach(button=>button.onclick=()=>assignedDemandDetails(button.dataset.assignedDemand));
+  }catch(error){if(list.isConnected)list.textContent=error.message;}
+  finally{if(list.isConnected)$('refreshAssigned').disabled=false;}
+ }
+ $('refreshAssigned').onclick=refresh;
+ refresh();
+}
+function assignedDemandDetails(id){
+ const d=assignedDemands.find(item=>String(item.id)===id);
+ if(!d)return;
+ const fields=[['Solicitante',d.requester],['Responsável',d.assignee],['Setor',d.sector],['Núcleo',d.nucleus],['Situação',d.status],
+  ['Prioridade',d.priority],['Prazo',d.deadline&&dateLabel(d.deadline)],['Resultado esperado',d.expectedResult]];
+ open(d.protocol+' · '+d.title,'<p class="demand-description">'+esc(d.description)+'</p><dl class="demand-facts">'+
+ fields.filter(([,value])=>value).map(([label,value])=>'<div><dt>'+label+'</dt><dd>'+esc(value)+'</dd></div>').join('')+
+ '</dl><button class="primary" id="manageDemandPurchase">Gerenciar vínculo de compra</button>');
+ $('manageDemandPurchase').onclick=()=>{close();parent.openPurchasingDemand(window,d.id);};
+}
 function renderDemands(){
+ if(portalProfile){renderAssignedDemands();return;}
  $('view').innerHTML='<section><div class="row spread"><h2>Demandas internas</h2><button id="newDraft">Criar compra independente</button></div>'+
  '<p class="muted">Demandas fictícias para testar a integração com Compras.</p><div class="grid">'+db.demands.map(d=>'<article class="card"><small>'+esc(d.id)+'</small><h3>'+esc(d.title)+'</h3><p>'+esc(demandStatus(d))+'</p><button data-demand="'+esc(d.id)+'">Abrir demanda</button></article>').join('')+'</div></section>';
  $('newDraft').onclick=()=>draftForm();
@@ -1193,7 +1401,7 @@ function draftForm(demand){
  submit(f=>{
   const title=f.get('title').trim();
   if(!title||(demand&&demand.decision!=='yes'))return;
-  const draft={id:nextPurchaseId(),title,owner:$('role').value,demandId:demand?.id??null};
+  const draft={id:nextPurchaseId(),title,owner:ownerKey(),demandId:demand?.id??null};
   db.drafts.push(draft);save();
   if(demand)demandDetails(demand.id);else draftDetails(draft);
   note(protocol(draft.id)+' criada como rascunho.');
@@ -1294,5 +1502,11 @@ function archiveDetails(key){
  });
 }
 
+if(portalProfile){
+ $('demoProfile').hidden=true;
+ $('signedProfile').hidden=false;
+ $('signedProfile').textContent=actor()+' · '+({admin:'Administrador',manager:'Gestor',collaborator:'Colaborador'}[role()]||'Colaborador');
+ document.querySelector('footer').textContent='As demandas e os vínculos são do portal. Os demais registros deste quadro ficam neste navegador.';
+}
 render();
 </script></html>

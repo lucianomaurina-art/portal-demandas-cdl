@@ -3,6 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../portal-modules.css', import.meta.url), 'utf8');
@@ -43,21 +44,11 @@ test('Compras tem uma área autenticada no mesmo portal', () => {
   const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
   assert.match(home, /purchases-entry portal-module" href="#\/compras"/);
   assert.match(html, /id="compras" class="view hidden"/);
-  assert.match(app, /'usuarios','compras','compras-triagem'\]\.includes\(id\)/);
+  assert.match(app, /const protectedViews = .*'compras', 'compras-triagem'/);
   assert.match(app, /if \(!session \|\| !profile\?\.active\)/);
   assert.match(html, /id="purchasePrototypeFrame"/);
-  assert.match(app, /if\(id==='compras'\)openPurchasePrototype\(\)/);
-});
-
-test('compras distingue o Kanban local das operações em Supabase', () => {
-  assert.match(html, /Portal Interno CDL/);
-  assert.match(html, /id="compras" class="view hidden"/);
-  assert.match(html, /O Kanban abaixo utiliza dados de teste/);
-  assert.match(html, /etapas demonstrativas não são automaticamente gravadas no Supabase/);
-  assert.match(html, /href="#\/compras-triagem"/);
-  assert.match(html, /id="purchasePrototypeFrame"/);
-  const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
-  assert.match(app, /if\(id==='compras'\|\|id==='compras-triagem'\)postLoginRoute='#\/'\+id/);
+  assert.match(app, /if \(id === 'compras'\) openPurchasePrototype\(\)/);
+  assert.match(html, /href="#\/compras-triagem">Abrir triagem compartilhada/);
 });
 
 test('estilo novo limita-se à tela inicial e tem responsividade', () => {
@@ -66,8 +57,56 @@ test('estilo novo limita-se à tela inicial e tem responsividade', () => {
   const selectors = [...rules.matchAll(/([^{}]+)\{/g)]
     .map(x => x[1].trim()).filter(x => !x.startsWith('@media'));
   assert.ok(selectors.length > 10);
-  assert.ok(selectors.every(s => s.split(',').every(part => part.trim().startsWith('#inicio '))),
-    'Novo CSS não deve modificar as telas internas');
+  assert.ok(selectors.every(s => s.split(',').every(part => /^#inicio |^\.portal-(switcher|purchase-links)/.test(part.trim()))),
+    'O CSS deve estar limitado à home, à navegação e aos atalhos de Compras');
   assert.match(css, /@media\(max-width:880px\)/);
   assert.match(css, /@media\(max-width:520px\)/);
+});
+
+test('rotas preservam o destino do login, o módulo atual e a saída de Compras', () => {
+  const app = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
+  const views = Object.fromEntries(['inicio', 'nova', 'nova-ideia', 'login', 'compras', 'compras-triagem']
+    .map(id => [id, {classList: new Set(['view'])}]));
+  for (const {classList} of Object.values(views)) {
+    classList.contains = classList.has;
+    classList.remove = classList.delete;
+  }
+  const links = ['inicio', 'demandas', 'ideias', 'compras'].map(module => ({
+    dataset: {module},
+    setAttribute() { this.current = true; },
+    removeAttribute() { this.current = false; },
+  }));
+  let activeFrame = false;
+  let loadedTriage = false;
+  const context = {
+    location: {hash: '#/compras-triagem'}, configured: true, session: null, postLoginRoute: null,
+    document: {getElementById: id => views[id]},
+    $$: selector => selector === '.view' ? Object.values(views) : links,
+    openPurchasePrototype() { activeFrame = true; },
+    closePurchasePrototype() { activeFrame = false; },
+    loadPurchaseModule() { loadedTriage = true; },
+  };
+  const route = runInNewContext(
+    app.slice(app.indexOf('const protectedViews'), app.indexOf('function setAuthUI')) + '\nroute',
+    context,
+  );
+  route();
+  assert.equal(context.location.hash, '#/login');
+  assert.equal(context.postLoginRoute, '#/compras-triagem');
+  route();
+  context.session = {};
+  context.location.hash = context.postLoginRoute;
+  route();
+  assert.equal(loadedTriage, true);
+  assert.equal(links.find(link => link.current)?.dataset.module, 'compras');
+  context.location.hash = '#/compras';
+  route();
+  assert.equal(activeFrame, true);
+  context.location.hash = '#/nova-ideia';
+  route();
+  assert.equal(activeFrame, false);
+  assert.equal(links.find(link => link.current)?.dataset.module, 'ideias');
+  context.location.hash = '#/rota-inexistente';
+  route();
+  assert.equal(links.find(link => link.current)?.dataset.module, 'inicio');
 });
