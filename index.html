@@ -245,7 +245,7 @@
       <h3 id="purchaseItemsTitle">Itens da compra</h3>
       <ul id="purchaseItemRows"></ul>
       <form id="purchaseItemForm" class="edit-grid">
-        <label class="span-2">Descrição do item<input name="description" maxlength="180" required></label>
+        <label class="span-2">Descrição do item<input name="description" maxlength="180" placeholder="Ex.: Papel A4 branco, 75 g/m², resma de 500 folhas" required></label>
         <label>Quantidade<input name="quantity" type="number" min="0.001" step="0.001" required></label>
         <label>Unidade<select name="unit" required></select></label>
         <label>Data de necessidade<input name="needed_on" type="date" required></label>
@@ -268,7 +268,7 @@
     <div class="modal-actions"><button id="submitPurchasePilot" type="button" class="primary hidden" disabled>Enviar para triagem</button><button id="purchaseSourceDemand" class="secondary" hidden>Abrir demanda de origem</button><button id="closePurchaseRecord" class="secondary">Fechar</button></div>
   </dialog>
   <script src="config.js"></script>
-  <script src="app.js?v=portal-compras-fornecedores-20261112"></script>
+  <script src="app.js?v=portal-compras-rubricas-20261112"></script>
   <script src="ideas.js?v=projeto-ideia-20260908-1"></script>
 </body>
 </html>

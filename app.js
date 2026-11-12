@@ -167,6 +167,36 @@ window.openPurchasingDemand = async (source, id) => {
   openEdit(id);
 };
 
+window.loadPurchasingRubrics = async source => {
+  if (!purchaseFrameIsActive(source)) throw new Error('Entre no portal para consultar o OBZ.');
+  const userId = session.user.id;
+  const publications = await db.from('purchase_current_budget_publications')
+    .select('id,center_code,center_name,fiscal_year').gte('fiscal_year',2027);
+  if (publications.error) throw new Error('Não foi possível consultar as publicações do OBZ.');
+  const byId = new Map(publications.data.map(row => [String(row.id),row]));
+  const result = [];
+  if (byId.size) {
+    const size = 500;
+    for (let start = 0; ; start += size) {
+      const lines = await db.from('purchase_budget_lines')
+        .select('publication_id,obz_line_id,description,account_code,approved_amount')
+        .in('publication_id',[...byId.keys()]).order('publication_id').order('obz_line_id').range(start,start+size-1);
+      if (lines.error) throw new Error('Não foi possível consultar as rubricas publicadas.');
+      for (const line of lines.data) {
+        const publication = byId.get(String(line.publication_id));
+        result.push({
+          id:'obz:'+line.publication_id+':'+line.obz_line_id,
+          year:publication.fiscal_year, center:publication.center_name,
+          name:line.description, account:line.account_code, approved:Math.round(Number(line.approved_amount)*100),
+        });
+      }
+      if (lines.data.length<size) break;
+    }
+  }
+  if (!purchaseFrameIsActive(source) || session.user.id !== userId) throw new Error('Sessão encerrada.');
+  return result;
+};
+
 function openPurchasePrototype() {
   const frame = $('#purchasePrototypeFrame');
   const status = $('#purchasePrototypeStatus');
@@ -177,7 +207,7 @@ function openPurchasePrototype() {
   }
   status.textContent = '';
   frame.hidden = false;
-  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261112-compras-fornecedores';
+  if (!frame.hasAttribute('src')) frame.src = 'compras/?v=20261112-compras-rubricas';
 }
 
 function closePurchasePrototype() {

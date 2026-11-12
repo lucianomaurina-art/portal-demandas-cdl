@@ -3,6 +3,7 @@
 *{box-sizing:border-box}body{margin:0;background:#f3f6fa;color:#172740;font:15px system-ui,sans-serif}header{background:#10243d;color:white;padding:20px max(5%,calc((100% - 1160px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}header strong{letter-spacing:.06em}header label{color:#cbd7e6}main{max-width:1200px;margin:auto;padding:32px 20px}h1{font-size:clamp(28px,5vw,42px);margin:0;letter-spacing:-.05em}h2{margin-top:0}p{line-height:1.55}nav,.row,.actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}nav{margin:22px 0;border-bottom:1px solid #d7e1eb;padding-bottom:12px}button,select,input,textarea{font:inherit;border:1px solid #b9c9da;border-radius:8px;padding:9px 12px}button{background:white;color:#172740;cursor:pointer;font-weight:650}button:hover{border-color:#0059b0}button.primary,nav button[aria-current]{background:#0759a9;color:white;border-color:#0759a9}.muted,small{color:#485d75}.tag{display:inline-block;background:#e7effc;color:#154781;border-radius:20px;padding:5px 10px;font-size:13px;font-weight:650}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}.card,section{background:white;border:1px solid #dae4ee;border-radius:14px;padding:20px;margin-bottom:12px}.card h3{margin:9px 0}.spread{justify-content:space-between}label.field{display:grid;gap:5px;margin-bottom:12px;font-weight:550}input,textarea,select{min-width:0;background:white;color:#172740}textarea{min-height:70px}dialog{width:min(820px,95vw);max-height:90vh;border:1px solid #d0dae5;border-radius:16px;padding:22px;color:#172740}dialog::backdrop{background:#10243d88}table{width:100%;border-collapse:collapse}td,th{text-align:left;border-bottom:1px solid #e0e7ef;padding:9px}.scroll{overflow:auto}.alert{background:#fff0ce;color:#573a00;padding:10px;border-radius:8px}.ok{background:#e4f5ec;color:#14553a}.meta{margin:8px 0 14px}.actions{margin:12px 0}.info{margin:10px 0}summary{cursor:pointer;font-weight:650}ol,ul{padding-left:22px}li{margin:6px 0}footer{color:#485d75;font-size:13px;margin-top:18px}[hidden]{display:none!important}
 .board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(240px,1fr);gap:12px;overflow:auto;padding-bottom:14px}.lane{background:#e7eef6;border-radius:12px;padding:12px;min-height:180px}.lane h3{font-size:15px;margin:0 0 12px}.lane .card{padding:12px}.lane .card button{width:100%;text-align:left}.itemsDialog{width:min(1500px,97vw)}.itemTable{min-width:1550px}.itemTable [data-replicate-date]{margin-top:6px;width:100%;white-space:nowrap}.itemTable td{vertical-align:top}.itemTable input,.itemTable select,.itemTable textarea{width:100%;padding:8px}.itemTable textarea{min-height:42px;resize:vertical}.itemTable th:nth-child(1){width:18%}.itemTable th:nth-child(5),.itemTable th:nth-child(6){width:15%}.itemTable th:nth-child(7){width:14%}.itemTable input[type=number]{min-width:66px}
 @media print{header,main,dialog button{display:none!important}dialog[open]{position:static;width:100%;max-height:none;border:0}dialog::backdrop{background:white}.scroll{overflow:visible}}
+[name="title"]::placeholder{color:#65758b}[name="title"]:focus::placeholder{color:transparent}
 .card[draggable]{cursor:grab}.card[draggable]:active{cursor:grabbing}.lane.drop-target{outline:2px solid #1768a3;outline-offset:-2px}
 nav button,nav a{flex-shrink:0}.demand-description{white-space:pre-wrap;overflow-wrap:anywhere}
 .demand-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}
@@ -63,6 +64,7 @@ const required=r=>r.market?1:3;
 const visible=()=>db.requests.filter(r=>!r.inactive&&(admin()||r.owner===ownerKey()));
 const nextId=list=>Math.max(0,...list.map(x=>x.id))+1;
 let tab='demands',filter='';
+const itemDescriptionHint='Ex.: Papel A4 branco, 75 g/m², resma de 500 folhas';
 const field=(label,html)=>'<label class="field">'+label+html+'</label>';
 const options=(items,selected)=>items.map(item=>'<option'+(item===selected?' selected':'')+'>'+esc(item)+'</option>').join('');
 function note(message){$('notice').innerHTML='<p class="alert ok">'+esc(message)+'</p>'}
@@ -248,7 +250,7 @@ function batchForm(draft){
  let replicatedDate='';
  function add(){
   const row=rows.insertRow();
-  row.innerHTML='<td><textarea name="title" aria-label="Descrição do item" required maxlength="180"></textarea></td><td><input name="qty" aria-label="Quantidade" type="number" min="1" value="1" required></td><td>'+unitSelect()+'</td><td><input name="need" aria-label="Data necessária" type="date" required><button type="button" data-replicate-date>Replicar data</button></td><td><select name="center" aria-label="Centro" required><option value="">Selecione</option>'+Object.entries(centers).map(([group,items])=>'<optgroup label="'+group+'">'+options(items)+'</optgroup>').join('')+'</select></td><td><select name="budgetId" aria-label="Rubrica aprovada (opcional)"></select></td><td><input name="estimate" aria-label="Total estimado opcional" type="number" min="0.01" step="0.01"></td><td><select name="preferred" aria-label="Fornecedor homologado"></select></td><td><textarea name="reason" aria-label="Observação"></textarea></td><td><button type="button" aria-label="Remover item">×</button></td>';
+  row.innerHTML='<td><textarea name="title" aria-label="Descrição do item" placeholder="'+esc(itemDescriptionHint)+'" required maxlength="180"></textarea></td><td><input name="qty" aria-label="Quantidade" type="number" min="1" value="1" required></td><td>'+unitSelect()+'</td><td><input name="need" aria-label="Data necessária" type="date" required><button type="button" data-replicate-date>Replicar data</button></td><td><select name="center" aria-label="Centro" required><option value="">Selecione</option>'+Object.entries(centers).map(([group,items])=>'<optgroup label="'+group+'">'+options(items)+'</optgroup>').join('')+'</select></td><td><select name="budgetId" aria-label="Rubrica aprovada (opcional)"></select></td><td><input name="estimate" aria-label="Total estimado opcional" type="number" min="0.01" step="0.01"></td><td><select name="preferred" aria-label="Fornecedor homologado"></select></td><td><textarea name="reason" aria-label="Observação"></textarea></td><td><button type="button" aria-label="Remover item">×</button></td>';
   const get=name=>row.querySelector('[name="'+name+'"]');
   const updateSupplier=()=>get('preferred').innerHTML=preferredOptions(budgetLine(get('budgetId').value)?.category,get('preferred').value);
   const updateBudget=()=>{
@@ -283,7 +285,10 @@ function batchForm(draft){
   const title=f.get('batchTitle').trim(),requester=f.get('requester').trim(),purchaseReason=f.get('purchaseReason').trim(),route=f.get('route');
   if(route==='Prestação de serviço com contrato')return;
   const items=[...rows.rows].map(row=>Object.fromEntries([...row.querySelectorAll('[name]')].map(input=>[input.name,input.value.trim()])));
-  for(const item of items)item.category=budgetLine(item.budgetId)?.category;
+  for(const item of items){
+   item.category=budgetLine(item.budgetId)?.category;
+   item.budgetSnapshot=publishedBudget.find(line=>line.id===item.budgetId);
+  }
   if(!title||!requester||!purchaseReason||items.some(r=>!r.title||!r.unit||(r.preferred&&validation(r.preferred,r.category)!=='Validado'))){$('batchError').textContent='Confira os campos e a homologação dos fornecedores selecionados.';return}
   const issue=budgetCheck(items, r=>toCents(r.estimate),true);
   if(issue){$('batchError').textContent=issue;return}
@@ -339,11 +344,12 @@ function render(){
 function submit(handler){$('form').onsubmit=e=>{e.preventDefault();handler(new FormData(e.target))}}
 function requestForm(r){
  if(r&&(!visible().includes(r)||!['quote','fix'].includes(r.status)))return;
- open(r?'Editar solicitação':'Nova solicitação','<form id="form">'+field('Item ou serviço','<input name="title" required maxlength="120" value="'+esc(r?.title)+'">')+'<div class="grid">'+field('Centro de serviço ou apoio','<select name="center" required><option value="">Selecione</option>'+Object.entries(centers).map(([group,items])=>'<optgroup label="'+group+'">'+options(items,r?.center)+'</optgroup>').join('')+'</select>')+field('Quantidade','<input name="qty" type="number" min="1" required value="'+(r?.qty||1)+'">')+field('Unidade',unitSelect(r?.unit))+field('Data necessária','<input name="need" type="date" required value="'+esc(r?.need)+'">')+'</div>'+field('Fornecedor homologado','<select name="preferred" id="editPreferred">'+preferredOptions(budgetLine(r?.budgetId)?.category,r?.preferred)+'</select>')+
+ open(r?'Editar solicitação':'Nova solicitação','<form id="form">'+field('Item ou serviço','<input name="title" placeholder="'+esc(itemDescriptionHint)+'" required maxlength="120" value="'+esc(r?.title)+'">')+'<div class="grid">'+field('Centro de serviço ou apoio','<select name="center" required><option value="">Selecione</option>'+Object.entries(centers).map(([group,items])=>'<optgroup label="'+group+'">'+options(items,r?.center)+'</optgroup>').join('')+'</select>')+field('Quantidade','<input name="qty" type="number" min="1" required value="'+(r?.qty||1)+'">')+field('Unidade',unitSelect(r?.unit))+field('Data necessária','<input name="need" type="date" required value="'+esc(r?.need)+'">')+'</div>'+field('Fornecedor homologado','<select name="preferred" id="editPreferred">'+preferredOptions(budgetLine(r?.budgetId)?.category,r?.preferred)+'</select>')+
  field('Observação e especificações','<textarea name="reason">'+esc(r?.reason)+'</textarea>')+budgetFields(r)+quoteValueSummary(r,false)+'<p id="editBudgetError" role="alert"></p><button class="primary">Salvar alterações</button></form>');
  wireBudgetFields(r);
  submit(f=>{const data=Object.fromEntries(f),current=r||{id:nextId(db.requests),owner:ownerKey(),status:'quote',quotes:[],log:[]};
  data.category=budgetLine(data.budgetId)?.category;
+ data.budgetSnapshot=publishedBudget.find(line=>line.id===data.budgetId)??(data.budgetId===r?.budgetId?r?.budgetSnapshot:undefined);
  if(data.preferred&&validation(data.preferred,data.category)!=='Validado'){$('editBudgetError').textContent='Selecione um fornecedor homologado para a rubrica.';return}
  const issue=budgetCheck([{...data,id:r?.id}],item=>toCents(item.estimate),true);
  if(issue){$('editBudgetError').textContent=issue;return}
@@ -1222,7 +1228,11 @@ const rubricNames=['Materiais de consumo','Equipamentos e tecnologia','Serviços
 const demoBudget=[2026,2027].flatMap(year=>Object.values(centers).flat().flatMap((center,i)=>rubricNames.map((name,j)=>({
  id:year+'-'+String(i+1).padStart(2,'0')+'-'+String(j+1).padStart(2,'0'),year,center,name,category:categories[j],approved:[250000,500000,1000000,350000][j]
 }))));
-const budgetLine=id=>demoBudget.find(line=>line.id===id);
+let publishedBudget=[],budgetCatalogError='';
+const budgetLine=id=>publishedBudget.find(line=>line.id===id)
+ ?? db.requests.find(item=>item.budgetSnapshot?.id===id&&id)?.budgetSnapshot
+ ?? demoBudget.find(line=>line.id===id);
+const availableRubrics=()=>portalProfile?publishedBudget:demoBudget;
 const toCents=value=>Math.round(Number(value)*100);
 function budgetUse(r){
  if(r.status==='denied'||(r.inactive&&!['ordered','done'].includes(r.status)))return {reserved:0,committed:0,actual:0};
@@ -1256,7 +1266,14 @@ function budgetCheck(items,amount,optional=false){
  return '';
 }
 function budgetOptions(center,need,selected,exclude){
- return '<option value="">'+(center&&need?'Sem vínculo com o OBZ':'Sem vínculo com o OBZ · informe centro e data para vincular')+'</option>'+demoBudget.filter(l=>l.center===center&&String(l.year)===need?.slice(0,4)).map(l=>'<option value="'+l.id+'" '+(l.id===selected?'selected':'')+'>'+esc(l.name)+' · '+cash(budgetTotals(l.id,new Set([exclude])).available/100)+'</option>').join('');
+ const lines=availableRubrics().filter(line=>line.center===center&&String(line.year)===need?.slice(0,4));
+ const previous=budgetLine(selected);
+ if(previous&&previous.center===center&&String(previous.year)===need?.slice(0,4)&&!lines.some(line=>line.id===selected))lines.push(previous);
+ const hint=!center||!need?'Informe centro e data para consultar as rubricas':budgetCatalogError||
+  (!lines.length&&portalProfile&&need.slice(0,4)>='2027'?'Nenhuma rubrica publicada para este centro e exercício':'');
+ return '<option value="">Sem rubrica OBZ</option>'+(hint?'<option disabled>'+esc(hint)+'</option>':'')+
+  lines.map(line=>'<option value="'+esc(line.id)+'" '+(line.id===selected?'selected':'')+'>'+
+   esc((line.account?line.account+' · ':'')+line.name)+(portalProfile?' · '+cash(line.approved/100)+' aprovado':' · '+cash(budgetTotals(line.id,new Set([exclude])).available/100))+'</option>').join('');
 }
 function budgetFields(r){
  return '<div class="grid">'+field('Rubrica do orçamento aprovado (opcional)','<select name="budgetId">'+budgetOptions(r?.center,r?.need,r?.budgetId,r?.id)+'</select>')+
@@ -1294,13 +1311,13 @@ function linkLegacyBudget(r){
    log(r,'Reabriu a cotação após mudar o enquadramento da rubrica.');
   }
   if(r.preferred&&validation(r.preferred,category)!=='Validado')r.preferred='';
-  Object.assign(r,data,{category});log(r,'Vinculou a reserva orçamentária · '+r.budgetId);save();details(r);
+  Object.assign(r,data,{category,budgetSnapshot:publishedBudget.find(line=>line.id===data.budgetId)});log(r,'Vinculou a reserva orçamentária · '+r.budgetId);save();details(r);
  });
 }
 let budgetYear='2026',budgetCenter='';
 function renderBudget(){
- const lines=demoBudget.filter(l=>String(l.year)===budgetYear&&(!budgetCenter||l.center===budgetCenter));
- $('view').innerHTML='<section><h2>Orçamento aprovado</h2><p class="muted">Base demonstrativa. O saldo disponível desconta reservas, ordens ainda sem cobertura fiscal e o realizado fiscal. Pagamentos são acompanhados separadamente.</p><div class="grid">'+
+ const lines=availableRubrics().filter(l=>String(l.year)===budgetYear&&(!budgetCenter||l.center===budgetCenter));
+ $('view').innerHTML='<section><h2>Orçamento aprovado</h2><p class="muted">'+esc(portalProfile?(budgetCatalogError||'Valores aprovados publicados pelo OBZ. Reservas e realizados exibidos aqui vêm dos registros deste navegador.'):'Base demonstrativa. O saldo disponível desconta reservas, ordens ainda sem cobertura fiscal e o realizado fiscal.')+'</p><div class="grid">'+
  field('Exercício','<select id="budgetYear">'+options(['2026','2027'],budgetYear)+'</select>')+
  field('Centro','<select id="budgetCenter"><option value="">Todos</option>'+options(Object.values(centers).flat(),budgetCenter)+'</select>')+'</div>'+
  '<div class="scroll"><table><thead><tr><th>Rubrica</th><th>Centro</th><th>Aprovado</th><th>Reservado</th><th>Comprometido</th><th>Realizado fiscal</th><th>Disponível</th></tr></thead><tbody>'+
@@ -1508,5 +1525,18 @@ if(portalProfile){
  $('signedProfile').textContent=actor()+' · '+({admin:'Administrador',manager:'Gestor',collaborator:'Colaborador'}[role()]||'Colaborador');
  document.querySelector('footer').textContent='As demandas e os vínculos são do portal. Os demais registros deste quadro ficam neste navegador.';
 }
-render();
+async function startPurchasing(){
+ if(portalProfile){
+  try{
+   publishedBudget=await parent.loadPurchasingRubrics(window);
+   for(const line of publishedBudget){
+    const existing=Object.values(centers).flat().find(center=>norm(center)===norm(line.center));
+    if(existing)line.center=existing;
+    else (centers.OBZ??=[]).push(line.center);
+   }
+  }catch(error){budgetCatalogError=error.message;}
+ }
+ render();
+}
+startPurchasing();
 </script></html>
