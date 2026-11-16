@@ -56,6 +56,8 @@
     const box=document.createElement('div');box.id='soProposalRevisionBox';box.className='notice';box.style.cssText='margin:14px 0;border-left-color:#7a4b00;background:#fff8e8';
     box.innerHTML=`<b>Revisão da proposta na validação</b><div class="muted" style="margin-top:5px">Valor atual: <b>${moneyValue(p.quote?.sale_total)}</b>. A contagem original permanecerá registrada no histórico.</div><div id="soProposalRevisionPreview" style="margin-top:8px;font-weight:800">Nenhuma variável removida.</div><label style="margin-top:12px">Motivo / observação da alteração</label><textarea id="soProposalRevisionNote" rows="2">Variáveis dispensadas pelo cliente na validação da contagem.</textarea><input type="hidden" id="soProposalReviewStage" value="${esc(o.stage||'')}"><input type="hidden" id="soProposalReviewOriginal" value="${esc(JSON.stringify(entries.map(x=>x.name)))}">`;
     heading.parentNode.insertBefore(box,heading);
+    const actions=document.querySelector('#spcOrderDialog .actions');
+    if(actions&&!actions.querySelector('[data-generate-updated-proposal]'))actions.insertAdjacentHTML('beforeend',`<button type="button" class="primary" data-generate-updated-proposal onclick="generateUpdatedSpcProposal('${id}')">Salvar e gerar proposta atualizada</button>`);
   }
 
   function removedFields(){
@@ -90,10 +92,36 @@
 
   window.previewSpcProposalRevision=async id=>{
     const preview=document.getElementById('soProposalRevisionPreview');if(!preview)return;
-    const {removed}=removedFields();
-    if(!removed.length){preview.textContent='Nenhuma variável removida.';return}
-    const {data:o}=await sb.from('spc_data_orders').select('filters,targeting').eq('id',id).maybeSingle(),affected=criteriaAffected(removed,o);
-    preview.innerHTML=`Removidas: ${esc(removed.join(', '))}.<br>${affected.length?`⚠ Exige recontagem porque interfere nos filtros: ${esc(affected.join(', '))}.`:'✓ Altera somente os dados entregues; a contagem atual pode ser validada.'}`;
+    const {kept,removed}=removedFields();
+    const [{data:o},{data:p}]=await Promise.all([
+      sb.from('spc_data_orders').select('*').eq('id',id).maybeSingle(),
+      sb.from('spc_data_orders').select('proposal_id').eq('id',id).maybeSingle().then(r=>r.data?.proposal_id?sb.from('lead_proposals').select('*').eq('id',r.data.proposal_id).maybeSingle():({data:null}))
+    ]);
+    if(!removed.length){preview.innerHTML=`Nenhuma variável removida. Valor da proposta: <b>${moneyValue(p?.quote?.sale_total)}</b>.`;return}
+    if(!kept.length){preview.innerHTML='<span style="color:#b42318">Mantenha pelo menos uma variável na proposta.</span>';return}
+    preview.innerHTML='Recalculando valor…';
+    try{
+      const commercial=await revisedCommercialData(p,o,kept),affected=criteriaAffected(removed,o);
+      if(!document.getElementById('soProposalRevisionPreview'))return;
+      preview.innerHTML=`Novo valor da proposta: <span style="font-size:20px;color:#0b62d6">${moneyValue(commercial.quote.sale_total)}</span><br><span style="font-weight:400">Removidas: ${esc(removed.join(', '))}.</span><br>${affected.length?`⚠ Exige recontagem porque interfere nos filtros: ${esc(affected.join(', '))}.`:'✓ Altera somente os dados entregues; a contagem atual pode ser validada.'}`;
+    }catch(error){console.error(error);preview.innerHTML=`<span style="color:#b42318">${esc(error.message||'Não foi possível recalcular o valor.')}</span>`}
+  };
+
+  function proposalDocument(p,o,w){
+    const q=p.quote||{},c={...(p.client||{}),...(o.client||{})},items=q.items||[],issued=new Date(),valid=new Date(issued);valid.setDate(valid.getDate()+7);
+    const fmt=d=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Sao_Paulo',day:'2-digit',month:'2-digit',year:'numeric'}).format(d),unit=Number(q.quantity||p.quantity||0)>0?Number(q.sale_total||0)/Number(q.quantity||p.quantity):Number(q.sale_unit||0),cdlLogo=new URL('../logo-cdl.svg',location.href).href,spcLogo=new URL('../logo-spc-brasil.png',location.href).href;
+    const rows=items.map(item=>`<tr><td><b>${esc(item.name||'Item')}</b>${Array.isArray(item.details)&&item.details.length?`<ul>${item.details.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}</td><td>${moneyValue(item.commercial_unit)} / lead</td></tr>`).join('');
+    const revisions=Array.isArray(o.filters?.proposal_revision_history)?o.filters.proposal_revision_history:[],last=revisions[revisions.length-1],removed=last?.removed_fields||[];
+    w.document.open();w.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(p.code)} — Proposta atualizada</title><style>*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;padding:42px;color:#142033;max-width:920px;margin:auto}.brandbar{display:flex;justify-content:space-between;align-items:center;gap:24px;border-bottom:3px solid #0b62d6;padding-bottom:18px}.brands{display:flex;align-items:center;gap:24px}.brands img{max-width:155px;max-height:65px}.code{text-align:right;color:#667085}.code b{display:block;color:#071b33;font-size:17px}.tag{display:inline-block;margin-top:20px;padding:7px 10px;border-radius:999px;background:#e8f1ff;color:#084fae;font-size:11px;font-weight:900;text-transform:uppercase}.client{margin:22px 0;padding:18px;background:#f4f7fb;border:1px solid #dce3ed;border-radius:14px;line-height:1.6}.revision{margin:18px 0;padding:15px 17px;background:#fff8e8;border-left:4px solid #d99a00;border-radius:10px;line-height:1.55}table{width:100%;border-collapse:collapse;border:1px solid #dce3ed;margin-top:12px}th{background:#f4f7fb}th,td{padding:12px 14px;border-bottom:1px solid #e7ecf2;text-align:left;vertical-align:top}td:last-child{width:190px;white-space:nowrap;font-weight:700}ul{margin:7px 0 0;padding-left:19px;columns:2}.total{margin-top:24px;padding:22px;background:#071b33;color:#fff;border-radius:16px}.total strong{display:block;font-size:32px;margin:5px 0}.terms{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:22px}.term{padding:14px;border:1px solid #dce3ed;border-radius:12px;background:#f8fbff;font-size:13px;line-height:1.45}.term b{display:block;margin-bottom:5px}.footer{margin-top:30px;padding-top:16px;border-top:1px solid #dce3ed;color:#667085;font-size:12px;display:flex;justify-content:space-between}.print{margin-top:22px;padding:11px 16px;border:0;border-radius:10px;background:#0b62d6;color:#fff;font-weight:700}@media(max-width:700px){.terms{grid-template-columns:1fr}}@media print{body{padding:20px}.print{display:none}.total,.revision,.terms{break-inside:avoid}}</style></head><body><div class="brandbar"><div class="brands"><img src="${cdlLogo}" alt="CDL Novo Hamburgo"><img src="${spcLogo}" alt="SPC Brasil"></div><div class="code"><b>Proposta Comercial Atualizada</b>${esc(p.code)}</div></div><div class="tag">Atualizada após validação da contagem</div><h1>SPC Dados</h1><p>Emitida em ${fmt(issued)} • válida até ${fmt(valid)}</p><div class="client"><b>${esc(c.company||'Cliente')}</b><br>${c.doc?`CNPJ/CPF: ${esc(c.doc)}<br>`:''}${c.contact?`Contato: ${esc(c.contact)}<br>`:''}${c.email?`E-mail: ${esc(c.email)}<br>`:''}${c.phone?`Telefone: ${esc(c.phone)}<br>`:''}<b>Quantidade:</b> ${Number(q.quantity||p.quantity||0).toLocaleString('pt-BR')} leads</div>${last?`<div class="revision"><b>Ajuste realizado na validação</b><br>${removed.length?`Variáveis retiradas: ${esc(removed.join(', '))}.<br>`:''}${last.note?`${esc(last.note)}<br>`:''}${last.requires_recount?'A alteração exige nova contagem do SPC.':'A contagem recebida permanece válida.'}</div>`:''}<h2>Composição atualizada</h2><table><thead><tr><th>O que está incluído</th><th>Investimento por lead</th></tr></thead><tbody>${rows}</tbody></table><div class="total"><span>Investimento total atualizado</span><strong>${moneyValue(q.sale_total)}</strong><div>Valor total por lead: ${moneyValue(unit)} / lead</div></div><div class="terms"><div class="term"><b>Prazo médio</b>Até 15 dias após a confirmação do pedido, conforme o fluxo operacional.</div><div class="term"><b>Pagamento</b>10% para confirmação e saldo de 90% na próxima fatura.</div><div class="term"><b>Entrega</b>Base disponibilizada em planilha Google ou Microsoft Excel.</div></div><div class="footer"><span>CDL Novo Hamburgo</span><span>SPC Brasil • Inteligência de dados para negócios</span></div><button class="print" onclick="print()">Imprimir / salvar em PDF</button></body></html>`);w.document.close();
+  }
+
+  window.generateUpdatedSpcProposal=async id=>{
+    const w=window.open('','_blank');if(!w)return alert('Autorize pop-ups para gerar a proposta atualizada.');
+    w.document.write('<!doctype html><html><body style="font-family:Arial;padding:40px"><h3>Atualizando e gerando a proposta…</h3></body></html>');
+    const ok=await window.saveSpcOrder(id,true);if(ok===false){w.close();return}
+    const {data:o,error}=await sb.from('spc_data_orders').select('*').eq('id',id).single();if(error||!o){w.close();return alert('A proposta foi salva, mas não foi possível gerar o documento.')}
+    const {data:p}=await sb.from('lead_proposals').select('*').eq('id',o.proposal_id).single();if(!p){w.close();return alert('A proposta vinculada não foi encontrada.')}
+    proposalDocument(p,o,w);document.getElementById('spcOrderDialog')?.close();await window.renderSpcSlaKanban?.();
   };
 
   function individualSelection(person,kept,preferredProduct){
@@ -136,6 +164,7 @@
   }
 
   async function saveRevision(id,originalSave,args){
+    const silent=args[1]===true;
     const {original,kept,removed}=removedFields();if(!removed.length)return originalSave.apply(this,args);
     if(!kept.length){alert('Mantenha pelo menos uma variável na proposta.');return false}
     const [{data:o,error:orderError},{data:{user}}]=await Promise.all([sb.from('spc_data_orders').select('*').eq('id',id).single(),sb.auth.getUser()]);
@@ -153,9 +182,11 @@
     const client={...(savedOrder?.client||o.client||{}),mode:commercial.mode,combo_level:commercial.mode==='combo'?commercial.selection?.level:'',combo_addons:commercial.mode==='combo'?(commercial.selection?.addons||[]):[]};
     const orderUpdate=await sb.from('spc_data_orders').update({requested_fields:kept,client,filters:{...(savedOrder?.filters||o.filters||{}),proposal_revision_history:history},recount_reason:affected.length?`Recontagem após revisão da proposta: ${affected.join(', ')}`:(savedOrder?.recount_reason||o.recount_reason)}).eq('id',id);
     if(orderUpdate.error){console.error(orderUpdate.error);alert('A proposta foi atualizada, mas o histórico da ordem não pôde ser concluído: '+orderUpdate.error.message);return false}
-    document.getElementById('spcOrderDialog')?.close();
-    if(affected.length)alert(`Proposta atualizada para ${moneyValue(commercial.quote.sale_total)}. A contagem original foi preservada e a ordem foi encaminhada para Recontagem porque a remoção afetou: ${affected.join(', ')}.`);
-    else alert(`Proposta atualizada para ${moneyValue(commercial.quote.sale_total)}. A contagem original foi preservada e a validação pode seguir normalmente.`);
+    if(!silent){
+      document.getElementById('spcOrderDialog')?.close();
+      if(affected.length)alert(`Proposta atualizada para ${moneyValue(commercial.quote.sale_total)}. A contagem original foi preservada e a ordem foi encaminhada para Recontagem porque a remoção afetou: ${affected.join(', ')}.`);
+      else alert(`Proposta atualizada para ${moneyValue(commercial.quote.sale_total)}. A contagem original foi preservada e a validação pode seguir normalmente.`);
+    }
     await window.renderSpcSlaKanban?.();
     return true;
   }
